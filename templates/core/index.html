@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio — SGE{% endblock %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-light rounded-3">
+    <h1 class="display-5 fw-bold">Sistema de Gestión Escolar</h1>
+    <p class="col-md-8 fs-4">EEST N°3 Hurlingham — 2026</p>
+    <p>Seleccioná un módulo del menú para comenzar.</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Alumnos</h5>
+                <p class="card-text">Gestión de alumnos, cursos e inscripciones.</p>
+                <a href="/alumnos/" class="btn btn-primary">Ir al módulo</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Asistencia</h5>
+                <p class="card-text">Registro y consulta de asistencia diaria.</p>
+                <a href="/asistencia/" class="btn btn-primary">Ir al módulo</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Calificaciones</h5>
+                <p class="card-text">Notas, promedios y boletines.</p>
+                <a href="/calificaciones/" class="btn btn-primary">Ir al módulo</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Docentes y Materias</h5>
+                <p class="card-text">Docentes, materias y horarios.</p>
+                <a href="/docentes/" class="btn btn-primary">Ir al módulo</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Comunicados</h5>
+                <p class="card-text">Publicación de comunicados institucionales.</p>
+                <a href="/comunicados/" class="btn btn-primary">Ir al módulo</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

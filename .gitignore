@@ -1,0 +1,19 @@
+# Entorno virtual — nunca se sube a GitHub
+venv/
+.venv/
+
+# Base de datos local — cada uno tiene la suya
+db.sqlite3
+
+# Python compilado
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno
+.env
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
