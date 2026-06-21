@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SGE - Mensajes</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #eef3f8;
+            color: #1f2933;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0d47a1, #1565c0);
+            color: white;
+            padding: 32px 20px;
+            text-align: center;
+        }
+
+        .contenedor {
+            width: 92%;
+            max-width: 900px;
+            margin: 30px auto;
+        }
+
+        .volver {
+            color: #0d47a1;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 18px;
+        }
+
+        .panel {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            margin-bottom: 24px;
+        }
+
+        h2 {
+            color: #0d47a1;
+            margin-top: 0;
+        }
+
+        .mensaje {
+            background: #f5f9ff;
+            border-left: 7px solid #0d47a1;
+            padding: 18px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .mensaje h3 {
+            color: #0d47a1;
+            margin-top: 0;
+        }
+
+        .etiqueta {
+            display: inline-block;
+            background: #0d47a1;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 7px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        footer {
+            margin-top: 45px;
+            background: #0d47a1;
+            color: white;
+            padding: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Mensajes del Profesor</h1>
+    <p>Comunicados y observaciones</p>
+</header>
+
+<main class="contenedor">
+
+    <a class="volver" href="/calificaciones/alumno/">← Volver al panel del alumno</a>
+
+    <section class="panel">
+        <h2>Bandeja de mensajes</h2>
+
+        {% for mensaje in mensajes %}
+            <div class="mensaje">
+                <span class="etiqueta">{{ mensaje.materia }}</span>
+                <h3>{{ mensaje.titulo }}</h3>
+                <p>{{ mensaje.contenido }}</p>
+            </div>
+        {% empty %}
+            <p>No hay mensajes disponibles.</p>
+        {% endfor %}
+    </section>
+
+</main>
+
+<footer>
+    <p>SGE - Mensajes</p>
+</footer>
+
+</body>
+</html>
