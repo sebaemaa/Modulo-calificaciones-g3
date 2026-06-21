@@ -1,5 +1,10 @@
 # SGE — Sistema de Gestión Escolar
-**EEST N°3 Hurlingham — 7° Año Programación 2026**
+**EEST N°3 Hurlingham — 7° Año Programación 2026 — Módulo Calificaciones**
+
+![Python](https://img.shields.io/badge/Python-3-blue)
+![Django](https://img.shields.io/badge/Django-6-green)
+![License](https://img.shields.io/badge/license-MIT-green)
+![GitHub contributors](https://img.shields.io/github/contributors/sebaemaa/Modulo-calificaciones-g3)
 
 ## Stack tecnológico
 - Python 3 + Django 6
@@ -14,18 +19,36 @@
 |--------|----------|-------------|
 | Gestión de Alumnos | `/alumnos/` | Grupo 1 |
 | Gestión de Asistencia | `/asistencia/` | Grupo 2 |
-| Gestión de Calificaciones | `/calificaciones/` | Grupo 3 |
+| Gestión de Calificaciones | `/calificaciones/` | **Grupo 3 — nuestro equipo** |
 | Gestión de Docentes y Materias | `/docentes/` | Grupo 4 |
 | Comunicados y Notificaciones | `/comunicados/` | Grupo 5 |
+
+## Nuestro equipo — Grupo 3 (Calificaciones)
+
+| Integrante | GitHub | Rama |
+|------------|--------|------|
+| Sebastián (líder) | [sebaemaa](https://github.com/sebaemaa) | `main` |
+| Kenai Luque | [kenailuque](https://github.com/kenailuque) | `feat/kenai` |
+| Lera Fer | [lerafer](https://github.com/lerafer) | `feat/lera` |
+| Lautaro Ba | [lautaroba2025-netizen](https://github.com/lautaroba2025-netizen) | `feat/lautaro` |
+
+## Cómo contribuir (para el grupo)
+
+Mirá la **[GUÍA COMPLETA → CONTRIBUTING.md](CONTRIBUTING.md)**. En resumen:
+
+1. Cada integrante trabaja en **su propia rama** (`feat/kenai`, `feat/lera`, `feat/lautaro`)
+2. Los cambios se integran mediante **Pull Requests** hacia `dev`
+3. El líder revisa y mergea los PRs
+4. Periódicamente se actualiza `main` desde `dev`
 
 ## Cómo correr el proyecto localmente
 
 ### Primera vez
 
 ```bash
-# 1. Clonar el repositorio
-git clone https://github.com/eest3-hurlingham/sge-2026.git
-cd sge-2026
+# 1. Clonar el repositorio (si no lo tenés)
+git clone https://github.com/sebaemaa/Modulo-calificaciones-g3.git
+cd Modulo-calificaciones-g3
 
 # 2. Crear entorno virtual
 python -m venv venv
@@ -90,6 +113,6 @@ sge/
 - Cada grupo edita **solo su módulo** (`models.py`, `views.py`, `urls.py`, templates)
 - **No tocar** `base.html`, `settings.py`, `urls.py` principal ni módulos ajenos
 - Para consultar datos de otro módulo: importar su modelo, no duplicar tablas
-- Nunca hacer push directo a `dev` ni a `main` — trabajar en la rama del grupo
+- **Nunca hacer push directo a `dev` ni a `main`** — trabajar en la rama del grupo
 - Commits frecuentes con mensajes descriptivos
 - Ante dudas sobre la estructura compartida: consultá al profe antes de tocar algo
