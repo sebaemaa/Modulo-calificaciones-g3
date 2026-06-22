@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% comment %}
+  ----------------------------------------------------------------------
+  PLANTILLA: consultar.html
+  PROPÓSITO: Formulario para que el alumno ingrese su DNI y consulte
+             sus calificaciones. Sin autenticación.
+  HEREDA DE: base.html
+  ----------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}SGE — Consultar mis notas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .consulta-wrapper {
+        max-width: 460px;
+        margin: 40px auto;
+        text-align: center;
+    }
+    .consulta-wrapper .icono {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+    .consulta-wrapper p {
+        color: #888;
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    .input-dni {
+        text-align: center;
+        font-size: 24px;
+        letter-spacing: 4px;
+        font-weight: 600;
+        max-width: 280px;
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<div class="consulta-wrapper">
+    <section class="panel">
+        <div class="icono" style="font-size: 48px; margin-bottom: 12px;">?</div>
+        <h2>Consultar mis notas</h2>
+        <p>Ingresá tu DNI para ver tus calificaciones, promedios y mensajes del profesor.</p>
+
+        <form method="GET" action="{% url 'mis_notas' %}">
+            <label>DNI</label>
+            <input class="input-dni" type="text" name="dni" required
+                   placeholder="12345678" autofocus
+                   maxlength="20" inputmode="numeric">
+
+            <div class="botones-form" style="justify-content: center; margin-top: 20px;">
+                <button class="boton boton-verde" type="submit"
+                        style="width: 100%; text-align: center;">
+                    Ver mis notas
+                </button>
+            </div>
+        </form>
+
+        <div class="ayuda" style="margin-top: 20px;">
+            <strong>¿No sabés tu DNI?</strong><br>
+            Consultá con el profesor para que te lo dé.
+        </div>
+    </section>
+</div>
+
+{% endblock %}

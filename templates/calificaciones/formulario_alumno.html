@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}SGE — {{ titulo }}{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel">
+    <h2>{{ titulo }}</h2>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <label>Nombre del alumno</label>
+        <input type="text" name="nombre" required
+               value="{% if alumno %}{{ alumno.nombre }}{% endif %}"
+               placeholder="Ejemplo: Juan Pérez">
+
+        <label>DNI</label>
+        <input type="text" name="dni"
+               value="{% if alumno and alumno.dni %}{{ alumno.dni }}{% endif %}"
+               placeholder="Ejemplo: 12345678"
+               maxlength="20">
+
+        <label>Curso</label>
+        <select name="curso_id" required>
+            <option value="">— Seleccionar curso —</option>
+            {% for c in cursos %}
+                <option value="{{ c.id }}"
+                    {% if curso_selected_id == c.id %}selected{% endif %}>
+                    {{ c.curso }} {{ c.division }} — {{ c.materia }} ({{ c.año }})
+                </option>
+            {% endfor %}
+        </select>
+
+        <div class="botones-form">
+            <button class="boton boton-verde" type="submit">{{ boton }}</button>
+            <a class="boton" href="{% url 'profesor' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+
+{% endblock %}

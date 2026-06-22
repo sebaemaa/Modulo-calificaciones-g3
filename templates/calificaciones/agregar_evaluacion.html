@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% comment %}
+  ----------------------------------------------------------------------
+  PLANTILLA: agregar_evaluacion.html
+  PROPÓSITO: Formulario para agregar un nuevo tipo de evaluación
+             (columna) a todos los alumnos del curso.
+  HEREDA DE: base.html
+  ----------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}SGE — Agregar evaluación a {{ curso }}{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel">
+    <h2>Agregar nueva evaluación</h2>
+    <p>Curso: <strong>{{ curso }}</strong></p>
+
+    <div class="ayuda">
+        Escribí el nombre de la evaluación (ej: "TP 1", "Examen Final", "Participación").
+        Se creará una columna nueva para todos los alumnos del curso,
+        y después podés completar las notas desde la grilla.
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <label>Nombre de la evaluación</label>
+        <input type="text" name="tipo" required
+               placeholder="Ej: TP 1, Examen, Participación, etc."
+               autofocus>
+        <div class="botones-form">
+            <button class="boton boton-verde" type="submit">Agregar columna</button>
+            <a class="boton" href="{% url 'ver_curso' curso.id %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+
+{% endblock %}

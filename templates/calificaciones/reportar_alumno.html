@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}SGE — Reportar a dirección{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel">
+    <h2>Reportar a dirección</h2>
+    <p>Alumno: <strong>{{ alumno.nombre }}</strong> — DNI: {{ alumno.dni|default:"--" }}</p>
+    <p>Curso: <strong>{{ curso }}</strong></p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <label>Asunto</label>
+        <input type="text" name="asunto" required placeholder="Ej: Problema de conducta, bajo rendimiento, etc." autofocus>
+
+        <label>Mensaje</label>
+        <textarea name="mensaje" required rows="6" placeholder="Describí la situación para dirección..." style="width:100%;padding:10px;border:1px solid #d0d0d0;border-radius:8px;font-family:'Poppins',sans-serif;font-size:14px;resize:vertical;"></textarea>
+
+        <div class="botones-form">
+            <button class="boton boton-verde" type="submit">Enviar a dirección</button>
+            <a class="boton" href="{% url 'ver_curso' curso.id %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+
+{% endblock %}

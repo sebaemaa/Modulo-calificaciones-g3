@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}SGE — Mensajes — {{ curso }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .seccion { margin-bottom: 24px; }
+    .seccion h2 { margin-top: 0; }
+    .msg-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+    .msg-card .msg-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: #f5f7fa;
+        border-bottom: 1px solid #e8e8e8;
+    }
+    .msg-card .msg-head h3 {
+        margin: 0;
+        font-size: 14px;
+        color: #2c5a8c;
+    }
+    .msg-card .msg-head .meta {
+        font-size: 12px;
+        color: #999;
+    }
+    .msg-card .msg-body {
+        padding: 10px 14px;
+        font-size: 14px;
+        color: #444;
+        line-height: 1.5;
+    }
+    .btn-borrar {
+        display: inline-block;
+        padding: 3px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        background: #ffebee;
+        color: #c62828;
+        border: 1px solid #ef9a9a;
+        transition: background 0.15s;
+    }
+    .btn-borrar:hover {
+        background: #ffcdd2;
+    }
+    .sin-msgs {
+        text-align: center;
+        padding: 20px;
+        color: #999;
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel seccion">
+    <h2>Enviar mensaje a {{ curso }}</h2>
+    <p class="rango-ayuda">El mensaje será visible para los alumnos cuando consulten sus notas.</p>
+    <form method="POST">
+        {% csrf_token %}
+        <label>Título</label>
+        <input type="text" name="titulo" required placeholder="Ej: Recordatorio, Aviso, etc." autofocus>
+
+        <label>Mensaje</label>
+        <textarea name="contenido" required rows="4" placeholder="Escribí el mensaje..." style="width:100%;padding:10px;border:1px solid #d0d0d0;border-radius:8px;font-family:'Poppins',sans-serif;font-size:14px;resize:vertical;"></textarea>
+
+        <div class="botones-form">
+            <button class="boton boton-verde" type="submit">Enviar mensaje</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>Mensajes enviados a {{ curso }}</h2>
+    {% for msg in mensajes %}
+        <div class="msg-card">
+            <div class="msg-head">
+                <div>
+                    <h3>{{ msg.titulo }}</h3>
+                    <span class="meta">{{ msg.creado|date:"d/m/Y H:i" }}</span>
+                </div>
+                <a class="btn-borrar" href="{% url 'eliminar_mensaje' msg.id %}"
+                   onclick="return confirm('Eliminar este mensaje?')">Borrar</a>
+            </div>
+            <div class="msg-body">
+                {{ msg.contenido|linebreaks }}
+            </div>
+        </div>
+    {% empty %}
+        <div class="sin-msgs">No hay mensajes enviados a este curso todavía.</div>
+    {% endfor %}
+</section>
+
+{% endblock %}

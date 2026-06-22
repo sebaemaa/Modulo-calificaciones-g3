@@ -1,22 +1,36 @@
 {% extends "base.html" %}
 
-{% block title %}Gestión de Calificaciones — SGE{% endblock %}
+{% block title %}SGE — Gestión de Calificaciones{% endblock %}
 
 {% block content %}
 
-{# ================================================================ #}
-{# MÓDULO 3 — GESTIÓN DE CALIFICACIONES #}
-{# Grupo responsable: [nombre del grupo]          #}
-{# Editá solo los templates de tu módulo.         #}
-{# No toques base.html ni templates de otros.     #}
-{# ================================================================ #}
+<section class="bienvenida">
+    <h2>Gestión de Calificaciones</h2>
+    <p>
+        Este módulo permite administrar alumnos, materias y notas de forma clara.
+        El profesor puede cargar y modificar calificaciones, mientras que el alumno
+        puede consultar sus materias, promedios y mensajes.
+    </p>
+</section>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Gestión de Calificaciones</h1>
-</div>
+<section class="roles">
+    <div class="card-rol">
+        <h3>Profesor</h3>
+        <p>
+            Cargá alumnos, editá notas, consultá promedios
+            y administrá las calificaciones de tus cursos.
+        </p>
+        <a class="boton" href="{% url 'profesor' %}">Ingresar como profesor</a>
+    </div>
 
-<div class="alert alert-info">
-    Este módulo está en construcción. Completá esta vista según tu wireframe.
-</div>
+    <div class="card-rol">
+        <h3>Alumno</h3>
+        <p>
+            Consultá tus materias, calificaciones,
+            promedio general y mensajes del profesor.
+        </p>
+        <a class="boton" href="{% url 'consultar' %}">Consultar mis notas</a>
+    </div>
+</section>
 
 {% endblock %}

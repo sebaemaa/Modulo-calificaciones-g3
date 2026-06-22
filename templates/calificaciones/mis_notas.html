@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% load calificaciones_extras %}
+{% block title %}SGE — Mis notas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .alumno-header {
+        margin-bottom: 18px;
+    }
+    .alumno-header h2 {
+        margin: 0 0 2px;
+        border: none;
+        padding: 0;
+    }
+    .alumno-header .sub {
+        color: #888;
+        font-size: 13px;
+    }
+    .resumen {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 18px;
+    }
+    .resumen-item {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px 16px;
+        text-align: center;
+        flex: 1;
+        min-width: 100px;
+    }
+    .resumen-item .num {
+        font-size: 26px;
+        font-weight: 700;
+        color: #2c5a8c;
+        display: block;
+    }
+    .resumen-item .label {
+        font-size: 11px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .resumen-item.aprobado .num { color: #2e7d32; }
+    .resumen-item.desaprobado .num { color: #c62828; }
+
+    .mat-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+    .mat-card .mat-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: #f5f7fa;
+        border-bottom: 1px solid #e8e8e8;
+    }
+    .mat-card .mat-head h3 {
+        margin: 0;
+        font-size: 14px;
+        color: #2c5a8c;
+    }
+    .mat-card .mat-head .meta {
+        font-size: 11px;
+        color: #999;
+    }
+    .mat-card .mat-head .prom-estado {
+        text-align: right;
+    }
+    .mat-card .mat-head .prom-estado .prom {
+        font-size: 18px;
+        font-weight: 700;
+        color: #2c5a8c;
+    }
+    .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .badge-tea { background: #e8f5e9; color: #1b5e20; }
+    .badge-tep { background: #e3f2fd; color: #0d47a1; }
+    .badge-ted { background: #ffebee; color: #b71c1c; }
+
+    .mat-body {
+        padding: 8px 14px;
+    }
+    .eval-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .eval-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #fafafa;
+        border: 1px solid #e8e8e8;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 13px;
+    }
+    .eval-tag .nota {
+        font-weight: 700;
+        font-family: 'Consolas', 'Courier New', monospace;
+        color: #222;
+    }
+    .eval-tag .nota.verde { color: #2e7d32; }
+    .eval-tag .nota.tep { color: #1565c0; }
+    .eval-tag .nota.rojo { color: #c62828; }
+    .eval-tag .sin-nota {
+        color: #ccc;
+    }
+
+    .sin-datos {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+    .sin-datos i { font-size: 48px; display: block; margin-bottom: 12px; opacity: 0.4; }
+
+    .acc-abajo {
+        text-align: center;
+        margin-top: 18px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+    <section class="panel" style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 12px;">:(</div>
+        <h2>No encontrado</h2>
+        <div class="error">{{ error }}</div>
+        <div class="acciones" style="justify-content: center;">
+            <a class="boton" href="{% url 'consultar' %}">Intentar de nuevo</a>
+        </div>
+    </section>
+{% else %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<div class="alumno-header">
+    <h2>{{ alumno.nombre }}</h2>
+    <span class="sub">DNI: {{ alumno.dni }}</span>
+</div>
+
+<div class="resumen">
+    <div class="resumen-item">
+        <span class="num">{{ promedio_general }}</span>
+        <span class="label">Promedio general</span>
+    </div>
+    <div class="resumen-item {{ estado_general|lower }}">
+        <span class="num">{{ estado_general }}</span>
+        <span class="label">Estado</span>
+    </div>
+</div>
+
+{% if cursos_data %}
+    {% for cd in cursos_data %}
+        <div class="mat-card">
+            <div class="mat-head">
+                <div>
+                    <h3>{{ cd.curso.materia }}</h3>
+                    <span class="meta">{{ cd.curso.curso }} {{ cd.curso.division }} · {{ cd.curso.año }}{% if cd.curso.profesor %} · {{ cd.curso.profesor }}{% endif %}</span>
+                </div>
+                <div class="prom-estado">
+                    <div class="prom">{{ cd.promedio }}</div>
+                    <span class="badge badge-{{ cd.estado|lower }}">{{ cd.estado }}</span>
+                </div>
+            </div>
+            <div class="mat-body">
+                {% if cd.tipos %}
+                    <div class="eval-list">
+                        {% for tipo in cd.tipos %}
+                            {% with valor=cd.evaluaciones|dictget:tipo %}
+                            <span class="eval-tag">
+                                {{ tipo }}
+                                {% if valor is not None %}
+                                    <span class="nota{% if valor >= 7 %} verde{% elif valor >= 4 %} tep{% else %} rojo{% endif %}">{{ valor }}</span>
+                                {% else %}
+                                    <span class="sin-nota">—</span>
+                                {% endif %}
+                            </span>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="color:#999;font-size:13px;margin:4px 0;">Sin evaluaciones registradas.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="sin-datos">
+        <i class="fas fa-book-open"></i>
+        <p>No tenés materias o evaluaciones registradas.</p>
+    </div>
+{% endif %}
+
+<div class="acc-abajo">
+    <a class="boton" href="{% url 'mensajes' %}?dni={{ dni }}">Mensajes del profesor</a>
+</div>
+
+{% endif %}
+
+{% endblock %}

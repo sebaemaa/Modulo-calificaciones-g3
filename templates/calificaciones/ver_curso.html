@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% load calificaciones_extras %}
+{% block title %}SGE — {{ curso }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .acciones-superiores {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 18px;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .grilla-wrapper {
+        overflow: auto;
+        margin-top: 16px;
+        max-height: 72vh;
+        border: 1px solid #c0c0c0;
+    }
+    .grilla {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px;
+        font-size: 13px;
+    }
+    .grilla thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .grilla thead th {
+        background: #e8ecf0;
+        color: #222;
+        padding: 8px 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: center;
+        white-space: nowrap;
+        border: 1px solid #c0c0c0;
+        user-select: none;
+    }
+    .grilla td {
+        padding: 2px;
+        text-align: center;
+        border: 1px solid #d4d4d4;
+        vertical-align: middle;
+    }
+    .grilla tbody tr:nth-child(even) td {
+        background: #f8f9fa;
+    }
+    .grilla tbody tr:nth-child(even) td.nombre-col {
+        background: #f8f9fa;
+    }
+    .grilla tbody tr:hover td {
+        background: #eef3f7;
+    }
+    .grilla tbody tr:hover td.nombre-col {
+        background: #eef3f7;
+    }
+    .grilla .nombre-col {
+        text-align: left;
+        font-weight: 500;
+        padding: 6px 10px;
+        min-width: 150px;
+        background: white;
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        border-right: 2px solid #c0c0c0;
+    }
+    .grilla .nombre-col .rep-link {
+        font-weight: 400;
+        font-size: 11px;
+        color: #c62828;
+        text-decoration: none;
+        margin-left: 6px;
+        opacity: 0.6;
+    }
+    .grilla .nombre-col .rep-link:hover {
+        opacity: 1;
+        text-decoration: underline;
+    }
+    .grilla .dni-col {
+        color: #666;
+        font-size: 12px;
+        min-width: 80px;
+    }
+    .promedio-col {
+        font-weight: 600;
+        font-size: 13px;
+        min-width: 60px;
+    }
+    .estado-col {
+        white-space: nowrap;
+        min-width: 100px;
+        padding: 2px;
+    }
+    .estado-select {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 6px;
+        border: 1px solid #d0d0d0;
+        border-radius: 4px;
+        font-family: 'Poppins', sans-serif;
+        cursor: pointer;
+        outline: none;
+        background: white;
+    }
+    .estado-select.TEA {
+        color: #1b5e20;
+        border-color: #81c784;
+        background: #e8f5e9;
+    }
+    .estado-select.TEP {
+        color: #0d47a1;
+        border-color: #64b5f6;
+        background: #e3f2fd;
+    }
+    .estado-select.TED {
+        color: #b71c1c;
+        border-color: #ef9a9a;
+        background: #ffebee;
+    }
+    .sin-alumnos {
+        text-align: center;
+        padding: 40px;
+    }
+    .rango-ayuda {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 10px;
+    }
+
+    /* --- grade inputs --- */
+    .nota-input {
+        width: 52px;
+        padding: 5px 3px;
+        text-align: center;
+        border: 1px solid #d0d0d0;
+        font-size: 13px;
+        font-family: 'Consolas', 'Courier New', monospace;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .nota-input:focus {
+        border-color: #1a73e8;
+        box-shadow: inset 0 0 0 1px #1a73e8;
+    }
+    .nota-input.invalido {
+        border-color: #d93025;
+        box-shadow: inset 0 0 0 1px #d93025;
+        background: #fff5f5;
+    }
+    .nota-input.verde {
+        background: #e8f5e9;
+    }
+    .nota-input.tep {
+        background: #e3f2fd;
+    }
+    .nota-input.rojo {
+        background: #fff0f0;
+    }
+
+    /* --- column delete button --- */
+    .btn-del-col {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        line-height: 14px;
+        text-align: center;
+        border-radius: 2px;
+        background: transparent;
+        color: #999;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        border: 1px solid transparent;
+        margin-left: 3px;
+        vertical-align: middle;
+        transition: background 0.1s, color 0.1s;
+    }
+    .btn-del-col:hover {
+        background: #d93025;
+        color: white;
+        border-color: #d93025;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="acciones-superiores">
+    <div>
+        <a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+        <h2 style="margin-top: 8px; border-bottom: none; padding-bottom: 0;">{{ curso }}{% if curso.profesor %} — Prof. {{ curso.profesor }}{% endif %}</h2>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <a class="boton boton-verde" href="{% url 'agregar_evaluacion' curso.id %}">+ Agregar columna</a>
+        <a class="boton" href="{% url 'enviar_mensaje' curso.id %}">Enviar mensaje</a>
+        <a class="boton" href="{% url 'exportar_csv' curso.id %}">Exportar CSV</a>
+        <a class="boton" href="{% url 'importar_csv' curso.id %}">Importar CSV</a>
+        <a class="boton" href="{% url 'reportes_curso' curso.id %}">Reportes</a>
+    </div>
+</div>
+
+{% if alumnos_data %}
+    <form method="POST" id="form-notas">
+        {% csrf_token %}
+        <p class="rango-ayuda">Notas de 1 a 10. Enter baja a la siguiente fila. Los cambios se guardan al hacer clic en "Guardar cambios".</p>
+        <div class="grilla-wrapper">
+            <table class="grilla">
+                <thead>
+                    <tr>
+                        <th>Alumno</th>
+                        <th>DNI</th>
+                        {% for tipo in tipos %}
+                            <th>
+                                {{ tipo }}
+                                <button type="button" class="btn-del-col"
+                                        onclick="confirmarEliminarColumna('{{ tipo|escapejs }}')"
+                                        title="Eliminar columna">&times;</button>
+                            </th>
+                        {% endfor %}
+                        <th>Prom</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in alumnos_data %}
+                    <tr>
+                        <td class="nombre-col">{{ item.alumno.nombre }}<a class="rep-link" href="{% url 'reportar_alumno' item.alumno.id %}" title="Reportar a dirección">📋</a></td>
+                        <td class="dni-col">{{ item.alumno.dni|default:"--" }}</td>
+                        {% for tipo in tipos %}
+                            {% with val=item.evaluaciones|dictget:tipo %}
+                            <td>
+                                <input class="nota-input{% if val is not None and val >= 7 %} verde{% elif val is not None and val >= 4 %} tep{% elif val is not None %} rojo{% endif %}"
+                                       type="text"
+                                       name="eval_{{ item.alumno.id }}_{{ tipo }}"
+                                       value="{% if val is not None %}{{ val }}{% endif %}"
+                                       placeholder="--"
+                                       data-min="1" data-max="10"
+                                       oninput="validarNota(this); colorear(this); recalcularFila(this)">
+                            </td>
+                            {% endwith %}
+                        {% endfor %}
+                        <td class="promedio-col">{{ item.promedio }}</td>
+                        <td class="estado-col">
+                            <select class="estado-select {{ item.estado }}"
+                                    name="estado_{{ item.alumno.id }}"
+                                    onchange="this.className='estado-select ' + this.value">
+                                <option value="TEA" {% if item.estado == "TEA" %}selected{% endif %}>TEA</option>
+                                <option value="TEP" {% if item.estado == "TEP" %}selected{% endif %}>TEP</option>
+                                <option value="TED" {% if item.estado == "TED" %}selected{% endif %}>TED</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="acciones" style="margin-top: 14px;">
+            <button class="boton boton-verde" type="submit">Guardar cambios</button>
+        </div>
+    </form>
+{% else %}
+    <section class="panel sin-alumnos">
+        <i class="fas fa-users"></i>
+        <h2>Sin alumnos</h2>
+        <div class="aviso">
+            Este curso no tiene alumnos todavía.
+            <a href="{% url 'agregar_alumno' %}">Agregá alumnos</a>
+            o <a href="{% url 'importar_csv' curso.id %}">importá un archivo CSV</a>.
+        </div>
+    </section>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<form id="form-eliminar-col" method="POST" action="{% url 'eliminar_evaluacion' curso.id %}" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="tipo" id="input-tipo-eliminar">
+</form>
+
+<script>
+function confirmarEliminarColumna(tipo) {
+    if (confirm('Eliminar la columna "' + tipo + '" y todas sus notas?')) {
+        document.getElementById('input-tipo-eliminar').value = tipo;
+        document.getElementById('form-eliminar-col').submit();
+    }
+}
+
+function validarNota(input) {
+    var val = input.value.trim().replace(",", ".");
+    if (val === "") { input.classList.remove("invalido"); return; }
+    if (isNaN(parseFloat(val)) || parseFloat(val) < 1 || parseFloat(val) > 10)
+        input.classList.add("invalido");
+    else
+        input.classList.remove("invalido");
+}
+
+function colorear(input) {
+    var val = input.value.trim().replace(",", ".");
+    if (val === "") { input.classList.remove("verde", "tep", "rojo"); return; }
+    var num = parseFloat(val);
+    if (isNaN(num) || num < 1 || num > 10) { input.classList.remove("verde", "tep", "rojo"); return; }
+    input.classList.remove("verde", "tep", "rojo");
+    if (num >= 7) input.classList.add("verde");
+    else if (num >= 4) input.classList.add("tep");
+    else input.classList.add("rojo");
+}
+
+function recalcularFila(input) {
+    var tr = input.closest("tr");
+    if (!tr) return;
+    var inputs = tr.querySelectorAll(".nota-input");
+    var cells = tr.querySelectorAll("td");
+    if (cells.length < 2) return;
+    var promCell = cells[cells.length - 2];
+
+    var sum = 0, count = 0;
+    inputs.forEach(function(inp) {
+        var val = inp.value.trim().replace(",", ".");
+        if (val === "") return;
+        var num = parseFloat(val);
+        if (!isNaN(num) && num >= 1 && num <= 10) { sum += num; count++; }
+    });
+
+    promCell.textContent = count === 0 ? "0.00" : (sum / count).toFixed(2);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    var form = document.getElementById("form-notas");
+    if (!form) return;
+
+    var inputs = Array.from(document.querySelectorAll(".grilla tbody .nota-input"));
+    if (inputs.length === 0) return;
+
+    var rows = document.querySelectorAll(".grilla tbody tr");
+    var colsPorFila = rows.length > 0 ? Math.floor(inputs.length / rows.length) : 0;
+
+    inputs.forEach(function(inp, idx) {
+        inp.addEventListener("keydown", function(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                var next = idx + colsPorFila;
+                if (next < inputs.length) { inputs[next].focus(); inputs[next].select(); }
+            }
+        });
+    });
+
+    form.addEventListener("submit", function(e) {
+        var invalidos = form.querySelectorAll(".nota-input.invalido");
+        if (invalidos.length > 0) {
+            if (!confirm(invalidos.length + " nota(s) fuera de rango (1-10). Guardar de todas formas?"))
+                e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

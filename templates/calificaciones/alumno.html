@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load calificaciones_extras %}
+{% comment %}
+  ----------------------------------------------------------------------
+  PLANTILLA: alumno.html
+  PROPÓSITO: Vista pública de calificaciones. Muestra los cursos con
+             sus alumnos y notas agrupados por materia.
+  HEREDA DE: base.html
+  BLOQUES: title, content
+  ----------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}SGE — Calificaciones{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<h2 style="margin-top: 8px;">Calificaciones por curso</h2>
+
+{# Filtro por materia #}
+{% if materias %}
+    <div class="acciones" style="margin-bottom: 18px;">
+        <form method="GET" style="display: flex; gap: 10px; align-items: center;">
+            <label style="margin: 0; white-space: nowrap;">Filtrar por materia:</label>
+            <select name="materia" onchange="this.form.submit()" style="width: auto;">
+                <option value="">Todas las materias</option>
+                {% for m in materias %}
+                    <option value="{{ m }}" {% if materia_seleccionada == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+            {% if materia_seleccionada %}
+                <a class="boton boton-chico" href="{% url 'alumno' %}">Limpiar filtro</a>
+            {% endif %}
+        </form>
+    </div>
+{% endif %}
+
+{# Itera sobre cada curso #}
+{% for grupo in cursos_data %}
+    <section class="panel">
+        <h3>{{ grupo.curso.materia }} — {{ grupo.curso.curso }} {{ grupo.curso.division }} ({{ grupo.curso.año }})</h3>
+
+        {% if grupo.alumnos %}
+            {% comment %}
+              La tabla se genera dinámicamente según los tipos de evaluación.
+              Los tipos pueden variar por curso.
+            {% endcomment %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Alumno</th>
+                        {% for tipo in grupo.tipos %}
+                            <th>{{ tipo }}</th>
+                        {% endfor %}
+                        <th>Promedio</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alumno in grupo.alumnos %}
+                    <tr>
+                        <td>{{ alumno.nombre }}</td>
+                        {% for tipo in grupo.tipos %}
+                            <td>
+                                {% with valor=alumno.evaluaciones|dictget:tipo %}
+                                    {% if valor is not None %}{{ valor }}{% else %}—{% endif %}
+                                {% endwith %}
+                            </td>
+                        {% endfor %}
+                        <td class="promedio-col">{{ alumno.promedio }}</td>
+                        {% if alumno.estado == "Aprobado" %}
+                            <td class="aprobado">{{ alumno.estado }}</td>
+                        {% else %}
+                            <td class="desaprobado">{{ alumno.estado }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No hay alumnos en este curso.</p>
+        {% endif %}
+    </section>
+{% empty %}
+    <section class="panel">
+        <div class="aviso">
+            No hay cursos con alumnos registrados.
+        </div>
+    </section>
+{% endfor %}
+
+{% endblock %}

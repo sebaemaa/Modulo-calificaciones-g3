@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}SGE — Crear curso{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel">
+    <h2>Crear nuevo curso</h2>
+    <p>Creá un curso vacío para después agregarle alumnos.</p>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+            <div>
+                <label>Curso</label>
+                <input type="text" name="curso" required placeholder="Ej: 1°">
+            </div>
+            <div>
+                <label>División</label>
+                <input type="text" name="division" required placeholder="Ej: A">
+            </div>
+            <div>
+                <label>Materia</label>
+                <input type="text" name="materia" required placeholder="Ej: Matemática">
+            </div>
+            <div>
+                <label>Año lectivo</label>
+                <input type="number" name="año" required placeholder="Ej: 2026">
+            </div>
+            <div>
+                <label>Tu nombre (profesor)</label>
+                <input type="text" name="profesor" placeholder="Ej: Carlos Gómez">
+            </div>
+        </div>
+        <div class="botones-form">
+            <button class="boton boton-verde" type="submit">Crear curso</button>
+            <a class="boton" href="{% url 'profesor' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+
+{% endblock %}

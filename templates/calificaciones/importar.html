@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% comment %}
+  ----------------------------------------------------------------------
+  PLANTILLA: importar.html
+  PROPÓSITO: Formulario para subir un archivo CSV con alumnos y
+             calificaciones e importarlos al curso seleccionado.
+  HEREDA DE: base.html
+  ----------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}SGE — Importar CSV a {{ curso }}{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel">
+    <h2>Importar alumnos desde CSV</h2>
+    <p>Curso: <strong>{{ curso }}</strong></p>
+
+    <div class="ayuda">
+        <strong>Formato del CSV:</strong><br>
+        La primera fila debe tener los encabezados.
+        La columna <code>nombre</code> es obligatoria.
+        Las demás columnas se interpretan como tipos de evaluación.<br><br>
+        <strong>Ejemplo:</strong><br>
+        <code>nombre,TP 1,Examen,Participación</code><br>
+        <code>Juan Pérez,8,7,9</code><br>
+        <code>Lucía Gómez,9,8,10</code>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label>Seleccionar archivo CSV</label>
+        <input type="file" name="archivo" accept=".csv" required>
+        <div class="botones-form">
+            <button class="boton boton-verde" type="submit">Importar</button>
+            <a class="boton" href="{% url 'ver_curso' curso.id %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+
+{% endblock %}

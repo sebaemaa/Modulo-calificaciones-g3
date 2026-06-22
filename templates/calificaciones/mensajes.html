@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% comment %}
+  ----------------------------------------------------------------------
+  PLANTILLA: mensajes.html
+  PROPÓSITO: Bandeja de mensajes del profesor dirigidos al alumno.
+             Muestra una lista de comunicados con materia, título y
+             contenido.
+  HEREDA DE: base.html
+  BLOQUES USADOS: title, content
+  ----------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}SGE — Mensajes{% endblock %}
+
+{% block content %}
+
+{# Enlace para volver al panel del alumno #}
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel">
+    <h2>Bandeja de mensajes</h2>
+
+    {# Itera sobre la lista de mensajes del profesor #}
+    {% for mensaje in mensajes %}
+        <div class="mensaje">
+            <span class="etiqueta">{{ mensaje.curso.materia }}</span>
+            <small style="color:#999;display:block;margin-bottom:4px;">{{ mensaje.curso }}{% if mensaje.curso.profesor %} — Prof. {{ mensaje.curso.profesor }}{% endif %} — {{ mensaje.creado|date:"d/m/Y H:i" }}</small>
+            <h3 style="margin:0 0 6px;">{{ mensaje.titulo }}</h3>
+            <p style="margin:0;">{{ mensaje.contenido }}</p>
+        </div>
+    {% empty %}
+        <p>No hay mensajes disponibles.</p>
+    {% endfor %}
+</section>
+
+{% endblock %}

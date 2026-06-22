@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% comment %}
+  ----------------------------------------------------------------------
+  PLANTILLA: profesor.html
+  PROPÓSITO: Lista de cursos del profesor con acciones.
+  HEREDA DE: base.html
+  ----------------------------------------------------------------------
+{% endcomment %}
+
+{% block title %}SGE — Profesor: seleccionar curso{% endblock %}
+
+{% block extra_css %}
+<style>
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .panel-header h2 {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 0;
+    }
+    .lista-cursos {
+        list-style: none;
+        padding: 0;
+        margin: 18px 0 0;
+    }
+    .lista-cursos li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        background: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border-left: 5px solid #5492b3;
+        transition: box-shadow 0.2s;
+    }
+    .lista-cursos li:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .lista-cursos .curso-info {
+        flex: 1;
+        min-width: 200px;
+    }
+    .lista-cursos .curso-info h3 {
+        margin: 0 0 2px;
+        font-size: 16px;
+        color: #2c5a8c;
+    }
+    .lista-cursos .curso-info p {
+        margin: 0;
+        font-size: 13px;
+        color: #888;
+    }
+    .lista-cursos .curso-badge {
+        display: inline-block;
+        background: #e3f2fd;
+        color: #1565c0;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .lista-cursos .curso-acciones {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .btn-accion {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    .btn-accion.ver {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+    .btn-accion.ver:hover {
+        background: #bbdefb;
+    }
+    .btn-accion.eliminar {
+        background: #ffebee;
+        color: #c62828;
+    }
+    .btn-accion.eliminar:hover {
+        background: #ffcdd2;
+    }
+    .sin-cursos {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="panel">
+    <div class="panel-header">
+        <div>
+            <a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+            <h2 style="margin-top: 8px;">Cursos disponibles</h2>
+            <p>Seleccioná un curso para ver sus alumnos y calificaciones.</p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a class="boton" href="{% url 'crear_curso' %}">+ Crear curso</a>
+            <a class="boton boton-verde" href="{% url 'agregar_alumno' %}">+ Agregar alumno</a>
+        </div>
+    </div>
+
+    <ul class="lista-cursos">
+        {% for curso in cursos %}
+            <li>
+                <div class="curso-info">
+                    <h3>{{ curso.curso }} {{ curso.division }} — {{ curso.materia }}</h3>
+                    <p>Año lectivo {{ curso.año }} &middot; <span class="curso-badge">{{ curso.alumnos.count }} alumno{{ curso.alumnos.count|pluralize:"s" }}</span>{% if curso.profesor %} &middot; Prof. {{ curso.profesor }}{% endif %}</p>
+                </div>
+                <div class="curso-acciones">
+                    <a class="btn-accion ver" href="{% url 'ver_curso' curso.id %}">Ver curso</a>
+                    <a class="btn-accion eliminar" href="{% url 'eliminar_curso' curso.id %}"
+                       onclick="return confirm('Eliminar el curso {{ curso }} y todos sus alumnos?')">Eliminar</a>
+                </div>
+            </li>
+        {% empty %}
+            <li class="sin-cursos">
+                <p>Todavía no hay cursos cargados. <a href="{% url 'crear_curso' %}">Creá el primer curso</a>.</p>
+            </li>
+        {% endfor %}
+    </ul>
+</section>
+
+{% endblock %}

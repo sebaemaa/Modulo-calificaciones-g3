@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}SGE — Reportes a dirección — {{ curso }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rep-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+    .rep-card .rep-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: #f5f7fa;
+        border-bottom: 1px solid #e8e8e8;
+    }
+    .rep-card .rep-head h3 {
+        margin: 0;
+        font-size: 14px;
+        color: #c62828;
+    }
+    .rep-card .rep-head .meta {
+        font-size: 12px;
+        color: #999;
+    }
+    .rep-card .rep-body {
+        padding: 10px 14px;
+        font-size: 14px;
+        color: #444;
+        line-height: 1.5;
+    }
+    .rep-card .rep-body .detalle {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 6px;
+    }
+    .btn-borrar {
+        display: inline-block;
+        padding: 3px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        background: #ffebee;
+        color: #c62828;
+        border: 1px solid #ef9a9a;
+        transition: background 0.15s;
+    }
+    .btn-borrar:hover {
+        background: #ffcdd2;
+    }
+    .sin-items {
+        text-align: center;
+        padding: 30px;
+        color: #999;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a class="btn-back" onclick="history.back(); return false;">&larr;</a>
+
+<section class="panel">
+    <h2>Reportes a dirección — {{ curso }}</h2>
+    <p style="color:#888;font-size:13px;">Usá el icono 📋 junto al nombre del alumno en la grilla para crear un nuevo reporte.</p>
+
+    {% for r in reportes %}
+        <div class="rep-card">
+            <div class="rep-head">
+                <div>
+                    <h3>{{ r.asunto }}</h3>
+                    <span class="meta">{{ r.alumno.nombre }} (DNI: {{ r.alumno.dni|default:"--" }}) — {{ r.creado|date:"d/m/Y H:i" }}</span>
+                </div>
+                <a class="btn-borrar" href="{% url 'eliminar_reporte' r.id %}"
+                   onclick="return confirm('Eliminar este reporte?')">Borrar</a>
+            </div>
+            <div class="rep-body">
+                {{ r.mensaje|linebreaks }}
+            </div>
+        </div>
+    {% empty %}
+        <div class="sin-items">No hay reportes a dirección para este curso.</div>
+    {% endfor %}
+</section>
+
+{% endblock %}
