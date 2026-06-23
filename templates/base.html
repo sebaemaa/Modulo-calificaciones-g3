@@ -30,9 +30,9 @@ nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 50px;
-    background: linear-gradient(135deg, #2c5a8c, #4a85b0);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 18px 50px;
+    background: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -41,17 +41,17 @@ nav {
 }
 
 nav .logo {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 700;
-    color: white;
+    color: #1a3a6b;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     text-decoration: none;
 }
 
 nav .logo img {
-    height: 44px;
+    height: 56px;
     border-radius: 8px;
     object-fit: cover;
 }
@@ -68,14 +68,14 @@ nav ul {
 
 nav ul li a {
     text-decoration: none;
-    color: rgba(255, 255, 255, 0.85);
+    color: #333;
     font-weight: 500;
     font-size: 15px;
     transition: color 0.3s;
 }
 
 nav ul li a:hover {
-    color: white;
+    color: #2563eb;
 }
 
 .hamburger {
@@ -94,7 +94,7 @@ nav ul li a:hover {
     display: block;
     width: 26px;
     height: 3px;
-    background: white;
+    background: #1a3a6b;
     border-radius: 3px;
     transition: transform 0.3s, opacity 0.3s;
 }
@@ -179,7 +179,7 @@ section, .panel {
     border-radius: 25px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
     margin-bottom: 30px;
-    border-top: 5px solid #5492b3;
+    border-top: 5px solid #2563eb;
 }
 
 section:last-child, .panel:last-child {
@@ -197,14 +197,14 @@ h2 {
 
 h3 {
     font-size: 20px;
-    color: #5492b3;
+    color: #2563eb;
     margin-top: 0;
     margin-bottom: 10px;
 }
 
 .boton {
     display: inline-block;
-    background: #5492b3;
+    background: #2563eb;
     color: white;
     padding: 11px 22px;
     border-radius: 25px;
@@ -218,7 +218,7 @@ h3 {
 }
 
 .boton:hover {
-    background: #3d7a9e;
+    background: #1d4ed8;
     transform: translateY(-2px);
 }
 
@@ -259,7 +259,7 @@ table {
 }
 
 thead th {
-    background: #5492b3;
+    background: #2563eb;
     color: white;
     padding: 13px 16px;
     text-align: left;
@@ -308,7 +308,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
     outline: none;
-    border-color: #5492b3;
+    border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(84, 146, 179, 0.15);
 }
 
@@ -321,7 +321,7 @@ input:focus, select:focus, textarea:focus {
 
 .ayuda {
     background: #e3f2fd;
-    border-left: 6px solid #5492b3;
+    border-left: 6px solid #2563eb;
     padding: 14px 18px;
     border-radius: 12px;
     margin-bottom: 16px;
@@ -365,7 +365,7 @@ input:focus, select:focus, textarea:focus {
 
 .materia-card {
     background: linear-gradient(135deg, #f8fbff, white);
-    border-top: 5px solid #5492b3;
+    border-top: 5px solid #2563eb;
     border-radius: 16px;
     padding: 22px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
@@ -408,7 +408,7 @@ input:focus, select:focus, textarea:focus {
     padding: 20px;
     border-radius: 16px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
-    border-left: 6px solid #5492b3;
+    border-left: 6px solid #2563eb;
 }
 
 .resumen-card h3 {
@@ -424,14 +424,14 @@ input:focus, select:focus, textarea:focus {
 
 .mensaje {
     background: #f5f9ff;
-    border-left: 6px solid #5492b3;
+    border-left: 6px solid #2563eb;
     padding: 18px;
     border-radius: 12px;
     margin-top: 14px;
 }
 
 .mensaje h3 {
-    color: #5492b3;
+    color: #2563eb;
     margin-top: 0;
     margin-bottom: 6px;
 }
@@ -444,7 +444,7 @@ input:focus, select:focus, textarea:focus {
 
 .etiqueta {
     display: inline-block;
-    background: #5492b3;
+    background: #2563eb;
     color: white;
     padding: 4px 12px;
     border-radius: 20px;
@@ -474,7 +474,7 @@ input:focus, select:focus, textarea:focus {
     padding: 32px 28px;
     border-radius: 18px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
-    border-top: 6px solid #5492b3;
+    border-top: 6px solid #2563eb;
     text-align: center;
     transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -516,7 +516,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .volver {
-    color: #5492b3;
+    color: #2563eb;
     font-weight: 600;
     text-decoration: none;
     display: inline-block;
@@ -551,7 +551,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 footer {
-    background: rgba(44, 90, 140, 0.92);
+    background: #374151;
     color: white;
     text-align: center;
     padding: 40px 20px;
@@ -587,8 +587,12 @@ footer p {
     }
 
     nav .logo {
-        font-size: 16px;
+        font-size: 18px;
         flex: 1;
+    }
+
+    nav .logo img {
+        height: 44px;
     }
 
     .hamburger {
@@ -680,8 +684,8 @@ footer p {
 }
 
 .btn-primary {
-    background: #5492b3;
-    border-color: #5492b3;
+    background: #2563eb;
+    border-color: #2563eb;
     border-radius: 25px;
     padding: 11px 22px;
     font-weight: 600;
@@ -689,8 +693,8 @@ footer p {
 }
 
 .btn-primary:hover {
-    background: #3d7a9e;
-    border-color: #3d7a9e;
+    background: #1d4ed8;
+    border-color: #1d4ed8;
 }
     </style>
 </head>
@@ -698,10 +702,7 @@ footer p {
 
 <nav>
     <button class="hamburger" aria-label="Menú"><span></span><span></span><span></span></button>
-    <a href="/" class="logo">
-        <img src="https://tecnica3hurlingham.com/logot3.png" alt="Logo E.E.S.T N°3">
-        SGE
-    </a>
+    <a href="/" class="logo">SGE</a>
     <ul>
         <li><a href="/">Inicio</a></li>
         <li><a href="/alumnos/">Alumnos</a></li>
