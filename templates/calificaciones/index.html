@@ -1,141 +1,137 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>SGE - Gestión de Calificaciones</title>
+{% extends "base.html" %}
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #eef3f8;
-            color: #1f2933;
-        }
+{% block title %}Calificaciones — SGE{% endblock %}
 
-        header {
-            background: linear-gradient(135deg, #0d47a1, #1565c0);
-            color: white;
-            padding: 38px 20px;
-            text-align: center;
-        }
+{% block extra_css %}
+<style>
+.calif-header {
+    background: linear-gradient(135deg, #0d47a1, #1565c0);
+    color: white;
+    padding: 40px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+}
 
-        header h1 {
-            margin: 0;
-            font-size: 34px;
-        }
+.hdr-logo-wrap {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-        header p {
-            margin-top: 8px;
-            font-size: 17px;
-        }
+.hdr-logo-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
 
-        .contenedor {
-            width: 90%;
-            max-width: 1050px;
-            margin: 35px auto;
-        }
+.calif-header h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 700;
+}
 
-        .bienvenida {
-            background: white;
-            padding: 28px;
-            border-radius: 16px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-            text-align: center;
-            margin-bottom: 30px;
-        }
+.calif-header p {
+    margin-top: 4px;
+    font-size: 15px;
+    opacity: 0.85;
+}
 
-        .bienvenida h2 {
-            color: #0d47a1;
-            margin-top: 0;
-        }
+.roles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
 
-        .roles {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 24px;
-        }
+.card-rol {
+    background: white;
+    padding: 32px 28px;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    border-top: 6px solid #0d47a1;
+    display: flex;
+    flex-direction: column;
+}
 
-        .card {
-            background: white;
-            padding: 28px;
-            border-radius: 16px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-            border-top: 7px solid #0d47a1;
-        }
+.card-rol h3 {
+    color: #0d47a1;
+    margin-top: 0;
+    font-size: 20px;
+}
 
-        .card h3 {
-            color: #0d47a1;
-            margin-top: 0;
-        }
+.card-rol p {
+    color: #555;
+    font-size: 14px;
+    flex: 1;
+}
 
-        .boton {
-            display: inline-block;
-            margin-top: 15px;
-            background: #0d47a1;
-            color: white;
-            padding: 12px 18px;
-            border-radius: 9px;
-            text-decoration: none;
-            font-weight: bold;
-        }
+.card-rol .boton {
+    display: inline-block;
+    margin-top: 18px;
+    background: #0d47a1;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 9px;
+    text-decoration: none;
+    font-weight: 600;
+    text-align: center;
+    transition: background 0.3s;
+}
 
-        .boton:hover {
-            background: #08306b;
-        }
+.card-rol .boton:hover {
+    background: #08306b;
+}
 
-        footer {
-            margin-top: 45px;
-            background: #0d47a1;
-            color: white;
-            padding: 18px;
-            text-align: center;
-        }
-    </style>
-</head>
+@media (max-width: 640px) {
+    .roles-grid {
+        grid-template-columns: 1fr;
+    }
+    .calif-header {
+        flex-direction: column;
+        text-align: center;
+        padding: 30px 20px;
+    }
+}
+</style>
+{% endblock %}
 
-<body>
+{% block content %}
+<div class="calif-header">
+    <div class="hdr-logo-wrap">
+        <img src="https://tecnica3hurlingham.com/logot3.png" alt="Logo EESTn3">
+    </div>
+    <div>
+        <h1>Gestión de Calificaciones</h1>
+        <p>EESTn3 Víctor Mercante — Hurlingham</p>
+    </div>
+</div>
 
-<header>
-    <h1>SGE</h1>
-    <p>Sistema de Gestión Escolar - Módulo de Calificaciones</p>
-</header>
-
-<main class="contenedor">
-
-    <section class="bienvenida">
-        <h2>Gestión de Calificaciones</h2>
+<div class="roles-grid">
+    <div class="card-rol">
+        <h3>Vista Profesor</h3>
         <p>
-            Este módulo permite administrar alumnos, materias y notas de forma clara.
-            El profesor puede cargar y modificar calificaciones, mientras que el alumno
-            puede consultar sus materias, promedios y mensajes.
+            Acceso para cargar alumnos, editar datos, modificar notas,
+            consultar promedios y revisar el estado académico.
         </p>
-    </section>
+        <a class="boton" href="/calificaciones/profesor/">Ingresar como profesor</a>
+    </div>
 
-    <section class="roles">
-        <div class="card">
-            <h3>Vista Profesor</h3>
-            <p>
-                Acceso para cargar alumnos, editar datos, modificar notas,
-                consultar promedios y revisar el estado académico.
-            </p>
-            <a class="boton" href="/calificaciones/profesor/">Ingresar como profesor</a>
-        </div>
-
-        <div class="card">
-            <h3>Vista Alumno</h3>
-            <p>
-                Acceso para consultar materias, calificaciones,
-                promedio final y mensajes enviados por el profesor.
-            </p>
-            <a class="boton" href="/calificaciones/alumno/">Ingresar como alumno</a>
-        </div>
-    </section>
-
-</main>
-
-<footer>
-    <p>Proyecto SGE - Gestión de Calificaciones</p>
-</footer>
-
-</body>
-</html>
+    <div class="card-rol">
+        <h3>Vista Alumno</h3>
+        <p>
+            Acceso para consultar materias, calificaciones,
+            promedio final y mensajes enviados por el profesor.
+        </p>
+        <a class="boton" href="/calificaciones/alumno/">Ingresar como alumno</a>
+    </div>
+</div>
+{% endblock %}
