@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Panel del Alumno — SGE{% endblock %}
+
+{% block content %}
+
+<a class="volver" href="/calificaciones/">← Volver al inicio</a>
+
+<section>
+    <h2>Mis materias</h2>
+    <p>
+        Desde esta sección el alumno puede consultar sus calificaciones,
+        promedio y estado académico.
+    </p>
+    <a class="boton boton-verde" href="/calificaciones/alumno/mensajes/">
+        Mensajes del profesor
+    </a>
+</section>
+
+<section>
+    <h2>Filtrar por materia</h2>
+    <div class="acciones">
+        <a class="boton {% if not materia_seleccionada %}boton-verde{% endif %}" href="/calificaciones/alumno/">
+            Todas
+        </a>
+        {% for materia in materias %}
+            <a class="boton {% if materia == materia_seleccionada %}boton-verde{% endif %}"
+               href="/calificaciones/alumno/?materia={{ materia }}">
+                {{ materia }}
+            </a>
+        {% endfor %}
+    </div>
+</section>
+
+<section>
+    <div class="materias-grid">
+        {% for alumno in alumnos %}
+            <div class="materia-card {% if alumno.estado == 'Aprobado' %}materia-activa{% endif %}">
+                <h3>{{ alumno.materia }}</h3>
+                <p><strong>Alumno:</strong> {{ alumno.nombre }}</p>
+                <p><strong>Curso:</strong> {{ alumno.curso }} {{ alumno.division }}</p>
+                <p><strong>1° Cuatrimestre:</strong> {{ alumno.nota1 }}</p>
+                <p><strong>2° Cuatrimestre:</strong> {{ alumno.nota2 }}</p>
+                <p><strong>Promedio:</strong> {{ alumno.promedio }}</p>
+                <p class="{% if alumno.estado == 'Aprobado' %}aprobado{% else %}desaprobado{% endif %}">
+                    {{ alumno.estado }}
+                </p>
+            </div>
+        {% empty %}
+            <div class="materia-card">
+                <h3>Sin materias</h3>
+                <p>No hay materias cargadas todavía.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% endblock %}

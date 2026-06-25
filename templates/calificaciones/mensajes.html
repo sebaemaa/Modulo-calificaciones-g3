@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Mensajes del Profesor — SGE{% endblock %}
+
+{% block content %}
+
+<a class="volver" href="/calificaciones/alumno/">← Volver al panel del alumno</a>
+
+<section>
+    <h2>Bandeja de mensajes</h2>
+
+    {% for mensaje in mensajes %}
+        <div class="mensaje">
+            <span class="etiqueta">{{ mensaje.materia }}</span>
+            <h3>{{ mensaje.titulo }}</h3>
+            <p>{{ mensaje.contenido }}</p>
+        </div>
+    {% empty %}
+        <p>No hay mensajes disponibles.</p>
+    {% endfor %}
+</section>
+
+{% endblock %}

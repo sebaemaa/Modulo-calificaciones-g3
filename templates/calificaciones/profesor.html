@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Panel del Profesor — SGE{% endblock %}
+
+{% block content %}
+
+<div class="resumen">
+    <div class="resumen-card">
+        <h3>Profesor único</h3>
+        <p>Todos los alumnos cargados pertenecen al mismo profesor.</p>
+    </div>
+    <div class="resumen-card">
+        <h3>Materias</h3>
+        <p>Primero se elige la materia para consultar sus alumnos.</p>
+    </div>
+    <div class="resumen-card">
+        <h3>Calificaciones</h3>
+        <p>Se pueden editar las notas del 1° y 2° cuatrimestre.</p>
+    </div>
+</div>
+
+<section>
+    <a class="volver" href="/calificaciones/">← Volver al inicio</a>
+    <h2>Materias del profesor</h2>
+    <p>Elegí una materia para ver los alumnos correspondientes.</p>
+
+    <div class="materias-grid">
+        {% for materia in materias %}
+            <a class="materia-card {% if materia == materia_seleccionada %}materia-activa{% endif %}"
+               href="/calificaciones/profesor/?materia={{ materia }}">
+                <h3>{{ materia }}</h3>
+                <p>Ver alumnos y calificaciones de esta materia.</p>
+            </a>
+        {% empty %}
+            <div class="materia-card">
+                <h3>Sin materias</h3>
+                <p>Todavía no hay materias cargadas.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="acciones">
+        <a class="boton boton-verde" href="/calificaciones/profesor/agregar/">Agregar alumno a una materia</a>
+    </div>
+</section>
+
+{% if materia_seleccionada %}
+    <section>
+        <h2>Alumnos de {{ materia_seleccionada }}</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Alumno</th>
+                    <th>Curso</th>
+                    <th>División</th>
+                    <th>Materia</th>
+                    <th>1° Cuatr.</th>
+                    <th>2° Cuatr.</th>
+                    <th>Promedio</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alumno in alumnos %}
+                <tr>
+                    <td>{{ alumno.nombre }}</td>
+                    <td>{{ alumno.curso }}</td>
+                    <td>{{ alumno.division }}</td>
+                    <td>{{ alumno.materia }}</td>
+                    <td>{{ alumno.nota1 }}</td>
+                    <td>{{ alumno.nota2 }}</td>
+                    <td>{{ alumno.promedio }}</td>
+                    <td class="{% if alumno.estado == 'Aprobado' %}aprobado{% else %}desaprobado{% endif %}">
+                        {{ alumno.estado }}
+                    </td>
+                    <td>
+                        <a class="boton boton-chico" href="/calificaciones/profesor/editar/{{ alumno.id }}/">
+                            Editar / Calificar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9">No hay alumnos cargados en esta materia.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+{% else %}
+    <section>
+        <h2>Seleccione una materia</h2>
+        <div class="aviso">
+            Para ver alumnos, primero hacé click en una materia del panel superior.
+        </div>
+    </section>
+{% endif %}
+
+{% endblock %}

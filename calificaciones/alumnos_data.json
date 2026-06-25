@@ -1,0 +1,83 @@
+[
+  {
+    "id": 1,
+    "nombre": "Juan Pérez",
+    "curso": "1°",
+    "division": "A",
+    "materia": "Matemática",
+    "nota1": 8,
+    "nota2": 7
+  },
+  {
+    "id": 2,
+    "nombre": "Juan Pérez",
+    "curso": "1°",
+    "division": "A",
+    "materia": "Lengua",
+    "nota1": 7,
+    "nota2": 8
+  },
+  {
+    "id": 3,
+    "nombre": "Lucía Gómez",
+    "curso": "2°",
+    "division": "B",
+    "materia": "Matemática",
+    "nota1": 9,
+    "nota2": 8
+  },
+  {
+    "id": 4,
+    "nombre": "Mateo Ruiz",
+    "curso": "3°",
+    "division": "A",
+    "materia": "Historia",
+    "nota1": 5,
+    "nota2": 6
+  },
+  {
+    "id": 5,
+    "nombre": "Juan Pérez",
+    "curso": "3°",
+    "division": "C",
+    "materia": "Geografía",
+    "nota1": 10,
+    "nota2": 9
+  },
+  {
+    "id": 6,
+    "nombre": "Lautaro Sanchez",
+    "curso": "4°",
+    "division": "B",
+    "materia": "Programación",
+    "nota1": 5,
+    "nota2": 9
+  },
+  {
+    "id": 7,
+    "nombre": "Kenai Luke",
+    "curso": "7°",
+    "division": "A",
+    "materia": "Programación",
+    "nota1": 1,
+    "nota2": 9
+  },
+  {
+    "id": 8,
+    "nombre": "Lautaro Sanchez",
+    "curso": "7°",
+    "division": "B",
+    "materia": "Lengua",
+    "nota1": 1,
+    "nota2": 10
+  },
+  {
+    "id": 9,
+    "nombre": "Sebastian Emanuel",
+    "curso": "7°",
+    "division": "A",
+    "materia": "Programación",
+    "nota1": 7,
+    "nota2": 7
+  }
+]

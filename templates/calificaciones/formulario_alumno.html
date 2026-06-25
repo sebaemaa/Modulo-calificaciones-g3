@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} — SGE{% endblock %}
+
+{% block content %}
+
+<a href="/calificaciones/profesor/" class="volver">
+    <i class="fa fa-arrow-left"></i> Volver al panel
+</a>
+
+<section>
+    <h2>{{ titulo }}</h2>
+
+    <div class="ayuda">
+        Si el alumno ya fue cargado en otra materia, escribí su nombre y aparecerá como opción rápida.
+        El sistema no diferencia mayúsculas, minúsculas ni acentos.
+    </div>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <label>Nombre del alumno</label>
+        <input list="lista-alumnos"
+               type="text"
+               name="nombre"
+               required
+               value="{% if alumno %}{{ alumno.nombre }}{% endif %}"
+               placeholder="Ejemplo: Juan Pérez">
+        <datalist id="lista-alumnos">
+            {% for nombre in nombres_alumnos %}
+                <option value="{{ nombre }}"></option>
+            {% endfor %}
+        </datalist>
+        <div class="texto-ayuda">
+            Usá la sugerencia para no cargar el mismo alumno con otro formato, por ejemplo: Juan Pérez / juan perez.
+        </div>
+
+        <label>Curso</label>
+        <select name="curso" required>
+            <option value="">Seleccionar curso</option>
+            <option value="1°" {% if alumno and alumno.curso == "1°" %}selected{% endif %}>1°</option>
+            <option value="2°" {% if alumno and alumno.curso == "2°" %}selected{% endif %}>2°</option>
+            <option value="3°" {% if alumno and alumno.curso == "3°" %}selected{% endif %}>3°</option>
+            <option value="4°" {% if alumno and alumno.curso == "4°" %}selected{% endif %}>4°</option>
+            <option value="5°" {% if alumno and alumno.curso == "5°" %}selected{% endif %}>5°</option>
+            <option value="6°" {% if alumno and alumno.curso == "6°" %}selected{% endif %}>6°</option>
+            <option value="7°" {% if alumno and alumno.curso == "7°" %}selected{% endif %}>7°</option>
+        </select>
+
+        <label>División</label>
+        <select name="division" required>
+            <option value="">Seleccionar división</option>
+            <option value="A" {% if alumno and alumno.division == "A" %}selected{% endif %}>A</option>
+            <option value="B" {% if alumno and alumno.division == "B" %}selected{% endif %}>B</option>
+            <option value="C" {% if alumno and alumno.division == "C" %}selected{% endif %}>C</option>
+            <option value="D" {% if alumno and alumno.division == "D" %}selected{% endif %}>D</option>
+        </select>
+
+        <label>Materia</label>
+        <select name="materia" required>
+            <option value="">Seleccionar materia</option>
+            <option value="Matemática"   {% if alumno and alumno.materia == "Matemática"   %}selected{% endif %}>Matemática</option>
+            <option value="Lengua"       {% if alumno and alumno.materia == "Lengua"       %}selected{% endif %}>Lengua</option>
+            <option value="Historia"     {% if alumno and alumno.materia == "Historia"     %}selected{% endif %}>Historia</option>
+            <option value="Geografía"    {% if alumno and alumno.materia == "Geografía"    %}selected{% endif %}>Geografía</option>
+            <option value="Inglés"       {% if alumno and alumno.materia == "Inglés"       %}selected{% endif %}>Inglés</option>
+            <option value="Programación" {% if alumno and alumno.materia == "Programación" %}selected{% endif %}>Programación</option>
+        </select>
+
+        <label>Nota 1° Cuatrimestre</label>
+        <input type="number" name="nota1" min="1" max="10" required
+               value="{% if alumno %}{{ alumno.nota1 }}{% endif %}">
+
+        <label>Nota 2° Cuatrimestre</label>
+        <input type="number" name="nota2" min="1" max="10" required
+               value="{% if alumno %}{{ alumno.nota2 }}{% endif %}">
+
+        <div class="botones-form">
+            <button class="boton boton-verde" type="submit">{{ boton }}</button>
+            <a class="boton boton-rojo" href="/calificaciones/profesor/">Cancelar</a>
+        </div>
+
+    </form>
+</section>
+
+{% endblock %}
