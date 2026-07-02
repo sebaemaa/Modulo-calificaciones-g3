@@ -144,6 +144,7 @@ tr:hover td {
         <table>
             <thead>
                 <tr>
+                    <th>Alumno</th>
                     <th>Materia</th>
                     <th>1° Cuatr.</th>
                     <th>2° Cuatr.</th>
@@ -154,6 +155,7 @@ tr:hover td {
             <tbody>
                 {% for alumno in alumnos %}
                 <tr>
+                    <td>{{ alumno.nombre }}</td>
                     <td>{{ alumno.materia }}</td>
                     <td>{{ alumno.nota1 }}</td>
                     <td>{{ alumno.nota2 }}</td>
@@ -164,7 +166,7 @@ tr:hover td {
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5">No hay calificaciones registradas.</td>
+                    <td colspan="6">No hay calificaciones registradas.</td>
                 </tr>
                 {% endfor %}
             </tbody>

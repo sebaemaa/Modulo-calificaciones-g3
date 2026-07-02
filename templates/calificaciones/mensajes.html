@@ -1,111 +1,92 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SGE - Mensajes</title>
 
-{% block title %}Profesor — Calificaciones{% endblock %}
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #eef3f8;
+            color: #1f2933;
+        }
 
-{% block extra_css %}
-<style>
-.prof-header {
-    background: linear-gradient(135deg, #0d47a1, #1565c0);
-    color: white;
-    padding: 32px 24px;
-    border-radius: 16px;
-    text-align: center;
-    margin-bottom: 30px;
-}
+        header {
+            background: linear-gradient(135deg, #0d47a1, #1565c0);
+            color: white;
+            padding: 32px 20px;
+            text-align: center;
+        }
 
-.prof-header h1 {
-    margin: 0;
-    font-size: 28px;
-}
+        .contenedor {
+            width: 92%;
+            max-width: 900px;
+            margin: 30px auto;
+        }
 
-.prof-header p {
-    margin: 6px 0 0;
-    opacity: 0.85;
-}
+        .volver {
+            color: #0d47a1;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 18px;
+        }
 
-.materias-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 18px;
-    margin-top: 16px;
-}
+        .panel {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            margin-bottom: 24px;
+        }
 
-.materia-card {
-    background: white;
-    border-top: 6px solid #0d47a1;
-    border-radius: 16px;
-    padding: 22px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    text-decoration: none;
-    color: #333;
-    transition: 0.2s;
-    display: block;
-}
+        h2 {
+            color: #0d47a1;
+            margin-top: 0;
+        }
 
-.materia-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.14);
-}
+        .mensaje {
+            background: #f5f9ff;
+            border-left: 7px solid #0d47a1;
+            padding: 18px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
 
-.materia-card h3 {
-    color: #0d47a1;
-    margin-top: 0;
-}
+        .mensaje h3 {
+            color: #0d47a1;
+            margin-top: 0;
+        }
 
-.materia-activa {
-    border-top-color: #2e7d32;
-    background: #f1f8e9;
-}
+        .etiqueta {
+            display: inline-block;
+            background: #0d47a1;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 7px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 16px;
-    border-radius: 12px;
-    overflow: hidden;
-}
+        footer {
+            margin-top: 45px;
+            background: #0d47a1;
+            color: white;
+            padding: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
 
-th {
-    background: #0d47a1;
-    color: white;
-    padding: 12px;
-    text-align: center;
-    font-weight: 600;
-}
+<body>
 
-td {
-    padding: 12px;
-    text-align: center;
-    border-bottom: 1px solid #e0e0e0;
-}
+<header>
+    <h1>Mensajes del Profesor</h1>
+    <p>Comunicados y observaciones</p>
+</header>
 
-tr:hover td {
-    background: #f5f9ff;
-}
-
-.aprobado {
-    color: #2e7d32;
-    font-weight: 600;
-}
-
-.desaprobado {
-    color: #c62828;
-    font-weight: 600;
-}
-
-.aviso {
-    background: #fff8e1;
-    border-left: 6px solid #f9a825;
-    padding: 14px 18px;
-    border-radius: 12px;
-    margin-top: 14px;
-    font-weight: 500;
-    color: #e65100;
-}
-</style>
-{% endblock %}
-
-{% block content %}
+<main class="contenedor">
 
     <a class="volver" href="/calificaciones/alumno/">← Volver al panel del alumno</a>
 
@@ -122,3 +103,12 @@ tr:hover td {
             <p>No hay mensajes disponibles.</p>
         {% endfor %}
     </section>
+
+</main>
+
+<footer>
+    <p>SGE - Mensajes</p>
+</footer>
+
+</body>
+</html>
