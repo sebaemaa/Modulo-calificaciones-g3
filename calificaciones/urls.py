@@ -11,6 +11,4 @@ urlpatterns = [
     path("alumno/", views.alumno, name="alumno"),
     path("alumno/mensajes/", views.mensajes, name="mensajes"),
     
-    path("boletin/", views.boletin, name="boletin" )
-    
 ]

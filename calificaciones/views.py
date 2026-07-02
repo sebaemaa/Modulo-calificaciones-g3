@@ -3,10 +3,20 @@ import unicodedata
 from .models import AlumnoCalificacion
 
 
+# ====================================================================
+# MÓDULO 3 — CALIFICACIONES
+# Funciones de apoyo y vistas del módulo de calificaciones.
+#
+# 📌 IMPORTANTE para la exposición:
+#  - No usamos una lista global en memoria. Cada vista consulta la
+#    base de datos directamente con el ORM de Django.
+#  - Esto evita tener que sincronizar una copia local con la DB.
+#  - El ORM traduce AlumnoCalificacion.objects.filter(...) a SQL.
+# ====================================================================
+
 mensajes_profesor = [
-    # Lista fija de mensajes/avisos que el profesor dejó por materia.
-    # Sigue viviendo solo en memoria (se reinicia con el servidor),
-    # tal cual estaba en el original.
+    # Estos mensajes viven solo en la memoria del servidor.
+    # Cuando el servidor se reinicia, se pierden (no están en la DB).
     {
         "materia": "Matemática",
         "titulo": "Revisión de evaluación",
@@ -26,105 +36,55 @@ mensajes_profesor = [
 
 
 def normalizar_texto(texto):
-    # Convierte un texto a una forma "canónica" para comparar nombres/materias
-    # sin que importen mayúsculas, tildes o espacios extra.
+    # Convierte un texto a un formato "plano": sin tildes, todo
+    # minúsculas, sin espacios extra.
+    # Sirve para comparar nombres/materias sin importar cómo los
+    # escribió el usuario (ej: "José" == "JOSE" == " josé ").
     texto = texto.strip().lower()
-    texto = unicodedata.normalize("NFD", texto)
-    texto = "".join(letra for letra in texto if unicodedata.category(letra) != "Mn")
-    texto = " ".join(texto.split())
-    return texto
+    texto = unicodedata.normalize("NFD", texto)          # separa tildes de letras
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")  # borra tildes
+    return " ".join(texto.split())                        # colapsa espacios
 
 
-def preparar_alumnos(queryset):
-    # Recibe un queryset (no una lista global) y devuelve una lista de
-    # diccionarios con "promedio" y "estado" ya calculados.
-    resultado = []
-    for alumno in queryset:
-        promedio = (alumno.nota1 + alumno.nota2) / 2
-        estado = "Aprobado" if promedio >= 6 else "Desaprobado"
-        resultado.append({
-            "id": alumno.id,
-            "nombre": alumno.nombre,
-            "curso": alumno.curso,
-            "division": alumno.division,
-            "materia": alumno.materia,
-            "nota1": alumno.nota1,
-            "nota2": alumno.nota2,
+def armar_lista(queryset):
+    # Convierte un queryset de Django en una lista de diccionarios.
+    # Cada diccionario tiene los datos del alumno + promedio + estado.
+    # Esta lista es lo que se envía al template HTML.
+    lista = []
+    for a in queryset:
+        promedio = (a.nota1 + a.nota2) / 2
+        lista.append({
+            "id": a.id,
+            "nombre": a.nombre,
+            "curso": a.curso,
+            "division": a.division,
+            "materia": a.materia,
+            "nota1": a.nota1,
+            "nota2": a.nota2,
             "promedio": promedio,
-            "estado": estado,
+            "estado": "Aprobado" if promedio >= 6 else "Desaprobado",
         })
-    return resultado
-    # Nota: esto se podría simplificar todavía más agregando "promedio" y
-    # "estado" como @property en el modelo AlumnoCalificacion. Te lo dejo
-    # como sugerencia por si querés dar ese paso después.
-
-
-def obtener_materias():
-    # Antes recorría la lista global a mano. El ORM ya hace el distinct.
-    return list(
-        AlumnoCalificacion.objects
-        .order_by("materia")
-        .values_list("materia", flat=True)
-        .distinct()
-    )
-
-
-def obtener_nombre_correcto(nombre_ingresado):
-    # Busca si ya existe un alumno con ese nombre (ignorando tildes/mayúsculas)
-    # consultando la base directamente, no una copia vieja en memoria.
-    nombre_normalizado = normalizar_texto(nombre_ingresado)
-
-    for nombre_existente in AlumnoCalificacion.objects.values_list("nombre", flat=True).distinct():
-        if normalizar_texto(nombre_existente) == nombre_normalizado:
-            return nombre_existente
-
-    return nombre_ingresado.strip().title()
-
-
-def obtener_nombres_alumnos():
-    # Nombres únicos de alumnos, consultando la base cada vez.
-    nombres = []
-    normalizados = []
-
-    for nombre in AlumnoCalificacion.objects.values_list("nombre", flat=True).distinct():
-        norm = normalizar_texto(nombre)
-        if norm not in normalizados:
-            nombres.append(nombre)
-            normalizados.append(norm)
-
-    return nombres
-
-
-def existe_alumno_en_materia(nombre, materia, alumno_id_actual=None):
-    # Sigue comparando en Python (por la normalización de tildes),
-    # pero sobre un queryset fresco en vez de la lista global vieja.
-    nombre_normalizado = normalizar_texto(nombre)
-    materia_normalizada = normalizar_texto(materia)
-
-    queryset = AlumnoCalificacion.objects.all()
-    if alumno_id_actual is not None:
-        queryset = queryset.exclude(id=alumno_id_actual)
-
-    for alumno in queryset:
-        if (normalizar_texto(alumno.nombre) == nombre_normalizado
-                and normalizar_texto(alumno.materia) == materia_normalizada):
-            return True
-
-    return False
+    return lista
 
 
 def inicio(request):
+    # Vista principal del módulo. Muestra dos opciones: Profesor o Alumno.
     return render(request, "calificaciones/index.html")
 
 
 def profesor(request):
+    # Vista del panel del profesor.
+    # - Si viene ?materia=Matemática en la URL, filtra los alumnos de esa materia.
+    # - Si no, muestra la lista de materias disponibles para elegir.
+    # Las materias se obtienen consultando los registros existentes (no hay
+    # una tabla separada de materias para esta vista).
     materia = request.GET.get("materia")
-    materias = obtener_materias()
+    materias = list(
+        AlumnoCalificacion.objects.order_by("materia")
+        .values_list("materia", flat=True).distinct()
+    )
 
-    if materia:
-        lista = preparar_alumnos(AlumnoCalificacion.objects.filter(materia=materia))
-    else:
-        lista = []
+    lista = armar_lista(AlumnoCalificacion.objects.filter(materia=materia)) if materia else []
 
     return render(request, "calificaciones/profesor.html", {
         "alumnos": lista,
@@ -133,31 +93,65 @@ def profesor(request):
     })
 
 
+def alumno(request):
+    # Vista del alumno: solo lectura.
+    # Muestra las calificaciones filtradas por materia.
+    # A diferencia de la vista profesor, si no se elige materia
+    # muestra TODOS los registros.
+    materia = request.GET.get("materia")
+    materias = list(
+        AlumnoCalificacion.objects.order_by("materia")
+        .values_list("materia", flat=True).distinct()
+    )
+
+    queryset = AlumnoCalificacion.objects.all()
+    if materia:
+        queryset = queryset.filter(materia=materia)
+
+    return render(request, "calificaciones/alumno.html", {
+        "alumnos": armar_lista(queryset),
+        "materias": materias,
+        "materia_seleccionada": materia,
+    })
+
+
 def agregar_alumno(request):
+    # Vista para agregar un nuevo registro (alumno + materia + notas).
+    # - GET: muestra el formulario vacío.
+    # - POST: valida que no exista duplicado y guarda en la DB.
+    # El nombre se "normaliza": si el usuario escribe "juan perez" y ya
+    # existe "Pérez, Juan", se usa el nombre ya guardado para mantener
+    # consistencia.
     error = ""
-    nombres_alumnos = obtener_nombres_alumnos()
+    nombres_alumnos = list(
+        AlumnoCalificacion.objects.values_list("nombre", flat=True).distinct()
+    )
 
     if request.method == "POST":
-        nombre = request.POST.get("nombre")
+        nombre = request.POST.get("nombre", "").strip().title()
         curso = request.POST.get("curso")
         division = request.POST.get("division")
         materia = request.POST.get("materia")
         nota1 = request.POST.get("nota1")
         nota2 = request.POST.get("nota2")
 
-        nombre_correcto = obtener_nombre_correcto(nombre)
+        # Busca si ya existe ese nombre (ignorando tildes/mayúsculas)
+        nombre_norm = normalizar_texto(nombre)
+        for existente in AlumnoCalificacion.objects.values_list("nombre", flat=True).distinct():
+            if normalizar_texto(existente) == nombre_norm:
+                nombre = existente
+                break
 
-        if existe_alumno_en_materia(nombre_correcto, materia):
-            error = "Ese alumno ya está cargado en esa materia. Puede estar en otras materias, pero no repetido en la misma."
+        ya_existe = AlumnoCalificacion.objects.filter(
+            nombre=nombre, materia=materia
+        ).exists()
+
+        if ya_existe:
+            error = "Ese alumno ya está cargado en esa materia."
         else:
-            # El ORM genera el id solo. Nada de max(id)+1 a mano.
             AlumnoCalificacion.objects.create(
-                nombre=nombre_correcto,
-                curso=curso,
-                division=division,
-                materia=materia,
-                nota1=int(nota1),
-                nota2=int(nota2),
+                nombre=nombre, curso=curso, division=division,
+                materia=materia, nota1=int(nota1), nota2=int(nota2),
             )
             return redirect(f"/calificaciones/profesor/?materia={materia}")
 
@@ -171,36 +165,47 @@ def agregar_alumno(request):
 
 
 def editar_alumno(request, alumno_id):
-    # Un solo SELECT por id, en vez de recorrer la lista global a mano.
+    # Vista para editar un registro existente.
+    # - Busca el alumno por ID. Si no existe, redirige al panel.
+    # - POST: actualiza los campos y guarda en la DB.
+    # - Excluye al propio registro de la validación de duplicado.
     alumno_encontrado = AlumnoCalificacion.objects.filter(id=alumno_id).first()
-
     if alumno_encontrado is None:
         return redirect("/calificaciones/profesor/")
 
     error = ""
-    nombres_alumnos = obtener_nombres_alumnos()
+    nombres_alumnos = list(
+        AlumnoCalificacion.objects.values_list("nombre", flat=True).distinct()
+    )
 
     if request.method == "POST":
-        nombre = request.POST.get("nombre")
+        nombre = request.POST.get("nombre", "").strip().title()
         curso = request.POST.get("curso")
         division = request.POST.get("division")
         materia = request.POST.get("materia")
         nota1 = request.POST.get("nota1")
         nota2 = request.POST.get("nota2")
 
-        nombre_correcto = obtener_nombre_correcto(nombre)
+        nombre_norm = normalizar_texto(nombre)
+        for existente in AlumnoCalificacion.objects.values_list("nombre", flat=True).distinct():
+            if normalizar_texto(existente) == nombre_norm:
+                nombre = existente
+                break
 
-        if existe_alumno_en_materia(nombre_correcto, materia, alumno_id_actual=alumno_id):
-            error = "Ese alumno ya está cargado en esa materia. No se puede duplicar."
+        ya_existe = AlumnoCalificacion.objects.filter(
+            nombre=nombre, materia=materia
+        ).exclude(id=alumno_id).exists()
+
+        if ya_existe:
+            error = "Ese alumno ya está cargado en esa materia."
         else:
-            alumno_encontrado.nombre = nombre_correcto
+            alumno_encontrado.nombre = nombre
             alumno_encontrado.curso = curso
             alumno_encontrado.division = division
             alumno_encontrado.materia = materia
             alumno_encontrado.nota1 = int(nota1)
             alumno_encontrado.nota2 = int(nota2)
             alumno_encontrado.save()
-
             return redirect(f"/calificaciones/profesor/?materia={materia}")
 
     return render(request, "calificaciones/formulario_alumno.html", {
@@ -212,28 +217,8 @@ def editar_alumno(request, alumno_id):
     })
 
 
-def alumno(request):
-    materia = request.GET.get("materia")
-    materias = obtener_materias()
-
-    queryset = AlumnoCalificacion.objects.all()
-    if materia:
-        queryset = queryset.filter(materia=materia)
-
-    lista = preparar_alumnos(queryset)
-
-    return render(request, "calificaciones/alumno.html", {
-        "alumnos": lista,
-        "materias": materias,
-        "materia_seleccionada": materia,
-    })
-
-
 def mensajes(request):
+    # Muestra los mensajes del profesor (datos fijos en memoria).
     return render(request, "calificaciones/mensajes.html", {
         "mensajes": mensajes_profesor,
     })
-
-
-def boletin(request):
-    return render(request, "calificaciones/boletin.html")
