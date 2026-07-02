@@ -22,7 +22,14 @@ def _guardar_alumnos(lista):
         )
 
 
-alumnos = _cargar_alumnos()
+_alumnos_cache = None
+
+
+def _get_alumnos():
+    global _alumnos_cache
+    if _alumnos_cache is None:
+        _alumnos_cache = _cargar_alumnos()
+    return _alumnos_cache
 
 
 mensajes_profesor = [
@@ -83,7 +90,7 @@ def obtener_nombre_correcto(nombre_ingresado):
     nombre_normalizado = normalizar_texto(nombre_ingresado)
     # Normalizamos el nombre ingresado para poder compararlo.
 
-    for alumno in alumnos:
+    for alumno in _get_alumnos():
         # Recorremos todos los alumnos ya cargados.
         if normalizar_texto(alumno["nombre"]) == nombre_normalizado:
             # Si el nombre normalizado de este alumno coincide con el
@@ -107,7 +114,7 @@ def obtener_nombres_alumnos():
     # Lista paralela de nombres normalizados, para detectar duplicados
     # aunque estén escritos distinto (con/sin tilde, mayúsculas, etc).
 
-    for alumno in alumnos:
+    for alumno in _get_alumnos():
         nombre_normalizado = normalizar_texto(alumno["nombre"])
         # Normalizamos el nombre del alumno actual para compararlo.
 
@@ -152,7 +159,7 @@ def obtener_materias():
     # Devuelve la lista de materias distintas que existen entre los alumnos.
     materias = []
 
-    for alumno in alumnos:
+    for alumno in _get_alumnos():
         if alumno["materia"] not in materias:
             # Si la materia de este alumno todavía no está en la lista...
             materias.append(alumno["materia"])
@@ -171,7 +178,7 @@ def existe_alumno_en_materia(nombre, materia, alumno_id_actual=None):
     materia = normalizar_texto(materia)
     # Normalizamos nombre y materia para comparar sin importar tildes/mayúsculas.
 
-    for alumno in alumnos:
+    for alumno in _get_alumnos():
         mismo_nombre = normalizar_texto(alumno["nombre"]) == nombre
         # ¿El nombre de este alumno coincide (normalizado) con el buscado?
 
@@ -209,7 +216,7 @@ def profesor(request):
     materias = obtener_materias()
     # Lista de todas las materias existentes (para armar un selector/filtro).
 
-    lista = preparar_alumnos(alumnos)
+    lista = preparar_alumnos(_get_alumnos())
     # Alumnos con "promedio" y "estado" ya calculados.
 
     if materia:
@@ -260,12 +267,13 @@ def agregar_alumno(request):
             error = "Ese alumno ya está cargado en esa materia. Puede estar en otras materias, pero no repetido en la misma."
             # ...no lo agregamos, y mostramos un mensaje de error.
         else:
-            nuevo_id = max((a["id"] for a in alumnos), default=0) + 1  # ← ID seguro
+            _alumnos = _get_alumnos()
+            nuevo_id = max((a["id"] for a in _alumnos), default=0) + 1  # ← ID seguro
             # Calculamos un nuevo id único: el máximo id actual + 1.
             # default=0 evita un error si la lista "alumnos" estuviera vacía
             # (en ese caso, el primer id sería 1).
 
-            alumnos.append({
+            _alumnos.append({
                 "id": nuevo_id,
                 "nombre": nombre_correcto,
                 "curso": curso,
@@ -276,7 +284,7 @@ def agregar_alumno(request):
                 # Convertimos las notas a int, ya que request.POST las
                 # entrega siempre como texto (string).
             })
-            _guardar_alumnos(alumnos)  # ← guarda en disco
+            _guardar_alumnos(_get_alumnos())  # ← guarda en disco
             # Persistimos los cambios en el archivo JSON, para que no se
             # pierdan si se reinicia el servidor.
 
@@ -303,7 +311,7 @@ def editar_alumno(request, alumno_id):
     # por su "alumno_id" (viene como parte de la URL, ej: /editar/3/).
     alumno_encontrado = None
 
-    for alumno in alumnos:
+    for alumno in _get_alumnos():
         if alumno["id"] == alumno_id:
             alumno_encontrado = alumno
             # Guardamos una REFERENCIA al diccionario (no una copia),
@@ -343,7 +351,7 @@ def editar_alumno(request, alumno_id):
             # dentro de la lista "alumnos", estas asignaciones actualizan
             # directamente ese registro en la lista global.
 
-            _guardar_alumnos(alumnos)  # ← guarda en disco
+            _guardar_alumnos(_get_alumnos())  # ← guarda en disco
             # Persistimos los cambios en el archivo JSON.
 
             return redirect(f"/calificaciones/profesor/?materia={materia}")
@@ -366,7 +374,7 @@ def alumno(request):
     materia = request.GET.get("materia")
     # Lee el filtro de materia desde la URL, si lo hay.
 
-    lista = preparar_alumnos(alumnos)
+    lista = preparar_alumnos(_get_alumnos())
     # Todos los alumnos con promedio y estado ya calculados.
 
     materias = obtener_materias()
@@ -390,3 +398,5 @@ def mensajes(request):
     return render(request, "calificaciones/mensajes.html", {
         "mensajes": mensajes_profesor,
     })
+def boletin(request):
+    return render(request, "calificaciones/boletin.html")
