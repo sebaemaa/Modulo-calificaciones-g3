@@ -23,8 +23,6 @@ mensajes_profesor = [
 
 
 def normalizar_texto(texto):
-    # Quita tildes, espacios extra y pasa a minúsculas para poder comparar
-    # nombres/materias sin importar cómo los escribió el usuario.
     texto = texto.strip().lower()
     texto = unicodedata.normalize("NFD", texto)
     texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
@@ -32,8 +30,6 @@ def normalizar_texto(texto):
 
 
 def armar_lista(queryset):
-    # Convierte el queryset en una lista de diccionarios con promedio y estado
-    # ya calculados, lista para pasar al template.
     lista=[]
     for a in queryset:
         promedio = (a.nota1 + a.nota2) / 2
@@ -83,7 +79,6 @@ def agregar_alumno(request):
         nota1 = request.POST.get("nota1")
         nota2 = request.POST.get("nota2")
 
-        # Reutiliza el nombre ya guardado si existe uno equivalente (sin tildes/mayúsculas)
         nombre_norm = normalizar_texto(nombre)
         for existente in AlumnoCalificacion.objects.values_list("nombre", flat=True).distinct():
             if normalizar_texto(existente) == nombre_norm:
@@ -175,6 +170,7 @@ def alumno(request):
         "materias": materias,
         "materia_seleccionada": materia,
     })
+
 
 def mensajes(request):
     return render(request, "calificaciones/mensajes.html", {
