@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Profesor — Calificaciones{% endblock %}
+
+{% block extra_css %}
+<style>
+.prof-header {
+    background: linear-gradient(135deg, #0d47a1, #1565c0);
+    color: white;
+    padding: 32px 24px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.prof-header h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.prof-header p {
+    margin: 6px 0 0;
+    opacity: 0.85;
+}
+
+.materias-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    margin-top: 16px;
+}
+
+.materia-card {
+    background: white;
+    border-top: 6px solid #0d47a1;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    text-decoration: none;
+    color: #333;
+    transition: 0.2s;
+    display: block;
+}
+
+.materia-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+}
+
+.materia-card h3 {
+    color: #0d47a1;
+    margin-top: 0;
+}
+
+.materia-activa {
+    border-top-color: #2e7d32;
+    background: #f1f8e9;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+th {
+    background: #0d47a1;
+    color: white;
+    padding: 12px;
+    text-align: center;
+    font-weight: 600;
+}
+
+td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+tr:hover td {
+    background: #f5f9ff;
+}
+
+.aprobado {
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+.desaprobado {
+    color: #c62828;
+    font-weight: 600;
+}
+
+.aviso {
+    background: #fff8e1;
+    border-left: 6px solid #f9a825;
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-top: 14px;
+    font-weight: 500;
+    color: #e65100;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="prof-header">
+    <h1>Panel del Profesor</h1>
+    <p>Seleccioná una materia para ver sus alumnos</p>
+</div>
+
+<a class="volver" href="/calificaciones/">← Volver al inicio</a>
+
+<section>
+    <h2>Materias del profesor</h2>
+    <p>Elegí una materia para ver los alumnos correspondientes.</p>
+
+    <div class="materias-grid">
+        {% for materia in materias %}
+            <a class="materia-card {% if materia == materia_seleccionada %}materia-activa{% endif %}"
+               href="/calificaciones/profesor/?materia={{ materia }}">
+                <h3>{{ materia }}</h3>
+                <p>Ver alumnos y calificaciones de esta materia.</p>
+            </a>
+        {% empty %}
+            <div class="materia-card">
+                <h3>Sin materias</h3>
+                <p>Todavía no hay materias cargadas.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="acciones" style="margin-top: 18px;">
+        <a class="boton boton-verde" href="/calificaciones/profesor/agregar/">Agregar alumno a una materia</a>
+    </div>
+</section>
+
+{% if materia_seleccionada %}
+    <section>
+        <h2>Alumnos de {{ materia_seleccionada }}</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Alumno</th>
+                    <th>Curso</th>
+                    <th>División</th>
+                    <th>Materia</th>
+                    <th>1° Cuatr.</th>
+                    <th>2° Cuatr.</th>
+                    <th>Promedio</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alumno in alumnos %}
+                <tr>
+                    <td>{{ alumno.nombre }}</td>
+                    <td>{{ alumno.curso }}</td>
+                    <td>{{ alumno.division }}</td>
+                    <td>{{ alumno.materia }}</td>
+                    <td>{{ alumno.nota1 }}</td>
+                    <td>{{ alumno.nota2 }}</td>
+                    <td>{{ alumno.promedio }}</td>
+                    <td class="{% if alumno.estado == 'Aprobado' %}aprobado{% else %}desaprobado{% endif %}">
+                        {{ alumno.estado }}
+                    </td>
+                    <td>
+                        <a class="boton" href="/calificaciones/profesor/editar/{{ alumno.id }}/" style="font-size:13px; padding:8px 14px;">
+                            Editar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9">No hay alumnos cargados en esta materia.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+{% else %}
+    <section>
+        <h2>Seleccione una materia</h2>
+        <div class="aviso">
+            Para ver alumnos, primero hacé click en una materia del panel superior.
+        </div>
+    </section>
+{% endif %}
+{% endblock %}
