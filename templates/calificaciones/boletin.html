@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Boletín — {{ nombre }}{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'alumno_seleccionar' %}">&larr; Volver</a>
+
+<div class="bienvenida">
+    <h2>Boletín de calificaciones</h2>
+    <p>{{ nombre }}</p>
+</div>
+
+{% if materias %}
+    <section>
+        <table>
+            <thead>
+                <tr>
+                    <th>Materia</th>
+                    <th>Cuatrimestre</th>
+                    <th>Promedio</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mat in materias %}
+                <tr>
+                    <td style="font-weight:600;">{{ mat.materia }}</td>
+                    <td>{{ mat.cuat_display }}</td>
+                    <td style="font-weight:600; font-size:16px;">{{ mat.promedio }}</td>
+                    <td class="{% if mat.estado == 'Aprobado' %}aprobado{% else %}desaprobado{% endif %}">
+                        {{ mat.estado }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if promedio_general is not None %}
+        <div style="margin-top:24px; padding:20px; background:linear-gradient(135deg, #e8f0f5, #d4e4f0); border-radius:16px; text-align:center; border-top:5px solid #2c5a8c;">
+            <h3 style="margin:0 0 8px; color:#2c5a8c;">Promedio General</h3>
+            <div style="font-size:36px; font-weight:700; color:#1a3a6b;">{{ promedio_general }}</div>
+            <div class="{% if estado_general == 'Aprobado' %}aprobado{% else %}desaprobado{% endif %}" style="font-size:18px; margin-top:8px;">
+                {{ estado_general }}
+            </div>
+        </div>
+        {% endif %}
+    </section>
+{% else %}
+    <section>
+        <div class="aviso">
+            El boletín no está disponible todavía o no se encontraron calificaciones para tu nombre.
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

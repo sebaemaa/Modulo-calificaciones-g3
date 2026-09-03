@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Calificaciones de {{ nombre }} — {{ cuat_display }}{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'alumno_seleccionar' %}">&larr; Volver</a>
+
+<div class="bienvenida">
+    <h2>Mis Calificaciones</h2>
+    <p>{{ nombre }} — {{ cuat_display }}</p>
+</div>
+
+{% if materias %}
+    {% for mat in materias %}
+    <section>
+        <h2>{{ mat.materia }}</h2>
+
+        {% if mat.categorias %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Categoría</th>
+                        <th>Notas</th>
+                        <th>Promedio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in mat.categorias %}
+                    <tr>
+                        <td style="font-weight:600;">{{ cat.nombre }}</td>
+                        <td>
+                            {% for nota in cat.notas %}
+                                <span style="margin-right:8px;">
+                                    <strong>{{ nota.valor }}</strong>
+                                    {% if nota.descripcion %}
+                                        <span style="color:#777;">({{ nota.descripcion }})</span>
+                                    {% endif %}
+                                </span>
+                            {% empty %}
+                                <span style="color:#999;">Sin notas</span>
+                            {% endfor %}
+                        </td>
+                        <td style="font-weight:600;">
+                            {% if cat.promedio is not None %}
+                                {{ cat.promedio }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="margin-top:14px; padding:12px 16px; background:#f5f9ff; border-radius:10px; font-weight:600;">
+                Promedio de la materia:
+                {% if mat.promedio is not None %}
+                    <span style="font-size:18px; margin-left:8px;">{{ mat.promedio }}</span>
+                    <span class="{% if mat.estado == 'Aprobado' %}aprobado{% else %}desaprobado{% endif %}" style="margin-left:12px;">
+                        {{ mat.estado }}
+                    </span>
+                {% else %}
+                    Sin notas cargadas
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="aviso">No hay categorías de evaluación definidas para esta materia.</div>
+        {% endif %}
+    </section>
+    {% endfor %}
+{% else %}
+    <section>
+        <div class="aviso">
+            No se encontraron calificaciones para "{{ nombre }}" en este cuatrimestre.
+            Verificá que tu nombre esté bien escrito.
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

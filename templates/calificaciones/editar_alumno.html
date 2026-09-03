@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Alumno — {{ materia }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.fila-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.fila-form label { margin-top: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'profesor_listar_alumnos' materia=materia %}">&larr; Volver a alumnos</a>
+
+<div class="bienvenida">
+    <h2>Editar alumno</h2>
+    <p>{{ materia }}</p>
+</div>
+
+<section>
+    <form method="post" action="{% url 'profesor_editar_alumno' materia=materia alumno_id=alumno.id %}">
+        {% csrf_token %}
+        <div class="fila-form">
+            <div>
+                <label for="apellido">Apellido</label>
+                <input type="text" id="apellido" name="apellido" value="{{ alumno.apellido }}" required>
+            </div>
+            <div>
+                <label for="nombre">Nombre</label>
+                <input type="text" id="nombre" name="nombre" value="{{ alumno.nombre }}" required>
+            </div>
+        </div>
+        <div class="fila-form">
+            <div>
+                <label for="dni">DNI <small>(opcional, clave para el padrón)</small></label>
+                <input type="text" id="dni" name="dni" value="{{ alumno.dni }}">
+            </div>
+            <div>
+                <label for="curso">Curso</label>
+                <input type="text" id="curso" name="curso" value="{{ alumno.curso }}">
+            </div>
+            <div>
+                <label for="division">División</label>
+                <input type="text" id="division" name="division" value="{{ alumno.division }}">
+            </div>
+        </div>
+        <div class="botones-form">
+            <button type="submit" class="boton boton-verde">Guardar cambios</button>
+            <a class="boton" href="{% url 'profesor_listar_alumnos' materia=materia %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Gestionar Categorías — {{ materia }}{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
+
+<div class="bienvenida">
+    <h2>Categorías de evaluación</h2>
+    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
+</div>
+
+<section>
+    <h2>Categorías actuales</h2>
+
+    {% if categorias %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Orden</th>
+                    <th>Nombre</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in categorias %}
+                <tr>
+                    <td>{{ cat.orden }}</td>
+                    <td>{{ cat.nombre }}</td>
+                    <td>
+                        <a class="boton boton-chico"
+                           href="{% url 'profesor_editar_categoria' cuat=cuat materia=materia cat_id=cat.id %}">
+                            Editar
+                        </a>
+                        <a class="boton boton-rojo boton-chico"
+                           href="{% url 'profesor_eliminar_categoria' cuat=cuat materia=materia cat_id=cat.id %}"
+                           onclick="return confirm('¿Eliminar la categoría {{ cat.nombre }}? Se borrarán todas las notas asociadas.')">
+                            Eliminar
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="aviso">
+            Todavía no hay categorías creadas para esta materia. Agregá una más abajo.
+        </div>
+    {% endif %}
+</section>
+
+<section>
+    <h2>Agregar categoría</h2>
+    <form method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia=materia %}">
+        {% csrf_token %}
+        <label for="nombre">Nombre de la categoría</label>
+        <input type="text" id="nombre" name="nombre" placeholder="Ej: Trabajo Práctico, Examen, Participación..." required>
+        <div class="botones-form">
+            <button type="submit" class="boton boton-verde">Agregar categoría</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

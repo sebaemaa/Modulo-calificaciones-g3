@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Consultar calificaciones{% endblock %}
+
+{% block content %}
+<div class="bienvenida">
+    <h2>{% if destino == 'boletin' %}Consultar boletín{% else %}Consultar calificaciones{% endif %}</h2>
+    <p>Ingresá tu nombre para continuar</p>
+</div>
+
+<section>
+    {% if destino == 'boletin' %}
+        <form method="get" action="{% url 'alumno_ver_boletin' %}">
+    {% else %}
+        <form method="get" action="{% url 'alumno_ver_calificaciones' %}">
+    {% endif %}
+        <label for="nombre">Tu nombre completo</label>
+        <select id="nombre" name="nombre" required>
+            <option value="">Seleccioná tu nombre...</option>
+            {% for nombre in nombres %}
+                <option value="{{ nombre }}">{{ nombre }}</option>
+            {% endfor %}
+        </select>
+
+        {% if destino != 'boletin' %}
+            <label for="cuat">Cuatrimestre</label>
+            <select id="cuat" name="cuat" required>
+                <option value="1">1° Cuatrimestre</option>
+                <option value="2">2° Cuatrimestre</option>
+            </select>
+        {% endif %}
+
+        <div class="botones-form">
+            <button type="submit" class="boton boton-verde">
+                {% if destino == 'boletin' %}Ver boletín{% else %}Consultar{% endif %}
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}
