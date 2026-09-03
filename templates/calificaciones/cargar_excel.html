@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Cargar desde Excel — {{ materia }}{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
+
+<div class="bienvenida">
+    <h2>Cargar notas desde Excel</h2>
+    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
+</div>
+
+<section>
+    <div class="ayuda">
+        <strong>Instrucciones:</strong>
+        <ol style="margin:8px 0 0 18px; padding:0;">
+            <li>Descargá la plantilla desde la pantalla anterior</li>
+            <li>Completá las notas en el Excel (columna "Alumno" + columnas de cada categoría)</li>
+            <li>Subí el archivo completado acá</li>
+        </ol>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="archivo">Seleccionar archivo Excel (.xlsx)</label>
+        <input type="file" id="archivo" name="archivo" accept=".xlsx,.xls" required>
+        <div class="botones-form">
+            <button type="submit" class="boton boton-verde">Subir y previsualizar</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

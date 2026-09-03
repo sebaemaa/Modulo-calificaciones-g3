@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Gestionar Alumnos — {{ materia }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.fila-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.fila-form label { margin-top: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=1 materia=materia %}">&larr; Volver a {{ materia }}</a>
+
+<div class="bienvenida">
+    <h2>Alumnos de {{ materia }}</h2>
+    <p>Cargá y administrá los alumnos que cursan esta materia.</p>
+</div>
+
+<section>
+    <h2>Alumnos cargados</h2>
+
+    {% if alumnos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Apellido</th>
+                    <th>Nombre</th>
+                    <th>DNI</th>
+                    <th>Curso</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in alumnos %}
+                <tr>
+                    <td>{{ a.apellido }}</td>
+                    <td>{{ a.nombre }}</td>
+                    <td>{% if a.dni %}{{ a.dni }}{% else %}<em>sin DNI</em>{% endif %}</td>
+                    <td>{{ a.curso }}{% if a.division and a.division != '-' %} " {{ a.division }}{% endif %}</td>
+                    <td>
+                        <a class="boton boton-chico"
+                           href="{% url 'profesor_editar_alumno' materia=materia alumno_id=a.id %}">
+                            Editar
+                        </a>
+                        <a class="boton boton-rojo boton-chico"
+                           href="{% url 'profesor_eliminar_alumno' materia=materia alumno_id=a.id %}"
+                           onclick="return confirm('¿Eliminar a {{ a.apellido }}, {{ a.nombre }}? Se borrarán sus notas en {{ materia }}.')">
+                            Eliminar
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="aviso">
+            Todavía no hay alumnos cargados para esta materia. Agregalos más abajo.
+        </div>
+    {% endif %}
+</section>
+
+<section>
+    <h2>Cargar nuevo alumno</h2>
+    <form method="post" action="{% url 'profesor_agregar_alumno' materia=materia %}">
+        {% csrf_token %}
+        <div class="fila-form">
+            <div>
+                <label for="apellido">Apellido</label>
+                <input type="text" id="apellido" name="apellido" required>
+            </div>
+            <div>
+                <label for="nombre">Nombre</label>
+                <input type="text" id="nombre" name="nombre" required>
+            </div>
+        </div>
+        <div class="fila-form">
+            <div>
+                <label for="dni">DNI <small>(opcional, clave para el padrón)</small></label>
+                <input type="text" id="dni" name="dni">
+            </div>
+            <div>
+                <label for="curso">Curso</label>
+                <input type="text" id="curso" name="curso" placeholder="Ej: 3">
+            </div>
+            <div>
+                <label for="division">División</label>
+                <input type="text" id="division" name="division" placeholder="Ej: A">
+            </div>
+        </div>
+        <div class="botones-form">
+            <button type="submit" class="boton boton-verde">Cargar alumno</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

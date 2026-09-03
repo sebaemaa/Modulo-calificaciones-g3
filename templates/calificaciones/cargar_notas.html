@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Hoja de notas — {{ materia }} — {{ cuat_display }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.planilla-wrap {
+    overflow: auto;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: white;
+}
+
+.planilla {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 720px;
+}
+
+.planilla th, .planilla td {
+    border: 1px solid #e0e0e0;
+    padding: 0;
+}
+
+.planilla thead th {
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 12px 10px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.planilla .corner {
+    background: #1d4ed8;
+    min-width: 220px;
+}
+
+.planilla .alumno-cell {
+    font-weight: 600;
+    font-size: 13px;
+    color: #333;
+    padding: 8px 12px;
+    background: #f8fbff;
+    white-space: nowrap;
+    border-right: 2px solid #c8d6e2;
+}
+
+.planilla tbody tr:hover .alumno-cell {
+    background: #eef5ff;
+}
+
+.celda-nota {
+    width: 90px;
+    text-align: center;
+    height: 42px;
+}
+
+.celda-nota input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    color: #333;
+    background: transparent;
+    padding: 0 4px;
+}
+
+.celda-nota input:focus {
+    background: #fffde7;
+    box-shadow: inset 0 0 0 2px #2563eb;
+    border-radius: 0;
+}
+
+.celda-nota input::placeholder {
+    color: #ccc;
+}
+
+/* Celdas de promedio/estado */
+.prom-fila th.prom-cell,
+.prom-fila td.prom-cell {
+    background: #eef5ff;
+    font-weight: 700;
+    text-align: center;
+    color: #1a3a6b;
+    font-size: 15px;
+    padding: 10px;
+    border-top: 2px solid #2563eb;
+}
+
+.estado-cell {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.estado-aprobado { color: #2e7d32; background: #f1f8e9; }
+.estado-desaprobado { color: #c62828; background: #ffebee; }
+
+/* Barra de herramientas */
+.planilla-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.planilla-hint {
+    font-size: 13px;
+    color: #777;
+}
+
+.planilla-hint kbd {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+}
+
+.btn-guardar {
+    margin-top: 16px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
+
+<div class="bienvenida">
+    <h2>{{ materia }} — {{ cuat_display }}</h2>
+    <p>Hacé click en una celda para editar la nota.</p>
+</div>
+
+<section>
+    <div class="planilla-toolbar">
+        <a class="boton" href="{% url 'profesor_categorias' cuat=cuat materia=materia %}">
+            Gestionar categorías
+        </a>
+        <span class="planilla-hint">
+            Navegá con <kbd>Tab</kbd> / <kbd>Enter</kbd> / flechas &middot;
+            Editá directo en cada celda &middot; Notas de 0 a 10
+        </span>
+    </div>
+
+    <form method="post" id="form-planilla">
+        {% csrf_token %}
+
+        <div class="planilla-wrap">
+        <table class="planilla" id="tabla-planilla">
+            <thead>
+                <tr>
+                    <th class="corner">Alumno</th>
+                    {% for cat in categorias %}
+                        <th data-cat="{{ cat.id }}">{{ cat.nombre }}</th>
+                    {% endfor %}
+                    <th>Promedio</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alumno in alumnos %}
+                <tr data-alumno="{{ alumno.id }}">
+                    <td class="alumno-cell">{{ alumno.nombre }}</td>
+                    {% for celda in alumno.celdas %}
+                        <td class="celda-nota">
+                            <input type="number"
+                                   name="celda_{{ alumno.id }}_{{ celda.cat_id }}"
+                                   data-alumno="{{ alumno.id }}"
+                                   data-cat="{{ celda.cat_id }}"
+                                   value="{{ celda.valor }}"
+                                   step="0.1" min="0" max="10"
+                                   placeholder="—">
+                        </td>
+                    {% endfor %}
+                    <td class="prom-cell fila-prom">—</td>
+                    <td class="estado-cell fila-estado">—</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        <div class="botones-form btn-guardar">
+            <button type="submit" class="boton boton-verde" id="btn-guardar">
+                Guardar todas las notas
+            </button>
+            <a class="boton" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var tabla = document.getElementById('tabla-planilla');
+    if (!tabla) return;
+
+    // --- Recalcular promedios en vivo ---
+    function recalcular() {
+        var filas = tabla.querySelectorAll('tbody tr[data-alumno]');
+        filas.forEach(function (fila) {
+            var inputs = fila.querySelectorAll('input[type="number"]');
+            var suma = 0, cont = 0;
+            inputs.forEach(function (inp) {
+                var v = parseFloat(inp.value);
+                if (!isNaN(v)) { suma += v; cont++; }
+            });
+            var promCelda = fila.querySelector('.fila-prom');
+            var estadoCelda = fila.querySelector('.fila-estado');
+            var prom = cont > 0 ? (suma / cont) : null;
+            if (prom !== null) {
+                prom = Math.round(prom * 10) / 10;
+                promCelda.textContent = prom;
+                if (prom >= 6) {
+                    promCelda.style.color = '#2e7d32';
+                    estadoCelda.textContent = 'Aprobado';
+                    estadoCelda.className = 'estado-cell fila-estado estado-aprobado';
+                } else {
+                    promCelda.style.color = '#c62828';
+                    estadoCelda.textContent = 'Desaprobado';
+                    estadoCelda.className = 'estado-cell fila-estado estado-desaprobado';
+                }
+            } else {
+                promCelda.textContent = '—';
+                promCelda.style.color = '#1a3a6b';
+                estadoCelda.textContent = '—';
+                estadoCelda.className = 'estado-cell fila-estado';
+            }
+        });
+    }
+
+    // --- Navegación estilo hoja de cálculo ---
+    function moveFocus(input, dir) {
+        // dir: 'next', 'prev', 'up', 'down'
+        var filas = Array.from(tabla.querySelectorAll('tbody tr[data-alumno]'));
+        var inputs = Array.from(tabla.querySelectorAll('.celda-nota input'));
+        var idx = inputs.indexOf(input);
+        if (idx < 0) return;
+
+        var camposPorFila = filas[0].querySelectorAll('input').length;
+        var filaIdx = Math.floor(idx / camposPorFila);
+        var colIdx = idx % camposPorFila;
+
+        if (dir === 'next' || dir === 'prev') {
+            var ni = dir === 'next' ? idx + 1 : idx - 1;
+            if (ni >= 0 && ni < inputs.length) inputs[ni].focus();
+        } else if (dir === 'down') {
+            if (filaIdx + 1 < filas.length) {
+                inputs[(filaIdx + 1) * camposPorFila + colIdx].focus();
+            }
+        } else if (dir === 'up') {
+            if (filaIdx - 1 >= 0) {
+                inputs[(filaIdx - 1) * camposPorFila + colIdx].focus();
+            }
+        }
+    }
+
+    tabla.addEventListener('keydown', function (e) {
+        var t = e.target;
+        if (t.tagName !== 'INPUT') return;
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            moveFocus(t, e.shiftKey ? 'prev' : 'next');
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            moveFocus(t, 'next');
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            moveFocus(t, 'down');
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            moveFocus(t, 'up');
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            moveFocus(t, 'next');
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            moveFocus(t, 'prev');
+        }
+    });
+
+    // Seleccionar todo el contenido al enfocar (para reescribir rápido)
+    tabla.addEventListener('focusin', function (e) {
+        var t = e.target;
+        if (t.tagName === 'INPUT') {
+            setTimeout(function () { t.select(); }, 0);
+        }
+    });
+
+    // Recalcular al escribir
+    tabla.addEventListener('input', recalcular);
+
+    // Calcular al cargar
+    recalcular();
+})();
+</script>
+{% endblock %}

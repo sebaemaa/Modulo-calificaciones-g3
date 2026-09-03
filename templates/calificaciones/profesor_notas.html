@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Calificaciones — {{ materia }} — {{ cuat_display }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.planilla-wrap {
+    overflow: auto;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: white;
+}
+
+.planilla {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 720px;
+}
+
+.planilla th, .planilla td {
+    border: 1px solid #e0e0e0;
+    padding: 0;
+}
+
+.planilla thead th {
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 12px 10px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.planilla .corner {
+    background: #1d4ed8;
+    min-width: 220px;
+}
+
+.planilla .alumno-cell {
+    font-weight: 600;
+    font-size: 13px;
+    color: #333;
+    padding: 8px 12px;
+    background: #f8fbff;
+    white-space: nowrap;
+    border-right: 2px solid #c8d6e2;
+}
+
+.planilla tbody tr:hover .alumno-cell {
+    background: #eef5ff;
+}
+
+.celda-nota {
+    width: 90px;
+    text-align: center;
+    height: 42px;
+}
+
+.celda-nota input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    color: #333;
+    background: transparent;
+    padding: 0 4px;
+}
+
+.celda-nota input:focus {
+    background: #fffde7;
+    box-shadow: inset 0 0 0 2px #2563eb;
+}
+
+.celda-nota input::placeholder {
+    color: #ccc;
+}
+
+.celda-guardada {
+    border-bottom: 2px solid #43a047;
+}
+
+.prom-fila td.prom-cell {
+    background: #eef5ff;
+    font-weight: 700;
+    text-align: center;
+    color: #1a3a6b;
+    font-size: 15px;
+    padding: 10px;
+    border-top: 2px solid #2563eb;
+}
+
+.estado-cell {
+    font-weight: 700;
+    font-size: 13px;
+    text-align: center;
+    padding: 10px;
+    border-top: 2px solid #2563eb;
+}
+
+.estado-aprobado { color: #2e7d32; background: #f1f8e9; }
+.estado-desaprobado { color: #c62828; background: #ffebee; }
+
+.planilla-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.planilla-hint {
+    font-size: 13px;
+    color: #777;
+}
+
+.planilla-hint kbd {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+}
+
+.guardando-indicador {
+    font-size: 13px;
+    color: #43a047;
+    font-weight: 600;
+    min-height: 18px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'profesor_seleccionar' %}">&larr; Volver a materias</a>
+
+<div class="bienvenida">
+    <h2>{{ materia }} — {{ cuat_display }}</h2>
+    <p>Hacé click en una celda para cargar o editar la nota. Se guarda solo al salir de la celda.</p>
+</div>
+
+<section>
+    <div class="planilla-toolbar">
+        <div class="acciones" style="margin:0;">
+            <a class="boton" href="{% url 'profesor_categorias' cuat=cuat materia=materia %}">
+                Gestionar categorías
+            </a>
+            <a class="boton" href="{% url 'profesor_listar_alumnos' materia=materia %}">
+                Gestionar alumnos
+            </a>
+            <a class="boton" style="background:#0d47a1;" href="{% url 'profesor_cargar_excel' cuat=cuat materia=materia %}">
+                Cargar desde Excel
+            </a>
+            <a class="boton" style="background:#43a047;" href="{% url 'profesor_descargar_plantilla' cuat=cuat materia=materia %}">
+                Plantilla Excel
+            </a>
+        </div>
+        <span class="guardando-indicador" id="indicador"></span>
+        <span class="planilla-hint">
+            <kbd>Tab</kbd> / <kbd>Enter</kbd> / flechas para moverte &middot;
+            Se guarda al salir de la celda &middot; Notas 0 a 10
+        </span>
+    </div>
+
+    <div class="planilla-wrap">
+    <table class="planilla" id="tabla-planilla">
+        <thead>
+            <tr>
+                <th class="corner">Alumno</th>
+                {% for cat in categorias %}
+                    <th data-cat="{{ cat.id }}">{{ cat.nombre }}</th>
+                {% endfor %}
+                <th>Promedio</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alumno in alumnos %}
+            <tr data-alumno="{{ alumno.id }}">
+                <td class="alumno-cell">{{ alumno.nombre }}</td>
+                {% for celda in alumno.celdas %}
+                    <td class="celda-nota">
+                        <input type="number"
+                               name="celda_{{ alumno.id }}_{{ celda.cat_id }}"
+                               data-alumno="{{ alumno.id }}"
+                               data-cat="{{ celda.cat_id }}"
+                               data-url="{% url 'profesor_guardar_nota' cuat=cuat materia=materia %}"
+                               value="{{ celda.valor }}"
+                               step="0.1" min="0" max="10"
+                               placeholder="—"
+                               autocomplete="off">
+                    </td>
+                {% endfor %}
+                <td class="prom-cell" data-prom>{% if alumno.promedio != '-' %}{{ alumno.promedio }}{% else %}—{% endif %}</td>
+                <td class="estado-cell {% if alumno.estado == 'Aprobado' %}estado-aprobado{% elif alumno.estado == 'Desaprobado' %}estado-desaprobado{% endif %}" data-estado>
+                    {{ alumno.estado }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+
+<section>
+    <h2>Boletín</h2>
+    {% if boletin and boletin.publicado %}
+        <div class="ayuda">El boletín de {{ cuat_display }} está <strong>publicado</strong>. Los alumnos pueden verlo.</div>
+    {% else %}
+        <div class="aviso">El boletín de {{ cuat_display }} está <strong>oculto</strong>.</div>
+    {% endif %}
+    <div class="acciones">
+        <a class="boton {% if boletin and boletin.publicado %}boton-rojo{% endif %}"
+           href="{% url 'profesor_toggle_boletin' cuat=cuat %}"
+           onclick="return confirm('¿Cambiar visibilidad del boletín?')">
+            {% if boletin and boletin.publicado %}Ocultar boletín{% else %}Publicar boletín{% endif %}
+        </a>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var tabla = document.getElementById('tabla-planilla');
+    if (!tabla) return;
+
+    var indicador = document.getElementById('indicador');
+    function mostrar(msg, color) {
+        if (!indicador) return;
+        indicador.textContent = msg;
+        indicador.style.color = color || '#43a047';
+    }
+
+    // Obtener CSRF token desde la cookie
+    function getCookie(name) {
+        var value = '; ' + document.cookie;
+        var parts = value.split('; ' + name + '=');
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    // Recalcular promedios locales (visual) sin esperar al servidor
+    function recalcularFila(fila, promBd, estadoBd) {
+        var promCelda = fila.querySelector('[data-prom]');
+        var estCelda = fila.querySelector('[data-estado]');
+        if (promBd !== undefined && promBd !== null && promBd !== '-') {
+            promCelda.textContent = promBd;
+            promCelda.style.color = estadoBd === 'Aprobado' ? '#2e7d32' : '#c62828';
+            estCelda.textContent = estadoBd;
+            estCelda.className = 'estado-cell ' + (estadoBd === 'Aprobado' ? 'estado-aprobado' : 'estado-desaprobado');
+        } else {
+            promCelda.textContent = '—';
+            promCelda.style.color = '#1a3a6b';
+            estCelda.textContent = '—';
+            estCelda.className = 'estado-cell';
+        }
+    }
+
+    // Navegación estilo hoja de cálculo
+    function moveFocus(input, dir) {
+        var inputs = Array.from(tabla.querySelectorAll('.celda-nota input'));
+        var idx = inputs.indexOf(input);
+        if (idx < 0) return;
+        var filas = Array.from(tabla.querySelectorAll('tbody tr[data-alumno]'));
+        var camposPorFila = filas[0].querySelectorAll('.celda-nota input').length;
+        var filaIdx = Math.floor(idx / camposPorFila);
+        var colIdx = idx % camposPorFila;
+
+        if (dir === 'next' || dir === 'prev') {
+            var ni = dir === 'next' ? idx + 1 : idx - 1;
+            if (ni >= 0 && ni < inputs.length) inputs[ni].focus();
+        } else if (dir === 'down' && filaIdx + 1 < filas.length) {
+            inputs[(filaIdx + 1) * camposPorFila + colIdx].focus();
+        } else if (dir === 'up' && filaIdx - 1 >= 0) {
+            inputs[(filaIdx - 1) * camposPorFila + colIdx].focus();
+        }
+    }
+
+    tabla.addEventListener('keydown', function (e) {
+        var t = e.target;
+        if (t.tagName !== 'INPUT') return;
+        if (e.key === 'Tab') { e.preventDefault(); moveFocus(t, e.shiftKey ? 'prev' : 'next'); }
+        else if (e.key === 'Enter') { e.preventDefault(); moveFocus(t, 'next'); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(t, 'down'); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(t, 'up'); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); moveFocus(t, 'next'); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); moveFocus(t, 'prev'); }
+    });
+
+    tabla.addEventListener('focusin', function (e) {
+        var t = e.target;
+        if (t.tagName === 'INPUT') setTimeout(function () { t.select(); }, 0);
+    });
+
+    // Guardar al salir de la celda (blur) — guardado automático
+    tabla.addEventListener('focusout', function (e) {
+        var input = e.target;
+        if (input.tagName !== 'INPUT' || !input.dataset.url) return;
+
+        var valor = input.value.trim();
+        var fila = input.closest('tr');
+
+        mostrar('Guardando...');
+
+        var formData = new FormData();
+        formData.append('alumno_id', input.dataset.alumno);
+        formData.append('cat_id', input.dataset.cat);
+        formData.append('valor', valor);
+
+        fetch(input.dataset.url, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(function (res) { return res.json().then(function (data) { return { res: res, data: data }; }); })
+        .then(function (obj) {
+            if (!obj.res.ok || !obj.data.ok) {
+                var err = (obj.data && obj.data.error) || 'Error al guardar';
+                mostrar('⚠ ' + err, '#c62828');
+                return;
+            }
+            input.classList.add('celda-guardada');
+            setTimeout(function () { input.classList.remove('celda-guardada'); }, 1200);
+            recalcularFila(fila, obj.data.promedio, obj.data.estado);
+            mostrar('✓ Guardado');
+            setTimeout(function () { mostrar(''); }, 1500);
+        })
+        .catch(function () {
+            mostrar('⚠ Error de conexión', '#c62828');
+        });
+    });
+})();
+</script>
+{% endblock %}

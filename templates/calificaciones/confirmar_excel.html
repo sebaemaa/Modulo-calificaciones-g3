@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmar Excel — {{ materia }}{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'profesor_cargar_excel' cuat=cuat materia=materia %}">&larr; Volver</a>
+
+<div class="bienvenida">
+    <h2>Vista previa del Excel</h2>
+    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
+</div>
+
+<section>
+    <form method="post" action="{% url 'profesor_confirmar_excel' cuat=cuat materia=materia %}">
+        {% csrf_token %}
+
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    {% for h in headers %}
+                        <th>{{ h }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in preview %}
+                <tr>
+                    <td style="{% if not fila.encontrado %}color:#c62828; font-weight:600;{% endif %}">
+                        {{ fila.nombre }}
+                        {% if not fila.encontrado %}
+                            <span style="font-size:11px;">(no encontrado)</span>
+                        {% endif %}
+                    </td>
+                    {% for h in headers %}
+                        {% if forloop.counter > 1 %}
+                            <td>
+                                {% for cat_nombre, valor in fila.notas.items %}
+                                    {% if cat_nombre == h %}
+                                        {{ valor|default:"-" }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        <p style="margin-top:14px; color:#555;">
+            Los alumnos en <span style="color:#c62828; font-weight:600;">rojo</span> no fueron encontrados en la materia.
+            Al confirmar, solo se guardan las notas de alumnos encontrados.
+        </p>
+
+        <div class="botones-form">
+            <button type="submit" class="boton boton-verde">Confirmar y guardar</button>
+            <a class="boton boton-rojo" href="{% url 'profesor_cargar_excel' cuat=cuat materia=materia %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
