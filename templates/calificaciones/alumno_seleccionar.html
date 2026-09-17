@@ -15,10 +15,10 @@
         <form method="get" action="{% url 'alumno_ver_calificaciones' %}">
     {% endif %}
         <label for="nombre">Tu nombre completo</label>
-        <select id="nombre" name="nombre" required>
+        <select id="nombre" name="alumno_id" required>
             <option value="">Seleccioná tu nombre...</option>
-            {% for nombre in nombres %}
-                <option value="{{ nombre }}">{{ nombre }}</option>
+            {% for alumno in alumnos %}
+                <option value="{{ alumno.id }}">{{ alumno.apellido }}, {{ alumno.nombre }}</option>
             {% endfor %}
         </select>
 

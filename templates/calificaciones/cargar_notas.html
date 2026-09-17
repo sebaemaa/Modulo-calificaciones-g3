@@ -168,7 +168,7 @@
             <tbody>
                 {% for alumno in alumnos %}
                 <tr data-alumno="{{ alumno.id }}">
-                    <td class="alumno-cell">{{ alumno.nombre }}</td>
+                    <td class="alumno-cell">{{ alumno.apellido }}, {{ alumno.nombre }}</td>
                     {% for celda in alumno.celdas %}
                         <td class="celda-nota">
                             <input type="number"
