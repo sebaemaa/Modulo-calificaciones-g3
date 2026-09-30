@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Calificaciones — SGE{% endblock %}
+
+{% block content %}
+<div class="bienvenida">
+    <h2>Calificaciones</h2>
+    <p>Seleccioná una opción para continuar</p>
+</div>
+
+<section>
+    <div class="roles">
+        <a href="{% url 'profesor_seleccionar' %}" class="card-rol" style="text-decoration:none; color:inherit;">
+            <h3 style="color:#2563eb;">Profesor</h3>
+            <p>Cargar y gestionar calificaciones de tus materias</p>
+        </a>
+        <a href="{% url 'alumno_seleccionar' %}" class="card-rol" style="text-decoration:none; color:inherit; border-top-color:#43a047;">
+            <h3 style="color:#43a047;">Alumno</h3>
+            <p>Consultar tus calificaciones de cada cuatrimestre</p>
+        </a>
+        <a href="{% url 'alumno_seleccionar' %}?destino=boletin" class="card-rol" style="text-decoration:none; color:inherit; border-top-color:#0d47a1;">
+            <h3 style="color:#0d47a1;">Boletín</h3>
+            <p>Ver el boletín con el promedio final de todas tus materias</p>
+        </a>
+    </div>
+</section>
+{% endblock %}

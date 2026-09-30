@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Profesor — Seleccionar materia{% endblock %}
+
+{% block content %}
+<a class="volver" href="{% url 'calificaciones_menu' %}">&larr; Volver</a>
+
+<div class="bienvenida">
+    <h2>Panel del Profesor</h2>
+    <p>Seleccioná una materia para gestionar sus calificaciones</p>
+</div>
+
+<section>
+    <h2>Elegí una materia</h2>
+
+    <div class="materias-grid">
+        {% for materia in materias %}
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <a class="materia-card"
+                   href="{% url 'profesor_ver_alumnos' cuat=1 materia=materia %}">
+                    <h3>{{ materia }}</h3>
+                    <p>1° Cuatrimestre</p>
+                </a>
+                <a class="materia-card" style="border-top-color:#43a047;"
+                   href="{% url 'profesor_ver_alumnos' cuat=2 materia=materia %}">
+                    <h3 style="color:#43a047;">{{ materia }}</h3>
+                    <p>2° Cuatrimestre</p>
+                </a>
+            </div>
+        {% empty %}
+            <div class="materia-card">
+                <h3>Sin materias</h3>
+                <p>No hay alumnos cargados en ninguna materia todavía.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section>
+    <h2>Boletín</h2>
+    <div class="acciones">
+        <a class="boton" href="{% url 'profesor_toggle_boletin' cuat=1 %}"
+           onclick="return confirm('¿Publicar u ocultar boletín del 1° cuatrimestre?')">
+            Boletín 1° Cuatrimestre
+        </a>
+        <a class="boton" href="{% url 'profesor_toggle_boletin' cuat=2 %}"
+           onclick="return confirm('¿Publicar u ocultar boletín del 2° cuatrimestre?')">
+            Boletín 2° Cuatrimestre
+        </a>
+    </div>
+</section>
+{% endblock %}
