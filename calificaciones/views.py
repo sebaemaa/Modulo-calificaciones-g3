@@ -4,11 +4,14 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
+from django.db.models import Q
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 
+from alumnos.models import Alumno
+from docentes.models import Materia
+
 from .models import (
-    AlumnoCalificacion,
     CategoriaEvaluacion,
     NotaEvaluacion,
     BoletinConfig,
@@ -19,25 +22,32 @@ def menu(request):
     return render(request, "calificaciones/menu.html")
 
 
+def _materia_obj(materia):
+    return Materia.objects.filter(nombre=materia).first()
+
+
 def _materias_existentes():
-    return (
-        AlumnoCalificacion.objects.values_list("materia", flat=True)
+    return list(
+        Materia.objects.order_by("nombre")
+        .values_list("nombre", flat=True)
         .distinct()
-        .order_by("materia")
     )
 
 
 def _alumnos_por_materia(materia):
+    m = _materia_obj(materia)
+    if not m:
+        return []
     return list(
-        AlumnoCalificacion.objects.filter(materia=materia)
-        .order_by("nombre")
-        .values("id", "nombre", "curso", "division")
+        m.curso.alumnos.filter(activo=True)
+        .order_by("apellido", "nombre")
+        .values("id", "apellido", "nombre", "dni")
     )
 
 
 def _categorias_por_materia(materia):
     return list(
-        CategoriaEvaluacion.objects.filter(materia_nombre=materia)
+        CategoriaEvaluacion.objects.filter(materia__nombre=materia)
         .order_by("orden", "nombre")
         .values("id", "nombre", "orden")
     )
@@ -45,13 +55,13 @@ def _categorias_por_materia(materia):
 
 def _notas_para_materia(materia, cuat):
     qs = NotaEvaluacion.objects.filter(
-        alumno_calificacion__materia=materia,
+        materia__nombre=materia,
         cuatrimestre=cuat,
-    ).select_related("alumno_calificacion", "categoria")
+    ).select_related("alumno", "categoria")
 
     notas = {}
     for n in qs:
-        key = f"{n.alumno_calificacion_id}_{n.categoria_id}"
+        key = f"{n.alumno_id}_{n.categoria_id}"
         if key not in notas:
             notas[key] = []
         notas[key].append({
@@ -68,9 +78,10 @@ def _redondear(valor, decimales=2):
     return valor.quantize(q, rounding=ROUND_HALF_UP)
 
 
-def _promedio_alumno_cuat(alumno_id, cuat):
+def _promedio_alumno_cuat(alumno_id, materia, cuat):
     notas = NotaEvaluacion.objects.filter(
-        alumno_calificacion_id=alumno_id,
+        alumno_id=alumno_id,
+        materia__nombre=materia,
         cuatrimestre=cuat,
     )
     if not notas.exists():
@@ -84,7 +95,7 @@ def _promedio_materia_cuat(materia, cuat):
     alumnos = _alumnos_por_materia(materia)
     promedios = []
     for a in alumnos:
-        p = _promedio_alumno_cuat(a["id"], cuat)
+        p = _promedio_alumno_cuat(a["id"], materia, cuat)
         if p is not None:
             promedios.append(p)
     if not promedios:
@@ -100,100 +111,15 @@ def _estado(nota):
     return "Aprobado" if nota >= 6 else "Desaprobado"
 
 
-# ─────────────────────────────────────────────
-#  ABM DE ALUMNOS (por materia)
-# ─────────────────────────────────────────────
-
-def profesor_listar_alumnos(request, materia):
-    alumnos = list(
-        AlumnoCalificacion.objects.filter(materia=materia)
-        .order_by("apellido", "nombre")
-        .values("id", "apellido", "nombre", "dni", "curso", "division")
-    )
-    return render(request, "calificaciones/gestionar_alumnos.html", {
-        "materia": materia,
-        "alumnos": alumnos,
-    })
-
-
-def profesor_agregar_alumno(request, materia):
-    if request.method == "POST":
-        nombre = request.POST.get("nombre", "").strip()
-        apellido = request.POST.get("apellido", "").strip()
-        dni = request.POST.get("dni", "").strip()
-        curso = request.POST.get("curso", "").strip()
-        division = request.POST.get("division", "").strip()
-
-        if not nombre:
-            messages.error(request, "El nombre es obligatorio.")
-        elif not apellido:
-            messages.error(request, "El apellido es obligatorio.")
-        elif dni:
-            existe = AlumnoCalificacion.objects.filter(
-                dni__iexact=dni, materia=materia
-            ).exclude(dni="").exists()
-            if existe:
-                messages.error(request, f"Ya existe un alumno con DNI {dni} en {materia}.")
-            else:
-                AlumnoCalificacion.objects.create(
-                    nombre=nombre, apellido=apellido, dni=dni,
-                    curso=curso or "-", division=division or "-", materia=materia,
-                )
-                messages.success(request, f"Alumno {apellido}, {nombre} cargado.")
-        else:
-            AlumnoCalificacion.objects.create(
-                nombre=nombre, apellido=apellido, dni="",
-                curso=curso or "-", division=division or "-", materia=materia,
-            )
-            messages.success(request, f"Alumno {apellido}, {nombre} cargado.")
-
-    return redirect("profesor_listar_alumnos", materia=materia)
-
-
-def profesor_editar_alumno(request, materia, alumno_id):
-    alumno = get_object_or_404(AlumnoCalificacion, id=alumno_id, materia=materia)
-
-    if request.method == "POST":
-        nombre = request.POST.get("nombre", "").strip()
-        apellido = request.POST.get("apellido", "").strip()
-        dni = request.POST.get("dni", "").strip()
-        curso = request.POST.get("curso", "").strip()
-        division = request.POST.get("division", "").strip()
-
-        if not nombre or not apellido:
-            messages.error(request, "Nombre y apellido son obligatorios.")
-        else:
-            if dni:
-                existe = (
-                    AlumnoCalificacion.objects
-                    .filter(dni__iexact=dni, materia=materia)
-                    .exclude(id=alumno.id)
-                    .exclude(dni="")
-                    .exists()
-                )
-                if existe:
-                    messages.error(request, f"Ya existe otro alumno con DNI {dni} en {materia}.")
-                    return redirect("profesor_editar_alumno", materia=materia, alumno_id=alumno.id)
-            alumno.nombre = nombre
-            alumno.apellido = apellido
-            alumno.dni = dni
-            alumno.curso = curso or "-"
-            alumno.division = division or "-"
-            alumno.save()
-            messages.success(request, "Alumno actualizado.")
-            return redirect("profesor_listar_alumnos", materia=materia)
-
-    return render(request, "calificaciones/editar_alumno.html", {
-        "materia": materia,
-        "alumno": alumno,
-    })
-
-
-def profesor_eliminar_alumno(request, materia, alumno_id):
-    alumno = get_object_or_404(AlumnoCalificacion, id=alumno_id, materia=materia)
-    alumno.delete()
-    messages.success(request, "Alumno eliminado.")
-    return redirect("profesor_listar_alumnos", materia=materia)
+def _buscar_alumno_por_nombre(m, texto):
+    if not m:
+        return None
+    qs = m.curso.alumnos.filter(activo=True)
+    alumno = qs.filter(Q(nombre__iexact=texto) | Q(apellido__iexact=texto)).first()
+    if alumno or ", " not in texto:
+        return alumno
+    apellido, _, nombre = texto.partition(", ")
+    return qs.filter(Q(apellido__iexact=apellido.strip()) & Q(nombre__iexact=nombre.strip())).first()
 
 
 # ─────────────────────────────────────────────
@@ -264,15 +190,20 @@ def profesor_guardar_nota(request, cuat, materia):
     if not alumno_id or not cat_id:
         return JsonResponse({"ok": False, "error": "Faltan datos"}, status=400)
 
-    alumno = AlumnoCalificacion.objects.filter(id=alumno_id, materia=materia).first()
-    categoria = CategoriaEvaluacion.objects.filter(id=cat_id, materia_nombre=materia).first()
+    m = _materia_obj(materia)
+    if not m:
+        return JsonResponse({"ok": False, "error": "Materia no encontrada"}, status=404)
+
+    alumno = Alumno.objects.filter(id=alumno_id, curso=m.curso, activo=True).first()
+    categoria = CategoriaEvaluacion.objects.filter(id=cat_id, materia=m).first()
     if not alumno or not categoria:
         return JsonResponse({"ok": False, "error": "Alumno o categoría no encontrados"}, status=404)
 
     if valor == "":
         # celda vacía => borrar nota
         NotaEvaluacion.objects.filter(
-            alumno_calificacion=alumno,
+            alumno=alumno,
+            materia=m,
             categoria=categoria,
             cuatrimestre=cuat,
         ).delete()
@@ -287,14 +218,15 @@ def profesor_guardar_nota(request, cuat, materia):
         return JsonResponse({"ok": False, "error": "La nota debe estar entre 0 y 10"}, status=400)
 
     NotaEvaluacion.objects.update_or_create(
-        alumno_calificacion=alumno,
+        alumno=alumno,
+        materia=m,
         categoria=categoria,
         cuatrimestre=cuat,
         defaults={"valor": valor_dec},
     )
 
     # Recalcular promedio del alumno
-    prom = _promedio_alumno_cuat(alumno_id, cuat)
+    prom = _promedio_alumno_cuat(alumno.id, materia, cuat)
     return JsonResponse({
         "ok": True,
         "promedio": str(prom) if prom is not None else "-",
@@ -318,18 +250,22 @@ def profesor_agregar_categoria(request, cuat, materia):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
 
+    m = _materia_obj(materia)
+    if not m:
+        return redirect("calificaciones_menu")
+
     if request.method == "POST":
         nombre = request.POST.get("nombre", "").strip()
         if nombre:
-            max_orden = (
+            max_orden = list(
                 CategoriaEvaluacion.objects
-                .filter(materia_nombre=materia)
+                .filter(materia=m)
                 .values_list("orden", flat=True)
             )
-            orden = (max(max_orden, default=0)) + 1 if max_orden else 1
+            orden = max(max_orden, default=0) + 1
             CategoriaEvaluacion.objects.create(
                 nombre=nombre,
-                materia_nombre=materia,
+                materia=m,
                 orden=orden,
             )
             messages.success(request, f"Categoría '{nombre}' creada.")
@@ -343,9 +279,11 @@ def profesor_editar_categoria(request, cuat, materia, cat_id):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
 
-    cat = get_object_or_404(
-        CategoriaEvaluacion, id=cat_id, materia_nombre=materia
-    )
+    m = _materia_obj(materia)
+    if not m:
+        return redirect("calificaciones_menu")
+
+    cat = get_object_or_404(CategoriaEvaluacion, id=cat_id, materia=m)
 
     if request.method == "POST":
         nombre = request.POST.get("nombre", "").strip()
@@ -363,9 +301,11 @@ def profesor_eliminar_categoria(request, cuat, materia, cat_id):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
 
-    cat = get_object_or_404(
-        CategoriaEvaluacion, id=cat_id, materia_nombre=materia
-    )
+    m = _materia_obj(materia)
+    if not m:
+        return redirect("calificaciones_menu")
+
+    cat = get_object_or_404(CategoriaEvaluacion, id=cat_id, materia=m)
     cat.delete()
     messages.success(request, "Categoría eliminada.")
     return redirect("profesor_categorias", cuat=cuat, materia=materia)
@@ -385,6 +325,10 @@ def profesor_cargar_notas(request, cuat, materia):
         )
         return redirect("profesor_categorias", cuat=cuat, materia=materia)
 
+    m = _materia_obj(materia)
+    if not m:
+        return redirect("calificaciones_menu")
+
     if request.method == "POST":
         guardadas = 0
         for a in alumnos:
@@ -394,7 +338,8 @@ def profesor_cargar_notas(request, cuat, materia):
 
                 if val == "":
                     NotaEvaluacion.objects.filter(
-                        alumno_calificacion_id=a["id"],
+                        alumno_id=a["id"],
+                        materia=m,
                         categoria_id=cat["id"],
                         cuatrimestre=cuat,
                     ).delete()
@@ -417,7 +362,8 @@ def profesor_cargar_notas(request, cuat, materia):
                     continue
 
                 NotaEvaluacion.objects.update_or_create(
-                    alumno_calificacion_id=a["id"],
+                    alumno_id=a["id"],
+                    materia=m,
                     categoria_id=cat["id"],
                     cuatrimestre=cuat,
                     defaults={"valor": valor},
@@ -464,6 +410,10 @@ def profesor_cargar_excel(request, cuat, materia):
             )
             return redirect("profesor_cargar_excel", cuat=cuat, materia=materia)
 
+        m = _materia_obj(materia)
+        if not m:
+            return redirect("profesor_cargar_excel", cuat=cuat, materia=materia)
+
         archivo = request.FILES["archivo"]
         wb = openpyxl.load_workbook(archivo, read_only=True)
         ws = wb.active
@@ -478,9 +428,7 @@ def profesor_cargar_excel(request, cuat, materia):
             if not row[0]:
                 continue
             nombre_alumno = str(row[0]).strip()
-            alumno = AlumnoCalificacion.objects.filter(
-                nombre__iexact=nombre_alumno, materia=materia
-            ).first()
+            alumno = _buscar_alumno_por_nombre(m, nombre_alumno)
 
             fila = {
                 "nombre": nombre_alumno,
@@ -528,6 +476,10 @@ def profesor_confirmar_excel(request, cuat, materia):
         messages.error(request, "No se encontraron datos del Excel. Volvé a subir el archivo.")
         return redirect("profesor_cargar_excel", cuat=cuat, materia=materia)
 
+    m = _materia_obj(materia)
+    if not m:
+        return redirect("calificaciones_menu")
+
     categorias = _categorias_por_materia(materia)
     cat_map = {c["id"]: c["nombre"] for c in categorias}
 
@@ -535,7 +487,7 @@ def profesor_confirmar_excel(request, cuat, materia):
     for row in rows_datos:
         if not row.get("alumno_id"):
             continue
-        alumno = AlumnoCalificacion.objects.filter(id=row["alumno_id"], materia=materia).first()
+        alumno = Alumno.objects.filter(id=row["alumno_id"]).first()
         if not alumno:
             continue
 
@@ -552,7 +504,8 @@ def profesor_confirmar_excel(request, cuat, materia):
                 continue
 
             NotaEvaluacion.objects.update_or_create(
-                alumno_calificacion=alumno,
+                alumno=alumno,
+                materia=m,
                 categoria_id=cat["id"],
                 cuatrimestre=cuat,
                 defaults={"valor": valor},
@@ -605,7 +558,7 @@ def profesor_descargar_plantilla(request, cuat, materia):
         cell.alignment = Alignment(horizontal="center")
 
     for r, alumno in enumerate(alumnos, start=2):
-        ws.cell(row=r, column=1, value=alumno["nombre"])
+        ws.cell(row=r, column=1, value=f"{alumno['apellido']}, {alumno['nombre']}")
         ws.cell(row=r, column=1).border = thin_border
         for c in range(2, len(categorias) + 2):
             ws.cell(row=r, column=c).border = thin_border
@@ -643,14 +596,10 @@ def profesor_toggle_boletin(request, cuat):
 # ─────────────────────────────────────────────
 
 def alumno_seleccionar(request):
-    nombres = (
-        AlumnoCalificacion.objects.values_list("nombre", flat=True)
-        .distinct()
-        .order_by("nombre")
-    )
+    alumnos = Alumno.objects.filter(activo=True).order_by("apellido", "nombre")
     destino = request.GET.get("destino", "calificaciones")
     return render(request, "calificaciones/alumno_seleccionar.html", {
-        "nombres": nombres,
+        "alumnos": alumnos,
         "destino": destino,
     })
 
@@ -661,21 +610,18 @@ def alumno_ver_calificaciones(request, cuat=None):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
 
-    nombre = request.GET.get("nombre", "").strip()
-    if not nombre:
+    alumno_id = request.GET.get("alumno_id")
+    if not alumno_id:
         return redirect("alumno_seleccionar")
 
-    alumnos = list(
-        AlumnoCalificacion.objects.filter(nombre__iexact=nombre)
-        .order_by("materia")
-        .values("id", "materia")
-    )
+    alumno = get_object_or_404(Alumno, id=alumno_id, activo=True)
 
     materias_data = []
-    for a in alumnos:
-        cats = _categorias_por_materia(a["materia"])
+    for materia in alumno.curso.materias.all().order_by("nombre"):
+        cats = _categorias_por_materia(materia.nombre)
         notas_qs = NotaEvaluacion.objects.filter(
-            alumno_calificacion_id=a["id"],
+            alumno=alumno,
+            materia=materia,
             cuatrimestre=cuat,
         ).select_related("categoria")
 
@@ -702,7 +648,7 @@ def alumno_ver_calificaciones(request, cuat=None):
 
         promedio = _redondear(total / Decimal(count)) if count > 0 else None
         materias_data.append({
-            "materia": a["materia"],
+            "materia": materia.nombre,
             "categorias": cats_data,
             "promedio": promedio,
             "estado": _estado(promedio),
@@ -711,7 +657,7 @@ def alumno_ver_calificaciones(request, cuat=None):
     return render(request, "calificaciones/alumno_calificaciones.html", {
         "cuat": cuat,
         "cuat_display": f"{cuat}° Cuatrimestre",
-        "nombre": nombre,
+        "nombre": f"{alumno.apellido}, {alumno.nombre}",
         "materias": materias_data,
     })
 
@@ -720,9 +666,11 @@ def alumno_ver_boletin(request, cuat=None):
     if cuat and cuat not in (1, 2):
         cuat = None
 
-    nombre = request.GET.get("nombre", "").strip()
-    if not nombre:
+    alumno_id = request.GET.get("alumno_id")
+    if not alumno_id:
         return redirect("alumno_seleccionar")
+
+    alumno = get_object_or_404(Alumno, id=alumno_id, activo=True)
 
     if cuat:
         configs = BoletinConfig.objects.filter(cuatrimestre=cuat, publicado=True)
@@ -736,19 +684,13 @@ def alumno_ver_boletin(request, cuat=None):
     materias_data = []
     for config in configs:
         c = config.cuatrimestre
-        alumnos = list(
-            AlumnoCalificacion.objects.filter(nombre__iexact=nombre)
-            .order_by("materia")
-            .values("id", "materia")
-        )
-
-        for a in alumnos:
-            prom = _promedio_alumno_cuat(a["id"], c)
+        for materia in alumno.curso.materias.all().order_by("nombre"):
+            prom = _promedio_alumno_cuat(alumno.id, materia.nombre, c)
             if prom is not None:
                 materias_data.append({
                     "cuatrimestre": c,
                     "cuat_display": f"{c}° Cuatrimestre",
-                    "materia": a["materia"],
+                    "materia": materia.nombre,
                     "promedio": prom,
                     "estado": _estado(prom),
                 })
@@ -761,7 +703,7 @@ def alumno_ver_boletin(request, cuat=None):
         promedio_general = _redondear(total / Decimal(len(materias_data)))
 
     return render(request, "calificaciones/boletin.html", {
-        "nombre": nombre,
+        "nombre": f"{alumno.apellido}, {alumno.nombre}",
         "materias": materias_data,
         "promedio_general": promedio_general,
         "estado_general": _estado(promedio_general),
