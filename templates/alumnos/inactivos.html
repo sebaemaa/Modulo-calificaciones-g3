@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Alumnos Inactivos - SGE{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'alumnos/css/alumnos.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 alumnos-page">
+  <div class="sge-header">
+    <div class="hdr-left">
+      <div class="hdr-copy">
+        <span class="section-kicker">Módulo 1</span>
+        <h1>Alumnos Inactivos</h1>
+        <p>Listado histórico de bajas lógicas</p>
+      </div>
+    </div>
+    <div class="alumnos-actions">
+      <a href="{% url 'alumnos:index' %}" class="btn-sge-reporte">Volver a Activos</a>
+    </div>
+  </div>
+
+  <div class="sge-card">
+    <div class="sge-card-body">
+      <form method="GET" class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Buscar</label>
+          <input type="text" class="form-control" name="buscar" value="{{ busqueda }}" placeholder="Nombre, apellido, DNI, curso o motivo">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Año</label>
+          <select class="form-select" name="anio" title="Filtrar por año" aria-label="Filtrar por año">
+            <option value="">Todos</option>
+            {% for i in "1234567" %}
+              <option value="{{ i }}" {% if anio_seleccionado == i %}selected{% endif %}>{{ i }}°</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Fecha de baja</label>
+          <input type="date" class="form-control" name="fecha_baja" value="{{ fecha_baja_seleccionada }}" title="Filtrar por fecha de baja" aria-label="Filtrar por fecha de baja" placeholder="YYYY-MM-DD">
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn-primary-custom full-width-submit">Aplicar filtros</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="sge-card">
+    <div class="sge-card-header list-header-row">
+      <div>
+        <div class="card-title-main">Registro de Inactivos</div>
+        <div class="card-title-sub">Ordenado por fecha de baja (más reciente primero).</div>
+      </div>
+      <span class="table-count-pill">{{ alumnos|length }} registros</span>
+    </div>
+    <div class="sge-card-body card-body-compact">
+      <div class="table-responsive">
+        <table class="table table-sge align-middle">
+          <thead>
+            <tr>
+              <th>Apellido</th>
+              <th>Nombre</th>
+              <th>DNI</th>
+              <th>Curso</th>
+              <th>Fecha de baja</th>
+              <th>Motivo de baja</th>
+              <th>Observaciones</th>
+              <th>Estado promoción</th>
+              <th>Motivo no promoción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for alumno in alumnos %}
+              <tr>
+                <td data-label="Apellido">{{ alumno.apellido }}</td>
+                <td data-label="Nombre">{{ alumno.nombre }}</td>
+                <td data-label="DNI">{{ alumno.dni }}</td>
+                <td data-label="Curso">{{ alumno.anio }}° {{ alumno.division }}</td>
+                <td data-label="Fecha de baja">{{ alumno.fecha_baja|date:"Y-m-d"|default:"-" }}</td>
+                <td data-label="Motivo de baja">{{ alumno.motivo_baja|default:"-" }}</td>
+                <td data-label="Observaciones">{{ alumno.observaciones_inactividad|default:"-" }}</td>
+                <td data-label="Estado promoción">{{ alumno.get_estado_promocion_display }}</td>
+                <td data-label="Motivo no promoción">{{ alumno.motivo_no_promocion|default:"-" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="9" class="no-results">No hay alumnos inactivos para este filtro.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ docente }}{% endblock %}
+{% block content %}
+<div class="card mb-4 text-white" style="background: linear-gradient(90deg,#0d47a1,#1976d2);">
+    <div class="card-body">
+        <h1>{{ docente }}</h1>
+        <p class="mb-0">DNI {{ docente.dni }} — {{ docente.contacto|default:"Sin contacto" }}</p>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">Materias que dicta</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead><tr><th>Materia</th><th>Curso</th></tr></thead>
+            <tbody>
+            {% for materia in materias %}
+                <tr><td>{{ materia.nombre }}</td><td>{{ materia.curso }}</td></tr>
+            {% empty %}
+                <tr><td colspan="2">Este docente no tiene materias asignadas.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<a href="{% url 'docentes:index' %}" class="btn btn-secondary mt-3">Volver</a>
+{% endblock %}

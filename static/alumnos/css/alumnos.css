@@ -1,0 +1,2544 @@
+/* Estilos exclusivos del módulo de alumnos. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+body {
+  background: #f0f5fb;
+  font-family: 'Inter', sans-serif;
+} /* Aplica color de fondo a toda la página 
+   y define la fuente principal del texto */
+
+.alumnos-page {
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.sge-header {
+  background: linear-gradient(135deg, #1a3a6b 0%, #2563eb 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+} /* Diseña el encabezado principal con fondo degradado,
+   color de texto, espacio interno y alineación de elementos */
+.hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+} /* Acomoda los elementos del lado izquierdo en fila,
+   centrados y con separación entre ellos */
+
+.hdr-logo-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+} /* Crea el contenedor del logo con tamaño fijo,
+   forma circular y recorta lo que sobresale */
+
+.hdr-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+} /* Ajusta la imagen del logo para que ocupe todo el contenedor
+   y se recorte sin deformarse */
+
+.sge-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+} /* Da estilo al título del encabezado,
+   quitando márgenes y ajustando tamaño y grosor */
+
+.sge-header p {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  opacity: 0.75;
+} /* Da estilo al subtítulo del encabezado,
+   ajustando margen, tamaño y transparencia */
+
+.btn-sge-nuevo,
+.btn-primary-custom {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+} /* Da estilo a los botones de nuevo y principal,
+   definiendo color, tamaño y efecto al pasar el mouse */
+
+.btn-sge-nuevo:hover,
+.btn-primary-custom:hover {
+  background: #1d4ed8;
+} /* Cambia el color del botón al pasar el mouse */
+
+.btn-sge-reporte {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.4);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: all 0.2s;
+} /* Da estilo al botón de reporte con fondo transparente
+   y borde suave para diferenciarlo de los demás */
+
+.btn-sge-reporte:hover {
+  background: rgba(255,255,255,0.25);
+  color: white;
+} /* Cambia el fondo del botón al pasar el mouse
+   manteniendo el color del texto */
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}/*crea una fila de tarjetas o bloques de estadísticas,
+ los acomoda en 3 columnas iguales, les deja separación entre ellos y agrega espacio abajo.*/
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #dbeafe;
+}  /* Define el estilo de una tarjeta del sistema, con fondo blanco, esquinas redondeadas
+   y un borde azul claro. Además, agrega un espacio inferior para separarla de otros
+   elementos y evita que el contenido que exceda sus dimensiones sea visible. */
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+} /* Define el estilo del contenedor del icono, estableciendo un tamaño fijo,
+   esquinas redondeadas y utilizando Flexbox para centrar su contenido.
+   Además, evita que el icono se reduzca cuando el espacio disponible es limitado. */
+
+.stat-icon.total { background: #eff6ff; color: #2563eb; }
+.stat-icon.activo { background: #f0fdf4; color: #16a34a; }
+.stat-icon.inact { background: #fef2f2; color: #dc2626; }
+/* Define colores específicos para los distintos tipos de iconos de estadísticas.
+   Los iconos de total utilizan tonos azules, los activos tonos verdes
+   y los inactivos tonos rojos, facilitando su identificación visual. */
+.stat-num {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1;
+}/* Define el estilo de los números de las estadísticas, utilizando un tamaño de fuente
+   grande, un grosor seminegrita y un color azul oscuro para resaltarlos. Además,
+   ajusta la altura de línea para mejorar la presentación del contenido. */
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}/* Define el estilo de las etiquetas de las estadísticas, utilizando un tamaño de fuente
+   pequeño y un color gris azulado. Además, convierte el texto a mayúsculas,
+   aumenta ligeramente la separación entre las letras y agrega un pequeño espacio
+   superior para mejorar la presentación visual. */
+
+.sge-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}/* Define el estilo de una tarjeta del sistema, con fondo blanco, esquinas redondeadas
+   y un borde azul claro. Además, agrega un espacio inferior para separarla de otros
+   elementos y evita que el contenido que exceda sus dimensiones sea visible. */
+
+.card-soft-transparent {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.card-no-border {
+  border: 0;
+}
+
+.sge-card-header {
+  background: #f8faff;
+  border-bottom: 1px solid #dbeafe;
+  padding: 0.85rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1a3a6b;
+}/* Define el estilo del encabezado de una tarjeta del sistema, utilizando un fondo
+   azul claro y un borde inferior para separarlo del contenido. Además, aplica un
+   tamaño de fuente adecuado, un grosor seminegrita y un color azul oscuro para
+   destacar el título del encabezado. */
+
+.sge-card-body {
+  padding: 1.25rem;
+}/* Define el espacio interno del cuerpo de la tarjeta, dejando un margen de 1.25rem
+   entre el contenido y los bordes para mejorar la organización y la presentación visual. */
+
+.form-grid {
+  --bs-gutter-x: 1rem;
+  --bs-gutter-y: 0.35rem;
+}
+
+.form-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 4px;
+}/* Define el estilo de las etiquetas del formulario, utilizando un tamaño de fuente
+   ligeramente reducido, un grosor medio y un color gris azulado. Además, agrega
+   un pequeño espacio inferior para separar cada etiqueta del campo asociado. */
+
+.form-control,
+.form-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #1e293b;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}/* Define el estilo de los campos de entrada y las listas desplegables del formulario,
+   utilizando un borde gris claro, esquinas redondeadas y un tamaño de fuente adecuado.
+   Además, aplica un color azul oscuro al texto y agrega una transición suave para los
+   cambios en el borde y la sombra durante las interacciones del usuario. */
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}/* Define el estilo de los campos de entrada y listas desplegables cuando reciben el foco.
+   Cambia el color del borde a azul y agrega una sombra suave alrededor del elemento para
+   indicar visualmente que está seleccionado y listo para recibir datos. */
+
+.date-input {
+  -webkit-appearance: auto;
+  appearance: auto;
+} /* Aplica la apariencia predeterminada del navegador al campo de fecha 
+Mantiene la apariencia predeterminada en navegadores basados en WebKit, como Chrome y Safari */
+
+.table {
+  font-size: 0.875rem;
+  width: 100%;
+  table-layout: auto;
+}/* Establece un tamaño de fuente de 0.875rem para el contenido de la tabla y permite que el ancho se adapte al contenido */
+
+.table-responsive {
+  overflow-x: auto;
+}/* Permite desplazar horizontalmente la tabla si el contenido supera el ancho disponible */
+
+.table thead th {
+  background: #1a3a6b;
+  color: white;
+  font-weight: 500;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border: none;
+  padding: 0.85rem 1rem;
+}/* Define el estilo de los encabezados de la tabla, utilizando un fondo azul oscuro
+   y texto blanco para resaltarlos. Además, aplica un tamaño de fuente reducido,
+   convierte el texto a mayúsculas, aumenta ligeramente el espaciado entre letras
+   y añade espacio interno para una mejor presentación visual. */
+
+.table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+}/* Agrega un borde inferior gris muy claro para separar visualmente las filas de la tabla */
+
+.table tbody tr:hover {
+  background: #f8faff;
+}/* Cambia el color de fondo de la fila cuando el cursor se sitúa sobre ella */
+
+.table td, .table th {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+  color: #334155;
+  border: none;
+  white-space: normal;
+  word-break: break-word;
+}/* Define el estilo de las celdas de la tabla, agregando espacio interno para una
+   mejor presentación, centrando verticalmente el contenido y utilizando un color
+   gris azulado oscuro para el texto. Además, elimina los bordes para obtener una
+   apariencia más limpia y uniforme y evita que el contenido se corte. */
+
+.promo-select-cell {
+  min-width: 120px;
+}
+
+.promo-reason-cell {
+  min-width: 290px;
+}
+
+.promo-destino-cell {
+  min-width: 250px;
+}
+
+.promo-destino-wrap {
+  display: grid;
+  gap: 6px;
+}
+
+.promo-destino-wrap .form-select {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.promo-row-selected {
+  background: #ecfdf3 !important;
+  border-left: 4px solid #22c55e;
+}
+
+.promo-row-disabled {
+  background: #f8fafc;
+  opacity: 0.9;
+}
+
+.promo-reason-wrap {
+  display: grid;
+  gap: 6px;
+}
+
+.promo-reason-wrap .form-select,
+.promo-reason-wrap .form-control {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.promo-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+}
+
+.promo-feedback {
+  display: none;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.82rem;
+}
+
+.promo-feedback.is-visible {
+  display: block;
+}
+
+.promo-feedback.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.promo-feedback.is-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+#modalPromocionCurso .modal-dialog {
+  max-width: min(1280px, 96vw);
+}
+
+.promo-modal-body {
+  display: grid;
+  gap: 14px;
+}
+
+.promo-panel {
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.promo-panel-title {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1f3d74;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.promo-panel-title-actions {
+  margin-top: 10px;
+}
+
+.promo-filters-row {
+  row-gap: 0.9rem !important;
+}
+
+.promo-summary-inline {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 42px;
+}
+
+.promo-summary-inline #promocionCursoResumen {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 600;
+}
+
+.promo-bulk-actions .btn {
+  min-width: 190px;
+}
+
+.promo-table-wrap {
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  overflow: auto;
+}
+
+#tablaPromocionCurso thead th {
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+#tablaPromocionCurso td {
+  line-height: 1.35;
+}
+
+#tablaPromocionCurso .promo-dni-cell {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  min-width: 190px;
+  font-family: monospace;
+}
+
+#tablaPromocionCurso .promo-select-cell {
+  text-align: center;
+}
+
+.promo-summary-badges {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.promo-summary-list {
+  max-height: 170px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+@media (max-width: 992px) {
+  .promo-summary-inline {
+    justify-content: flex-start;
+  }
+
+  .promo-bulk-actions .btn {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .promo-panel {
+    padding: 12px;
+  }
+}
+
+.badge-activo {
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #bbf7d0;
+}/* Define el estilo de una insignia que representa un estado activo, utilizando
+   colores verdes para destacarla. Además, establece un tamaño de fuente pequeño,
+   agrega espacio interno y bordes redondeados para darle una apariencia similar
+   a una etiqueta o píldora. */
+
+.badge-inactivo {
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #fecaca;
+}/* Define el estilo de una insignia que representa un estado inactivo, utilizando
+   colores rojos para diferenciarlo visualmente. Además, establece un tamaño de
+   fuente pequeño, agrega espacio interno y aplica bordes redondeados para darle
+   una apariencia similar a una etiqueta o píldora. */
+
+.badge-doc-ok {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+  display: inline-block;
+}
+
+.badge-doc-missing {
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #fdba74;
+  display: inline-block;
+}
+
+.responsable-card-pro {
+  border: 1px solid #dbe7ff;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+}
+
+.responsable-card-header-pro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.responsable-name {
+  font-weight: 700;
+  color: #102a56;
+  letter-spacing: -0.2px;
+}
+
+.responsable-role {
+  font-size: 0.8rem;
+  color: #4a628d;
+}
+
+.responsable-grid-pro {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.responsable-section {
+  background: #f8fbff;
+  border: 1px solid #e2ecff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.responsable-section h6 {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  color: #1f3d74;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+}
+
+.responsable-section-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 991px) {
+  .responsable-grid-pro {
+    grid-template-columns: 1fr;
+  }
+
+  .responsable-section-wide {
+    grid-column: auto;
+  }
+}
+
+.expediente-container {
+  display: grid;
+  gap: 12px;
+}
+
+.expediente-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.expediente-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.expediente-card-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.expediente-card-body {
+  padding: 14px 16px 16px;
+  color: #334155;
+  display: grid;
+  gap: 6px;
+}
+
+.academic-hero {
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+  padding: 16px 18px;
+}
+
+.academic-kicker {
+  display: inline-block;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.academic-toolbar {
+  padding-bottom: 4px;
+}
+
+.academico-container {
+  display: grid;
+  gap: 12px;
+}
+
+.academic-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.academic-summary-card {
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.academic-summary-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.academic-summary-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.academic-section {
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.academic-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f8fbff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.academic-section-title {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.academic-section-body {
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.academic-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.academic-pill-blue {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.academic-pill-green {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.academic-pill-amber {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.academic-list {
+  display: grid;
+  gap: 10px;
+}
+
+.academic-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.academic-row strong {
+  display: block;
+  color: #0f172a;
+}
+
+.academic-row small {
+  color: #64748b;
+}
+
+.academic-empty {
+  color: #64748b;
+  padding: 10px 0;
+}
+
+@media (max-width: 992px) {
+  .academic-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 576px) {
+  .academic-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .academic-row,
+  .academic-section-header,
+  .expediente-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.responsable-no-retiro {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.responsable-no-retiro .sge-card-header {
+  color: #991b1b;
+  background: #fff1f2;
+  border-bottom-color: #fecaca;
+}
+
+.responsable-con-perimetral {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.responsable-con-perimetral .sge-card-header {
+  color: #854d0e;
+  background: #fef3c7;
+  border-bottom-color: #fcd34d;
+}
+
+.badge-perimetral {
+  background: #fef3c7;
+  color: #854d0e;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.badge-perimetral-motivo {
+  background: #fff7cc;
+  color: #7c5200;
+  border: 1px solid #f8cc63;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 8px;
+}
+
+.curso-pill {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+  font-family: monospace;
+} /* Estilo para mostrar etiquetas de cursos con forma redondeada, colores en tonos azules y un diseño compacto y ordenado */
+
+.btn-ver {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}/* Define el estilo del botón de visualización, utilizando un fondo azul claro y
+   texto azul para destacarlo. Además, agrega un borde, espacio interno y esquinas
+   redondeadas para mejorar su apariencia, y cambia el cursor al pasar sobre él
+   para indicar que es un elemento interactivo. */
+
+.btn-editar {
+  background: #fefce8;
+  color: #854d0e;
+  border: 1px solid #fde68a;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}/* Define el estilo del botón de edición, utilizando un fondo amarillo claro y
+   texto marrón oscuro para diferenciarlo visualmente. Además, agrega un borde,
+   espacio interno y esquinas redondeadas para mejorar su apariencia, y cambia
+   el cursor al pasar sobre él para indicar que es un elemento interactivo. */
+
+.btn-baja {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+}/* Define el estilo del botón de baja, utilizando un fondo rojo claro y texto rojo
+   para identificar acciones relacionadas con la desactivación o eliminación.
+   Además, agrega un borde, espacio interno y esquinas redondeadas para mejorar
+   su apariencia, y elimina el subrayado predeterminado si se utiliza como enlace. */
+
+.btn-ver:hover {
+  background: #dbeafe;
+}/* Define un efecto visual para el botón de visualización, cambiando el color de fondo
+   a un tono azul más marcado cuando el usuario pasa el cursor sobre él, indicando que
+   se trata de un elemento interactivo. */
+
+.btn-editar:hover {
+  background: #fef08a;
+}/* Cambia el color de fondo a un amarillo más intenso cuando el cursor se sitúa sobre el botón */
+
+.btn-baja:hover {
+  background: #fee2e2;
+}/* Cambia el color de fondo a un rojo más claro cuando el cursor se sitúa sobre el botón */
+
+.btn-dado-baja {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+}/* Define el estilo del botón que indica que un elemento ya fue dado de baja.
+   Utiliza tonos grises para representar un estado inactivo o deshabilitado,
+   además de agregar un borde, espacio interno y esquinas redondeadas para
+   mantener una apariencia uniforme con los demás botones. */
+
+.modal-header-blue {
+  background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 60%, #3b82f6 100%);
+  color: white;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.16);
+}/* Define el estilo del encabezado de una ventana modal, utilizando un fondo con
+   degradado en tonos azules para darle una apariencia más llamativa. Además,
+   establece el color blanco para el texto, asegurando un buen contraste y
+   una correcta legibilidad. */
+
+.modal-header-docs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modal-docs-eyebrow {
+  font-size: 0.70rem;
+  letter-spacing: 0.28rem;
+  text-transform: uppercase;
+  opacity: 0.86;
+  margin-bottom: 0.2rem;
+  font-weight: 700;
+}
+
+.modal-header-yellow {
+  background: #fefce8;
+  border-bottom: 1px solid #fde68a;
+}/* Define el estilo del encabezado de una ventana modal, utilizando un fondo
+   amarillo claro y un borde inferior del mismo tono para diferenciar visualmente
+   el encabezado del resto del contenido. */
+
+.modal-header-yellow .modal-title {
+  color: #854d0e;
+}/* Establece un color marrón oscuro para el título del encabezado amarillo de la ventana modal */
+
+.alumnos-actions {
+  display: flex;
+  gap: 10px;
+}/* Define la disposición de los elementos de acciones de alumnos mediante Flexbox,
+   colocándolos en una misma fila y agregando un espacio de 10 píxeles entre ellos
+   para mejorar su organización y presentación visual. */
+
+.error-banner {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}/* Define el estilo de una alerta o mensaje de error, utilizando tonos rojos
+   para llamar la atención del usuario. Además, agrega un borde, esquinas
+   redondeadas y espacio interno para mejorar la presentación y facilitar
+   la lectura del mensaje. */
+
+.is-hidden {
+  display: none;
+}/* Define una clase utilizada para ocultar elementos de la interfaz.
+   Al aplicar display: none, el elemento deja de ser visible y no
+   ocupa espacio en la estructura de la página. */
+
+.card-header-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}/* Define la disposición del encabezado de una tarjeta mediante Flexbox,
+   alineando los elementos verticalmente al centro y distribuyéndolos con
+   espacio entre ellos para ubicarlos en extremos opuestos del contenedor. */
+
+.full-width-submit {
+  width: 100%;
+}/* Hace que el elemento ocupe todo el ancho disponible de su contenedor */
+
+.card-body-compact {
+  padding: 0;
+}/* Elimina el espacio interno del cuerpo de la tarjeta para que su contenido ocupe todo el espacio disponible */
+
+.cell-id {
+  color: #94a3b8;
+  font-family: monospace;
+  font-size: 0.8rem;
+}/* Define el estilo de las celdas que contienen identificadores, utilizando
+   un color gris azulado y una fuente monoespaciada para mejorar la alineación
+   y legibilidad de los datos. Además, establece un tamaño de fuente ligeramente
+   reducido para mantener una apariencia ordenada. */
+
+.cell-name {
+  font-weight: 500;
+  color: #1e293b;
+}/* Define el estilo de las celdas que contienen nombres, utilizando un
+   grosor de fuente medio para destacarlos y un color azul oscuro que
+   mejora la legibilidad y mantiene una apariencia uniforme. */
+
+.cell-dni {
+  font-family: monospace;
+  font-size: 0.82rem;
+}/* Define el estilo de las celdas que contienen números de DNI, utilizando
+   una fuente monoespaciada para mantener una presentación uniforme y un
+   tamaño de fuente ligeramente reducido para una mejor organización visual. */
+
+.cell-nowrap {
+  white-space: nowrap;
+}/* Evita que el contenido se divida en varias líneas, manteniéndolo en una sola línea */
+
+.documentacion-cell {
+  min-width: 220px;
+  max-width: 320px;
+}/* Da espacio suficiente a la columna de documentación para mostrar varios nombres sin recortarlos */
+
+.documentacion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}/* Organiza los nombres de los archivos en una columna vertical para que se visualicen completos */
+
+.docs-required-panel {
+  margin-top: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.docs-required-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #1e3a8a;
+  margin-bottom: 0.55rem;
+}
+
+.docs-required-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.docs-required-item,
+.docs-required-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.82rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  background: #f8fafc;
+}
+
+.docs-required-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.docs-required-item.is-complete,
+.docs-required-card.is-complete {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.docs-required-item.is-missing,
+.docs-required-card.is-missing {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.docs-required-status {
+  font-size: 0.73rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #334155;
+}
+
+.docs-required-grid-modal {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.docs-required-card {
+  display: block;
+}
+
+.docs-required-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.35rem;
+}
+
+.docs-required-files {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+}
+
+.docs-extra-files-title {
+  margin-top: 0.65rem;
+  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.btn-docs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+}/* Da estilo al botón que abre la ventana modal con la lista de archivos */
+
+.btn-docs:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.16);
+}/* Resalta el botón al pasar el mouse para que se vea más profesional */
+
+.btn-docs-icon {
+  font-size: 0.9rem;
+}/* Ajusta el tamaño del icono del botón para que se vea equilibrado */
+
+.doc-modal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  margin-bottom: 0.95rem;
+  padding: 0.8rem 0.95rem;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef6ff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.06);
+}/* Estructura la cabecera interna del modal con un buscador limpio y un contador de archivos */
+
+.doc-search-input {
+  max-width: 280px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  padding-left: 0.95rem;
+  background: white;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}/* Limita el ancho del buscador en la ventana modal para que se vea limpio */
+
+@media (max-width: 768px) {
+  .docs-required-grid,
+  .docs-required-grid-modal {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-required-item {
+    padding: 0.6rem;
+  }
+
+  .docs-required-item-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Ajustes finales de composición para la pantalla principal */
+.sge-header {
+  padding: 1.75rem 2rem;
+  border-radius: 18px;
+  gap: 1.5rem;
+  box-shadow: 0 20px 40px rgba(37, 99, 235, 0.18);
+}
+
+.hdr-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.section-kicker {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.26);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hdr-meta {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.82);
+}
+
+.alumnos-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.btn-sge-nuevo,
+.btn-primary-custom,
+.btn-sge-reporte {
+  min-height: 42px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-primary-custom,
+.btn-sge-nuevo {
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.14);
+}
+
+.stat-card,
+.sge-card {
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+}
+
+.sge-card-header {
+  padding: 1rem 1.25rem;
+}
+
+.card-title-main {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.card-title-sub {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.filters-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.filters-grid {
+  padding-top: 0.2rem;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  border: 1px solid #edf2f7;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.form-control-search {
+  min-height: 44px;
+}
+
+.list-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.table-count-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.card-body-compact .table-responsive {
+  padding: 0.35rem 0.35rem 0.7rem;
+}
+
+#nuevoAlumnoTabs,
+#editarTabs,
+#fichaTabs {
+  border-bottom: 1px solid #dbeafe;
+  gap: 0.4rem;
+}
+
+#nuevoAlumnoTabs .nav-link,
+#editarTabs .nav-link,
+#fichaTabs .nav-link {
+  border: 1px solid transparent;
+  border-radius: 10px 10px 0 0;
+  color: #64748b;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  transition: all 0.2s ease;
+}
+
+#nuevoAlumnoTabs .nav-link:hover,
+#editarTabs .nav-link:hover,
+#fichaTabs .nav-link:hover {
+  color: #1d4ed8;
+  background: #f8fbff;
+}
+
+#nuevoAlumnoTabs .nav-link.active,
+#editarTabs .nav-link.active,
+#fichaTabs .nav-link.active {
+  color: #1d4ed8;
+  background: #ffffff;
+  border-color: #dbeafe #dbeafe #ffffff;
+  box-shadow: 0 -1px 0 #ffffff inset;
+}
+
+.tab-content {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border-radius: 0 0 14px 14px;
+}
+
+.filters-grid .form-label {
+  margin-bottom: 6px;
+}
+
+.alumnos-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.alumnos-table tbody td {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+}
+
+.alumnos-table tbody tr {
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.alumnos-table tbody tr:hover {
+  box-shadow: inset 0 0 0 9999px rgba(248, 250, 252, 0.95);
+}
+
+.documentacion-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.documentacion-cell .badge-doc-ok,
+.documentacion-cell .badge-doc-missing {
+  margin-left: 0 !important;
+}
+
+.table-actions > * {
+  min-width: 88px;
+}
+
+.btn-ver,
+.btn-editar,
+.btn-baja,
+.btn-dado-baja {
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+}
+
+.modal-content {
+  border: 0;
+}
+
+.modal-footer {
+  gap: 0.6rem;
+}
+
+.modal-footer .btn,
+.modal-footer .btn-primary-custom {
+  min-width: 120px;
+}
+
+.modal-body-pad .row > [class*="col-"] {
+  margin-bottom: 0.1rem;
+}
+
+.detail-table td:last-child {
+  color: #0f172a;
+}
+
+.detail-row:last-child {
+  border-bottom: 0;
+}
+
+.doc-modal-list {
+  gap: 0.95rem;
+}
+
+.doc-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.btn-quitar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  #nuevoAlumnoTabs .nav-link,
+  #editarTabs .nav-link,
+  #fichaTabs .nav-link {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.84rem;
+  }
+
+  .documentacion-cell {
+    min-width: 180px;
+  }
+
+  .modal-footer .btn,
+  .modal-footer .btn-primary-custom {
+    width: 100%;
+  }
+}
+
+.alumnos-table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.alumnos-table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.alumnos-table tbody tr:nth-child(even) {
+  background: #fbfdff;
+}
+
+.alumnos-table tbody td {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table-actions > * {
+  min-width: 88px;
+  text-align: center;
+}
+
+.btn-ver,
+.btn-editar,
+.btn-baja,
+.btn-dado-baja {
+  padding: 6px 11px;
+  border-radius: 8px;
+}
+
+@media (max-width: 992px) {
+  .sge-header,
+  .list-header-row,
+  .card-header-between {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .alumnos-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .sge-header {
+    padding: 1.25rem;
+  }
+
+  .hdr-left {
+    align-items: flex-start;
+  }
+
+  .hdr-logo-wrap {
+    width: 62px;
+    height: 62px;
+  }
+
+  .alumnos-actions,
+  .table-actions {
+    width: 100%;
+  }
+
+  .btn-sge-nuevo,
+  .btn-sge-reporte,
+  .btn-primary-custom,
+  .btn-ver,
+  .btn-editar,
+  .btn-baja,
+  .btn-dado-baja {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+.doc-modal-count {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+}/* Estila el contador de archivos para que se integre con el diseño del modal */
+
+/* =============================
+   Responsive hardening (mobile/tablet)
+   ============================= */
+
+@media (max-width: 1200px) {
+  #modalVer .modal-dialog,
+  #modalEditar .modal-dialog,
+  #modalPromocionCurso .modal-dialog {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    margin: 0.75rem auto;
+  }
+
+  .filters-grid,
+  .promo-panel,
+  .sge-card-body {
+    padding: 0.95rem;
+  }
+
+  .alumnos-page {
+    width: calc(100vw - 20px);
+    left: 0;
+    transform: none;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 992px) {
+  .hdr-copy h1,
+  .sge-header h1 {
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  .hdr-meta {
+    font-size: 0.8rem;
+  }
+
+  .list-header-row,
+  .filters-header,
+  .card-header-between,
+  .doc-modal-toolbar,
+  .promo-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #nuevoAlumnoTabs,
+  #editarTabs,
+  #fichaTabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 3px;
+  }
+
+  #nuevoAlumnoTabs .nav-item,
+  #editarTabs .nav-item,
+  #fichaTabs .nav-item {
+    flex: 0 0 auto;
+  }
+
+  .table-count-pill {
+    width: fit-content;
+  }
+
+  .modal-body-pad {
+    padding: 0.9rem;
+  }
+
+  .promo-bulk-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .sge-header {
+    padding: 1.05rem;
+    border-radius: 12px;
+    gap: 0.9rem;
+  }
+
+  .hdr-left {
+    width: 100%;
+  }
+
+  .stats-row {
+    gap: 0.65rem;
+  }
+
+  .stat-card {
+    padding: 0.82rem 0.9rem;
+  }
+
+  .stat-num {
+    font-size: 1.25rem;
+  }
+
+  .alumnos-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .btn-sge-nuevo,
+  .btn-sge-reporte,
+  .btn-primary-custom,
+  .btn-ver,
+  .btn-editar,
+  .btn-baja,
+  .btn-dado-baja {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #modalBaja .modal-dialog,
+  #modalExpediente .modal-dialog,
+  #modalObservacionAcademica .modal-dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    margin: 0.5rem auto;
+  }
+
+  .detail-table,
+  .detail-table tbody,
+  .detail-table tr,
+  .detail-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .detail-row {
+    padding: 0.5rem 0;
+  }
+
+  .detail-label,
+  .detail-label-wide {
+    width: 100%;
+    font-weight: 700;
+    color: #475569;
+    padding-bottom: 3px;
+  }
+
+  .detail-table td:last-child {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .alumnos-page {
+    width: calc(100vw - 12px);
+  }
+
+  .hdr-logo-wrap {
+    width: 56px;
+    height: 56px;
+  }
+
+  .sge-header h1 {
+    font-size: 1.15rem;
+  }
+
+  .sge-header p,
+  .section-kicker {
+    font-size: 0.72rem;
+  }
+
+  .sge-card,
+  .stat-card,
+  .modal-rounded {
+    border-radius: 12px;
+  }
+
+  .table-responsive {
+    padding: 0.1rem 0.1rem 0.55rem;
+  }
+
+  .alumnos-table {
+    min-width: 780px;
+  }
+
+  #tablaPromocionCurso .promo-dni-cell {
+    min-width: 160px;
+  }
+
+  .promo-reason-cell {
+    min-width: 230px;
+  }
+
+  .promo-destino-cell {
+    min-width: 190px;
+  }
+}
+
+.doc-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}/* Separa cada bloque de día dentro del modal para una lectura más ordenada */
+
+.doc-day-group {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.8rem 0.95rem;
+  background: linear-gradient(180deg, #fcfdff 0%, #f8fbff 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}/* Crea un bloque visual por día para agrupar documentos */
+
+.doc-day-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #2563eb;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.34px;
+}/* Resalta el día o la etiqueta temporal que agrupa los archivos */
+
+.doc-list-modal {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}/* Organiza los enlaces de archivos en una lista vertical y legible dentro del modal */
+
+.doc-item {
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 0.7rem 0.85rem;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}/* Marca cada documento con una tarjeta simple y limpia */
+
+.doc-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}/* Da un efecto sutil al pasar el mouse sobre los documentos */
+
+.doc-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}/* Distribuye el nombre del archivo y la hora en una fila ordenada */
+
+.doc-item a {
+  display: block;
+  color: #1d4ed8;
+  text-decoration: none;
+  font-size: 0.83rem;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}/* Estila los enlaces para que se vean como tarjetas claras y sean fáciles de abrir */
+
+.doc-item a:hover {
+  text-decoration: underline;
+}/* Mejora la interacción visual al pasar el cursor sobre cada archivo */
+
+.doc-item-time {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
+}/* Muestra la hora de carga en un formato más limpio y menos invasivo */
+
+.no-results {
+  text-align: center;
+  padding: 2rem;
+  color: #94a3b8;
+}/* Define el estilo del mensaje que se muestra cuando no hay resultados.
+   Centra el contenido, agrega un espacio interno amplio para mejorar su
+   presentación y utiliza un color gris azulado para mantener una apariencia
+   discreta y uniforme. */
+
+.modal-rounded {
+  border-radius: 18px;
+  overflow: hidden;
+  border: none;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.2);
+}/* Define una apariencia más estilizada para la ventana modal, aplicando
+   esquinas redondeadas y eliminando el borde predeterminado. Además,
+   oculta cualquier contenido que exceda los límites del contenedor para
+   mantener una presentación limpia y uniforme. */
+
+.modal-body-pad {
+  padding: 1.15rem 1.15rem 1.25rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}/* Agrega un espacio interno amplio al cuerpo del modal para mejorar la separación del contenido */
+
+.detail-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}/* Define el estilo base de una tabla de detalles, haciendo que ocupe todo el
+   ancho del contenedor, ajustando el tamaño de fuente para mejorar la lectura
+   y eliminando los espacios entre bordes de las celdas para un diseño más compacto
+   y uniforme. */
+
+.detail-row {
+  border-bottom: 1px solid #f1f5f9;
+}/* Agrega una línea divisoria gris clara debajo de cada fila para separar visualmente los elementos */
+
+.detail-label {
+  padding: 8px 0;
+  color: #94a3b8;
+}/* Define el estilo de las etiquetas dentro de una vista de detalles,
+   agregando espacio vertical para mejorar la legibilidad y usando un
+   color gris claro para diferenciar las etiquetas del contenido principal. */
+
+.detail-label-wide {
+  width: 42%;
+}/* Establece un ancho específico para las etiquetas dentro de una vista de detalles,
+   permitiendo que ocupen una proporción fija del contenedor y ayudando a alinear
+   correctamente la información en el diseño. */
+
+.detail-id,
+.detail-dni {
+  font-family: monospace;
+}/* Establece una fuente de caracteres de igual ancho en los campos de ID y DNI, 
+logrando que se muestren ordenados y fáciles de leer en la vista de detalles */
+
+.detail-name {
+  font-weight: 500;
+  color: #1e293b;
+}/* Muestra el texto con un grosor medio para resaltarlo 
+sin ser demasiado llamativo. Define un tono gris oscuro para asegurar buena legibilidad */
+
+/* Ajustes de espacio y ancho del módulo */
+.alumnos-page {
+  width: min(1500px, calc(100vw - 40px));
+  max-width: none;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.sge-card-body {
+  padding: 1.35rem;
+}
+
+.form-grid {
+  --bs-gutter-x: 1rem;
+  --bs-gutter-y: 0.55rem;
+}
+
+.table-responsive {
+  padding: 0.2rem 0.25rem 0.75rem;
+}
+
+.alumnos-table {
+  min-width: 1180px;
+}
+
+.alumnos-table thead th,
+.alumnos-table tbody td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.alumnos-table thead th:nth-child(1) { width: 5%; }
+.alumnos-table thead th:nth-child(2) { width: 12%; }
+.alumnos-table thead th:nth-child(3) { width: 14%; }
+.alumnos-table thead th:nth-child(4) { width: 14%; }
+.alumnos-table thead th:nth-child(5) { width: 9%; }
+.alumnos-table thead th:nth-child(6) { width: 19%; }
+.alumnos-table thead th:nth-child(7) { width: 8%; }
+.alumnos-table thead th:nth-child(8) { width: 19%; }
+
+.cell-nowrap {
+  white-space: normal;
+  min-width: 230px;
+}
+
+.documentacion-cell {
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.table-actions {
+  align-items: flex-start;
+}
+
+.table-actions > * {
+  min-width: 84px;
+}
+
+.btn-docs {
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-docs-empty {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  color: #c2410c;
+  border-color: #fdba74;
+  box-shadow: 0 6px 14px rgba(194, 65, 12, 0.1);
+}
+
+.badge-doc-ok {
+  margin-left: 0;
+}
+
+.detail-label-wide {
+  width: 28%;
+}
+
+.detail-table td {
+  vertical-align: top;
+}
+
+#modalVer .modal-dialog {
+  max-width: 1280px;
+}
+
+#modalEditar .modal-dialog {
+  max-width: 1200px;
+}
+
+#modalExpediente .modal-dialog,
+#modalObservacionAcademica .modal-dialog {
+  max-width: 980px;
+}
+
+@media (max-width: 1200px) {
+  .alumnos-page {
+    width: calc(100vw - 28px);
+  }
+
+  .alumnos-table {
+    min-width: 980px;
+  }
+}
+
+@media (max-width: 768px) {
+  .alumnos-page {
+    width: calc(100vw - 18px);
+    left: 0;
+    transform: none;
+    margin: 0 auto;
+  }
+
+  .alumnos-table {
+    min-width: 860px;
+  }
+
+  .detail-label-wide {
+    width: 38%;
+  }
+
+  .documentacion-cell {
+    min-width: 170px;
+    max-width: 220px;
+  }
+}
+
+.modal-footer-top {
+  border-top: 1px solid #f1f5f9;
+}/* Dibuja una línea horizontal fina y de tono gris claro en 
+la parte superior del pie de la ventana modal, para marcar visualmente la separación entre secciones */
+
+.modal-footer-top-yellow {
+  border-top: 1px solid #fde68a;
+} /* Establece una línea horizontal fina de color amarillo pálido en la parte superior del pie de la ventana modal,
+ para marcar visualmente la separación entre el contenido y la zona inferior con un tono que destaca suavemente */
+
+
+.doc-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0; /* para que no baje: mantener al lado del archivo */
+}
+
+.doc-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+
+/* Forzamos el estilo del botón “Quitar” para que se vea incluso si Bootstrap o CSS viejo compite */
+.btn-quitar {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border: 1px solid #fecaca !important;
+  padding: 6px 12px !important;
+  border-radius: 10px !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, transform 0.15s ease !important;
+  white-space: nowrap !important;
+}
+
+
+.btn-quitar-text {
+  line-height: 1;
+}
+
+.btn-quitar:hover {
+  background: #fee2e2;
+  transform: translateY(-1px);
+}
+
+/* Interactivo y compacto para el botón “Quitar” dentro del modal */
+.btn-quitar:active {
+  transform: translateY(0);
+}
+
+/* Mensaje cuando el buscador de archivos no encuentra resultados */
+.doc-no-results {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: 100%;
+  text-align: center;
+}
+
+/* =============================
+   Estética profesional: Tutores
+   ============================= */
+
+#tutoresContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Tarjetas que renderiza JS en “Ver > Tutores” */
+#tutoresContainer .sge-card {
+  border-radius: 14px;
+  border: 1px solid #dbeafe;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 8px 26px rgba(37, 99, 235, 0.06);
+}
+
+#tutoresContainer .sge-card-header {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-bottom: 1px solid #bfdbfe;
+  padding: 0.75rem 1rem;
+  color: #1a3a6b;
+  font-weight: 800;
+}
+
+#tutoresContainer .detail-label {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+/* Contenido de “Certificados” y “Contacto” más legible */
+#tutoresContainer b {
+  color: #1a3a6b;
+}
+
+#tutoresContainer .text-muted {
+  color: #64748b !important;
+}
+
+/* Badges de retiro renderizadas en la ficha */
+#retiroContainer .badge {
+  font-weight: 700;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+}
+
+#retiroContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#retiroContainer .sge-card {
+  border-radius: 14px;
+  border: 1px solid #dbeafe;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 8px 26px rgba(37, 99, 235, 0.06);
+}
+
+#retiroContainer .sge-card-body {
+  padding: 1rem;
+}
+
+@media (max-width: 1200px) {
+  .alumnos-page {
+    width: calc(100vw - 28px);
+  }
+
+  .alumnos-table {
+    min-width: 980px;
+  }
+}
+
+@media (max-width: 992px) {
+  .sge-header,
+  .list-header-row,
+  .card-header-between,
+  .doc-modal-toolbar,
+  .promo-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .alumnos-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .promo-bulk-actions .btn {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .responsable-grid-pro {
+    grid-template-columns: 1fr;
+  }
+
+  .responsable-section-wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .alumnos-page {
+    width: calc(100vw - 18px);
+    left: 0;
+    transform: none;
+    margin: 0 auto;
+  }
+
+  .alumnos-table {
+    min-width: 860px;
+  }
+
+  .cell-nowrap {
+    min-width: 230px;
+  }
+
+  .documentacion-cell {
+    min-width: 170px;
+    max-width: 220px;
+  }
+
+  .detail-label-wide {
+    width: 38%;
+  }
+
+  .promo-select-cell {
+    min-width: 120px;
+  }
+
+  .promo-reason-cell {
+    min-width: 230px;
+  }
+
+  .promo-destino-cell {
+    min-width: 190px;
+  }
+
+  #modalVer .modal-dialog,
+  #modalEditar .modal-dialog,
+  #modalPromocionCurso .modal-dialog,
+  #modalBaja .modal-dialog,
+  #modalExpediente .modal-dialog,
+  #modalObservacionAcademica .modal-dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    margin: 0.5rem auto;
+  }
+
+  .detail-table,
+  .detail-table tbody,
+  .detail-table tr,
+  .detail-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .detail-label,
+  .detail-label-wide {
+    width: 100%;
+    padding-bottom: 3px;
+    font-weight: 700;
+    color: #475569;
+  }
+
+  .academic-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .academic-row,
+  .academic-section-header,
+  .expediente-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .doc-modal-toolbar,
+  .promo-panel-title-actions,
+  .promo-summary-inline {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .doc-search-input {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .alumnos-page {
+    width: calc(100vw - 12px);
+  }
+
+  .sge-header {
+    padding: 1.05rem;
+    border-radius: 12px;
+    gap: 0.9rem;
+  }
+
+  .hdr-logo-wrap {
+    width: 56px;
+    height: 56px;
+  }
+
+  .sge-header h1 {
+    font-size: 1.15rem;
+  }
+
+  .sge-card,
+  .stat-card,
+  .modal-rounded {
+    border-radius: 12px;
+  }
+
+  .table-responsive {
+    padding: 0.1rem 0.1rem 0.55rem;
+  }
+
+  .alumnos-table {
+    min-width: 780px;
+  }
+
+  .promo-dni-cell {
+    min-width: 160px;
+  }
+
+  .promo-reason-cell {
+    min-width: 210px;
+  }
+
+  .promo-destino-cell {
+    min-width: 180px;
+  }
+
+  .btn-sge-nuevo,
+  .btn-sge-reporte,
+  .btn-primary-custom,
+  .btn-ver,
+  .btn-editar,
+  .btn-baja,
+  .btn-dado-baja {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .table-actions {
+    width: 100%;
+  }
+
+  .table-actions > * {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .table-sge {
+    min-width: 920px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-alumnos-table,
+  .table-sge,
+  .rep-table {
+    min-width: 0;
+    border: 0;
+  }
+
+  .main-alumnos-table thead,
+  .table-sge thead,
+  .rep-table thead {
+    display: none;
+  }
+
+  .main-alumnos-table tbody,
+  .table-sge tbody,
+  .rep-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .main-alumnos-table tbody tr,
+  .table-sge tbody tr,
+  .rep-table tbody tr {
+    display: block;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+  }
+
+  .main-alumnos-table tbody td,
+  .table-sge tbody td,
+  .rep-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef2f7;
+    white-space: normal;
+  }
+
+  .main-alumnos-table tbody td::before,
+  .table-sge tbody td::before,
+  .rep-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #475569;
+    flex: 0 0 40%;
+    max-width: 40%;
+  }
+
+  .main-alumnos-table tbody td:last-child,
+  .table-sge tbody td:last-child,
+  .rep-table tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .main-alumnos-table .table-actions,
+  .table-sge .table-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .main-alumnos-table .table-actions > *,
+  .table-sge .table-actions > * {
+    width: 100%;
+  }
+
+  .main-alumnos-table .documentacion-cell {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .main-alumnos-table .documentacion-cell,
+  .table-sge td,
+  .rep-table td {
+    align-items: center;
+  }
+
+  .rep-table-wrap,
+  .table-responsive {
+    overflow-x: visible;
+  }
+
+  #modalPromocionCurso .modal-dialog {
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+    margin: 0.25rem auto;
+  }
+
+  #modalPromocionCurso .modal-body-pad {
+    padding: 0.85rem;
+  }
+
+  #modalPromocionCurso .promo-modal-body,
+  #modalPromocionCurso .promo-panel,
+  #modalPromocionCurso .promo-panel-filters,
+  #modalPromocionCurso .promo-panel-table,
+  #modalPromocionCurso .promo-panel-summary {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .promo-panel {
+    padding: 0.85rem;
+  }
+
+  .promo-filters-row > [class*="col-"] {
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .promo-filters-row {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .promo-summary-inline {
+    width: 100%;
+  }
+
+  .promo-bulk-actions .btn {
+    width: 100%;
+  }
+
+  #tablaPromocionCurso,
+  #tablaPromocionCurso thead,
+  #tablaPromocionCurso tbody,
+  #tablaPromocionCurso tr,
+  #tablaPromocionCurso th,
+  #tablaPromocionCurso td {
+    display: block;
+    width: 100%;
+  }
+
+  #tablaPromocionCurso thead {
+    display: none;
+  }
+
+  #tablaPromocionCurso tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  #tablaPromocionCurso tbody tr {
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+  }
+
+  #tablaPromocionCurso tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef2f7;
+    white-space: normal;
+  }
+
+  #tablaPromocionCurso tbody td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #475569;
+    flex: 0 0 44%;
+    max-width: 44%;
+  }
+
+  #tablaPromocionCurso tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  #tablaPromocionCurso .promo-select-cell,
+  #tablaPromocionCurso .promo-destino-cell,
+  #tablaPromocionCurso .promo-reason-cell {
+    min-width: 0;
+  }
+
+  #tablaPromocionCurso .promo-destino-wrap,
+  #tablaPromocionCurso .promo-reason-wrap {
+    width: 100%;
+  }
+
+  #tablaPromocionCurso .form-check {
+    margin: 0;
+  }
+
+  #tablaPromocionCurso .form-check-label {
+    white-space: nowrap;
+  }
+
+  #tablaPromocionCurso .form-select,
+  #tablaPromocionCurso .form-control {
+    width: 100%;
+  }
+
+  .promo-panel-title,
+  .promo-panel-title-actions,
+  .promo-summary-inline,
+  .promo-bulk-actions,
+  .promo-feedback,
+  .promo-summary-badges,
+  .promo-summary-list {
+    width: 100%;
+  }
+}
+
+
+
+
+
+

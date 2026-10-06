@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'calificaciones', # Módulo 3
     'docentes',    # Módulo 4
     'comunicados', # Módulo 5
+    'cuentas', # compartido (solo el profe)
 ]
 
 MIDDLEWARE = [
@@ -46,6 +47,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'cuentas.context_processors.perfil_usuario',
             ],
         },
     },

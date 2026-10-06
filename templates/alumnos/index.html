@@ -1,22 +1,968 @@
-{% extends "base.html" %}
-
-{% block title %}Gestión de Alumnos — SGE{% endblock %}
-
-{% block content %}
-
-{# ================================================================ #}
-{# MÓDULO 1 — GESTIÓN DE ALUMNOS #}
-{# Grupo responsable: [nombre del grupo]          #}
-{# Editá solo los templates de tu módulo.         #}
-{# No toques base.html ni templates de otros.     #}
-{# ================================================================ #}
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Gestión de Alumnos</h1>
-</div>
-
-<div class="alert alert-info">
-    Este módulo está en construcción. Completá esta vista según tu wireframe.
-</div>
-
+{% extends "base.html" %} 
+{% load static %} <!--carga la etiqueta static para usar archivos estaticos como css y java-->
+<!--Título de la página que se inserta en el title del layout base-->
+{% block title %}Alumnos — SGE{% endblock %}
+<!-- CSS adicional específico de la app de alumnos -->
+{% block extra_css %} 
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="{% static 'alumnos/css/alumnos.css' %}">
 {% endblock %}
+<!--JavaScript adicional para los componentes y la fecha -->
+{% block extra_js %}
+<script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script defer src="{% static 'alumnos/js/alumnos.js' %}"></script>
+<script defer src="{% static 'alumnos/js/alumnos.responsables.js' %}"></script>
+{% endblock %}
+{% block content %}    
+
+<!-- Contenedor principal de la vista de alumnos -->
+<div class="container-fluid py-3 alumnos-page">
+  <!-- Cabecera de la pantalla con logo y acciones -->
+  <div class="sge-header"> <!--Contenedor de la cabecera con estilo personalizado-->
+    <div class="hdr-left"> <!--contenedor con el logo y el titulo-->
+      <div class="hdr-logo-wrap"> <!--contenedor con el logo para darle un fondo y forma circular-->
+        <img src="{% static 'alumnos/logo/logo.png' %}" alt="Logo EESTn3" class="hdr-logo"> <!--logo de la escuela cargado desde archivo estatico-->
+      </div>
+      <div class="hdr-copy">
+        <span class="section-kicker">Módulo 1</span>
+        <h1>Gestión de Alumnos</h1>
+        <p>EESTn3 Víctor Mercante — Hurlingham</p>
+        <div class="hdr-meta">Alta, seguimiento, responsables, legajo e historial académico .</div>
+      </div>
+    </div>
+    <div class="alumnos-actions">
+        <!-- Botón para abrir el formulario de nuevo alumno -->
+      <button type="button" class="btn-sge-nuevo js-open-form">
+        + Nuevo Alumno
+      </button>
+      <a href="{% url 'alumnos:inactivos' %}" class="btn-sge-reporte">Alumnos Inactivos</a>
+       <!-- Enlace al reporte imprimible -->
+      <a href="{% url 'alumnos:reporte' %}" target="_blank" class="btn-sge-reporte"> <!--abre el reporte en una nueva pagina-->
+        Imprimir Reporte
+      </a>
+    </div>
+  </div>
+  <!-- Mensaje de error si la vista envía un error -->
+  {% if warning %}
+    <div class="error-banner" title="{{ warning|escape }}">
+      ⚠️ Guardado con observaciones
+    </div>
+  {% endif %}
+  {% if error %}
+    <div class="error-banner" title="{{ error|escape }}">
+      ⚠️ {{ error }}
+    </div>
+  {% endif %}
+  <!-- Resumen de totales: alumnos totales, activos e inactivos -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon total">👥</div>
+      <div><div class="stat-num">{{ total_alumnos }}</div><div class="stat-label">Total</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon activo">✓</div>
+      <div><div class="stat-num">{{ activos }}</div><div class="stat-label">Activos</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon inact">✗</div>
+      <div><div class="stat-num">{{ inactivos }}</div><div class="stat-label">Inactivos</div></div>
+    </div>
+  </div>
+  <!-- Formulario oculto para crear un alumno nuevo -->
+  <div id="formAlumno" class="sge-card is-hidden">
+    <div class="sge-card-header card-header-between">
+      <div>
+        <div class="card-title-main">Nuevo Alumno</div>
+        <div class="card-title-sub">Completá los datos personales y luego cargá responsables y documentación.</div>
+      </div>
+      <button type="button" class="btn-close js-close-form" title="Cerrar formulario" aria-label="Cerrar formulario"></button>
+    </div>
+    <div class="sge-card-body">
+      <form method="POST" action="{% url 'alumnos:index' %}" enctype="multipart/form-data" id="formNuevoAlumno">
+        {% csrf_token %}
+
+        <ul class="nav nav-tabs" id="nuevoAlumnoTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-nuevo-personal" data-bs-toggle="tab" data-bs-target="#panel-nuevo-personal" type="button" role="tab" aria-controls="panel-nuevo-personal" aria-selected="true">Datos del alumno</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-nuevo-responsables" data-bs-toggle="tab" data-bs-target="#panel-nuevo-responsables" type="button" role="tab" aria-controls="panel-nuevo-responsables" aria-selected="false">Padres / Tutores</button>
+          </li>
+        </ul>
+
+        <div class="tab-content mt-3">
+          <div class="tab-pane fade show active" id="panel-nuevo-personal" role="tabpanel" aria-labelledby="tab-nuevo-personal">
+            <div class="row form-grid">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre</label>
+                <input type="text" name="nombre" class="form-control" placeholder="Nombre" title="Nombre" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Apellido</label>
+                <input type="text" name="apellido" class="form-control" placeholder="Apellido" title="Apellido" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="n-tipo-identificacion">Método de identificación</label>
+                <select name="tipo_identificacion" id="n-tipo-identificacion" class="form-select" title="Método de identificación" aria-label="Método de identificación" required>
+                  <option value="documento">Documento</option>
+                  <option value="cuil_provisorio">CUIL provisorio (extranjero)</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" id="n-ident-label" for="n-ident-numero">Documento</label>
+                <input type="text" name="dni" id="n-ident-numero" class="form-control" placeholder="Número de identificación" title="Número de identificación" inputmode="numeric" autocomplete="off" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Fecha de nacimiento</label>
+                <input type="date" name="fecha_nacimiento" id="n-fecha" class="form-control date-input" placeholder="YYYY-MM-DD" title="Fecha de nacimiento" autocomplete="bday" required>
+                <div class="form-text">Edad: <span id="n-edad">-</span></div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Domicilio/localidad</label>
+                <input type="text" name="domicilio" class="form-control" placeholder="Domicilio o localidad" title="Domicilio o localidad">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Teléfono</label>
+                <input type="text" name="telefono_contacto" class="form-control" placeholder="Teléfono" title="Teléfono">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Año</label>
+                <select name="anio" class="form-select" title="Año" aria-label="Año" required>
+                  <option value="">Seleccionar</option>
+                  {% for i in "1234567" %}<option value="{{ i }}">{{ i }}°</option>{% endfor %}
+                </select>
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">División</label>
+                <select name="division" class="form-select" title="División" aria-label="División" required>
+                  <option value="">Seleccionar</option>
+                  {% for d in "ABCD" %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label">Documentación</label>
+                <div class="docs-required-panel mt-2" id="n-docs-required" aria-live="polite">
+                  <div class="docs-required-title">Documentos requeridos</div>
+                  <div class="docs-required-grid">
+                    <div class="docs-required-item is-missing" data-doc-key="identidad">
+                      <div class="docs-required-item-head">
+                        <span>Documento de identidad / CUIL</span>
+                        <span class="docs-required-status js-doc-required-status">Falta</span>
+                      </div>
+                      <input type="file" id="n-doc-identidad" name="documentacion_identidad" class="form-control form-control-sm js-doc-required-input" data-doc-key="identidad" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Documento de identidad / CUIL">
+                    </div>
+                    <div class="docs-required-item is-missing" data-doc-key="partida">
+                      <div class="docs-required-item-head">
+                        <span>Partida de nacimiento</span>
+                        <span class="docs-required-status js-doc-required-status">Falta</span>
+                      </div>
+                      <input type="file" id="n-doc-partida" name="documentacion_partida" class="form-control form-control-sm js-doc-required-input" data-doc-key="partida" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Partida de nacimiento">
+                    </div>
+                    <div class="docs-required-item is-missing" data-doc-key="vacunas">
+                      <div class="docs-required-item-head">
+                        <span>Certificado de vacunas</span>
+                        <span class="docs-required-status js-doc-required-status">Falta</span>
+                      </div>
+                      <input type="file" id="n-doc-vacunas" name="documentacion_vacunas" class="form-control form-control-sm js-doc-required-input" data-doc-key="vacunas" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Certificado de vacunas">
+                    </div>
+                    <div class="docs-required-item is-missing" data-doc-key="constancia">
+                      <div class="docs-required-item-head">
+                        <span>Constancia / ficha médica</span>
+                        <span class="docs-required-status js-doc-required-status">Falta</span>
+                      </div>
+                      <input type="file" id="n-doc-constancia" name="documentacion_constancia" class="form-control form-control-sm js-doc-required-input" data-doc-key="constancia" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Constancia / ficha médica">
+                    </div>
+                  </div>
+                  <div class="badge-doc-missing mt-2 d-inline-block" id="n-docs-warning">Falta: Documento de identidad / CUIL, Partida de nacimiento, Certificado de vacunas, Constancia / ficha médica</div>
+                </div>
+                <div class="form-text mt-2">Si necesitás, también podés adjuntar archivos extra que no estén en los apartados.</div>
+                <input type="file" name="documentacion" id="n-documentacion-extra" class="form-control mt-1" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Documentación adicional" aria-label="Documentación adicional" multiple>
+              </div>
+              <div class="col-12 mt-2">
+                <button type="submit" class="btn btn-success" id="btnGuardarAlumnoNuevo">Guardar Alumno</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="panel-nuevo-responsables" role="tabpanel" aria-labelledby="tab-nuevo-responsables">
+            <div class="sge-card card-soft-transparent card-no-border">
+              <div class="sge-card-body">
+                <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                  <h5 class="mb-0">Padres / Tutores</h5>
+                  <button type="button" class="btn btn-primary-custom" id="btnAddResponsableNuevo">+ Agregar Responsable</button>
+                </div>
+
+<div id="responsablesNuevoContainer" class="mt-3" aria-label="Responsables del nuevo alumno"></div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Filtros de búsqueda y selección para la lista -->
+  <div class="sge-card">
+    <div class="sge-card-body">
+      <form method="GET">
+        <div class="filters-header">
+          <div>
+            <div class="card-title-main">Buscar y filtrar</div>
+            <div class="card-title-sub">Encontrá alumnos por identificación, curso o división.</div>
+          </div>
+        </div>
+        <div class="row g-3 filters-grid align-items-end form-grid">
+          <div class="col-lg-6">
+            <label class="form-label">Búsqueda rápida</label>
+            <input type="text" name="buscar" value="{{ busqueda }}" class="form-control form-control-search" placeholder="Buscar por nombre, apellido, documento o CUIL">
+          </div>
+          <div class="col-md-3 col-lg-2">
+            <label class="form-label">Año</label>
+            <select id="filtro-anio" name="anio" class="form-select" aria-label="Filtrar por año"> <!--filtro por año con opcion de todos los años y eleccion del usuario-->
+              <option value="">Todos los años</option>
+              {% for i in "1234567" %} 
+              <!--opciones del 1 al 7 con seleccion del usuario--> 
+                <option value="{{ i }}" {% if anio_seleccionado == i %}selected{% endif %}>{{ i }}°</option> <!--marca como seleccionado el ano que se esta filtrado actualmente-->
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 col-lg-2">
+            <label class="form-label">División</label>
+            <select id="filtro-division" name="division" class="form-select" aria-label="Filtrar por división">
+              <option value="">Todas las div.</option>
+              {% for d in "ABCD" %}
+                <option value="{{ d }}" {% if division_seleccionada == d %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6 col-lg-2"> <!--crea una columna de Bootstrap que ocupa 2 de las 12 partes de la fila, y se usa para organizar y distribuir el contenido de forma ordenada en pantallas medianas o grandes -->
+            <button type="submit" class="btn-primary-custom full-width-submit">Aplicar filtros</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="sge-card">
+    <div class="sge-card-header list-header-row">
+      <div>
+        <div class="card-title-main">Listado de Alumnos</div>
+        <div class="card-title-sub">Visualizá estado, documentación y accesos rápidos a cada ficha.</div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if can_manage_promo_baja %}
+        <button type="button" class="btn-primary-custom" id="btnPromocionarCurso">Promocionar Curso</button>
+        {% endif %}
+        <span class="table-count-pill">{{ total_alumnos }} registros</span>
+      </div>
+    </div>
+    <div class="sge-card-body card-body-compact">
+      <div class="table-responsive">
+        <table class="table alumnos-table main-alumnos-table mb-0">
+          <thead>
+            <tr>
+              <th>ID</th><th>Nombre</th><th>Apellido</th><th>Identificación</th><th>Curso</th><th>Documentación</th><th>Estado</th><th>Promoción</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for alumno in alumnos %} <!--itera sobre la lista de alumnos enviado por la vista y muestra cada alumno en una fila de la tabla-->
+            <tr>
+              <td class="cell-id" data-label="ID">{{ alumno.id }}</td>
+              
+              <td class="cell-name" data-label="Nombre">{{ alumno.nombre }}</td>
+              <td data-label="Apellido">{{ alumno.apellido }}</td>
+              <td class="cell-dni" data-label="Identificación">
+                {% if alumno.tipo_identificacion == 'cuil_provisorio' %}
+                  CUIL prov.: {{ alumno.dni }}
+                {% else %}
+                  DNI: {{ alumno.dni }}
+                {% endif %}
+              </td>
+              <td data-label="Curso"><span class="curso-pill">{{ alumno.anio }}° {{ alumno.division }}</span></td>
+              <td class="documentacion-cell" data-label="Documentación">
+                <button
+                  type="button"
+                  class="btn-docs {% if not alumno.documentacion_archivos %}btn-docs-empty{% endif %} {% if not alumno.documentacion_completa %}js-doc-tooltip{% endif %}"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modalArchivos-{{ alumno.id }}"
+                  {% if not alumno.documentacion_completa %}
+                    data-bs-title="Falta: {{ alumno.documentacion_faltante|join:', ' }}"
+                    title="Falta: {{ alumno.documentacion_faltante|join:', ' }}"
+                  {% elif not alumno.documentacion_archivos %}
+                    data-bs-title="No hay documentación cargada"
+                    title="No hay documentación cargada"
+                  {% endif %}
+                >
+                  <span class="btn-docs-icon">📎</span>
+                  Archivos ({{ alumno.documentacion_archivos|length }})
+                </button>
+                {% if alumno.documentacion_archivos and alumno.documentacion_completa %}
+                  <span class="badge-doc-ok">Completa</span>
+                {% endif %}
+              </td>
+              <td data-label="Estado">
+                {% if alumno.activo %}
+                  <span class="badge-activo">Activo</span>
+                {% else %}
+                  <span class="badge-inactivo">Inactivo</span>
+                {% endif %}
+              </td>
+              <td data-label="Promoción">
+                {% if alumno.estado_promocion == 'promocionado' %}
+                  <span class="badge-activo">Promocionado</span>
+                {% else %}
+                  <span class="badge-inactivo">No Promocionado</span>
+                  {% if alumno.motivo_no_promocion %}
+                    <div class="small text-muted mt-1">{{ alumno.motivo_no_promocion }}</div>
+                  {% endif %}
+                {% endif %}
+              </td>
+              <td class="cell-nowrap" data-label="Acciones">
+                <div class="table-actions">
+                  <!-- Botón para abrir modal de visualización con datos en data -->
+                <button type="button" class="btn-ver js-ver-alumno"
+                  data-id="{{ alumno.id }}"
+                  data-nombre="{{ alumno.nombre|escape }}"
+                  data-apellido="{{ alumno.apellido|escape }}"
+                  data-dni="{{ alumno.dni|escape }}"
+                  data-tipo-identificacion="{{ alumno.tipo_identificacion|default:'documento'|escape }}"
+                  data-fecha="{{ alumno.fecha_nacimiento|date:'Y-m-d' }}"
+                  data-domicilio="{{ alumno.domicilio|default:''|escape }}"
+                  data-telefono="{{ alumno.telefono_contacto|default:''|escape }}"
+                  data-anio="{{ alumno.anio }}"
+                  data-division="{{ alumno.division|escape }}"
+                  data-estado="{% if alumno.activo %}Activo{% else %}Inactivo{% endif %}">Ver</button>
+    <!-- Botón para abrir modal de edición con datos en data-* -->
+                <button type="button" class="btn-editar js-editar-alumno"
+                  data-id="{{ alumno.id }}"
+                  data-nombre="{{ alumno.nombre|escape }}"
+                  data-apellido="{{ alumno.apellido|escape }}"
+                  data-dni="{{ alumno.dni|escape }}"
+                  data-tipo-identificacion="{{ alumno.tipo_identificacion|default:'documento'|escape }}"
+                  data-fecha="{{ alumno.fecha_nacimiento|date:'Y-m-d' }}"
+                  data-domicilio="{{ alumno.domicilio|default:''|escape }}"
+                  data-telefono="{{ alumno.telefono_contacto|default:''|escape }}"
+                  data-anio="{{ alumno.anio }}"
+                  data-division="{{ alumno.division|escape }}"
+                  data-documentacion-archivos="{{ alumno.documentacion_archivos|join:'||'|escape }}"
+                  data-documentacion-completa-keys="{% for doc in alumno.documentacion_requerida_estado %}{% if doc.completo %}{{ doc.key }}||{% endif %}{% endfor %}"
+                  data-activo="{{ alumno.activo|yesno:'1,0' }}">Editar</button>
+ <!-- Enlace de baja lógica: cambia activo a falso -->
+                {% if alumno.activo and can_manage_promo_baja %}
+                  <button
+                    type="button"
+                    class="btn-baja js-abrir-baja"
+                    data-id="{{ alumno.id }}"
+                    data-alumno="{{ alumno.apellido|escape }}, {{ alumno.nombre|escape }}"
+                  >Dar de Baja</button>
+                {% elif alumno.activo %}
+                  <span class="btn-dado-baja">Sin permiso</span>
+                {% else %}
+                  <span class="btn-dado-baja">Dado de Baja</span>
+                {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="9" class="no-results">No se encontraron alumnos.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="modal fade" id="modalBaja" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-rounded">
+      <div class="modal-header modal-header-yellow">
+        <h5 class="modal-title">Dar de baja al alumno</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formBaja" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-body modal-body-pad">
+          <p class="mb-2">Alumno: <b id="bajaAlumnoNombre">-</b></p>
+          <div class="mb-3">
+            <label class="form-label">Fecha de baja</label>
+            <input type="text" name="fecha_baja" id="baja-fecha" class="form-control date-input" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Motivo de la baja</label>
+            <textarea name="motivo_baja" class="form-control" rows="3" required></textarea>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Certificado de baja (PDF)</label>
+            <input type="file" name="certificado_baja_file" class="form-control" accept="application/pdf,.pdf" required>
+          </div>
+        </div>
+        <div class="modal-footer modal-footer-top-yellow">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Confirmar baja</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalPromocionCurso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content modal-rounded">
+      <div class="modal-header modal-header-blue">
+        <h5 class="modal-title">Promocionar Curso</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-body-pad promo-modal-body">
+        <div class="promo-panel promo-panel-filters">
+          <div class="promo-panel-title">Configuración del curso</div>
+          <div class="row g-3 align-items-end promo-filters-row">
+            <div class="col-md-3">
+              <label class="form-label">Año</label>
+              <select class="form-select" id="promocion-anio">
+                <option value="">Seleccionar</option>
+                {% for i in "1234567" %}<option value="{{ i }}">{{ i }}°</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">División</label>
+              <select class="form-select" id="promocion-division">
+                <option value="">Seleccionar</option>
+                {% for d in "ABCD" %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <button type="button" class="btn-primary-custom full-width-submit" id="btnCargarPromocionCurso">Cargar alumnos</button>
+            </div>
+            <div class="col-md-3 text-end promo-summary-inline">
+              <span id="promocionCursoResumen" class="text-muted small"></span>
+            </div>
+          </div>
+
+          <div class="promo-panel-title promo-panel-title-actions">Selección masiva</div>
+          <div class="d-flex flex-wrap gap-2 mb-2 promo-bulk-actions">
+            <button type="button" class="btn btn-outline-success btn-sm" id="btnSeleccionarAptosPromocion">Seleccionar todos aptos</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLimpiarSeleccionPromocion">Limpiar selección</button>
+          </div>
+
+          <div id="promocionFeedback" class="promo-feedback" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="promo-panel promo-panel-table">
+          <div class="promo-panel-title">Listado para promoción</div>
+          <div class="text-muted small mb-2">Recomendación: para cada alumno promocionado, mantener la división actual salvo que Dirección defina una nueva.</div>
+          <div class="table-responsive promo-table-wrap">
+            <table class="table alumnos-table mb-0" id="tablaPromocionCurso">
+              <thead>
+                <tr>
+                  <th>Nombre y apellido</th>
+                  <th>DNI</th>
+                  <th>Curso</th>
+                  <th>División</th>
+                  <th>Estado actual</th>
+                  <th>Promocionar</th>
+                  <th>Destino</th>
+                  <th>Motivo no promoción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="8" class="no-results">Seleccioná curso y división para evaluar.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="promo-panel promo-panel-summary sge-card mt-3 mb-0">
+          <div class="sge-card-header">Resumen previo de confirmación</div>
+          <div class="sge-card-body">
+            <div class="d-flex flex-wrap gap-3 align-items-center mb-2 promo-summary-badges">
+              <span class="badge-activo" id="resumenPromocionCount">Promocionados: 0</span>
+              <span class="badge-inactivo" id="resumenNoPromocionCount">No promocionados: 0</span>
+            </div>
+            <div id="resumenNoPromocionListado" class="text-muted small promo-summary-list">Todavía no hay motivos cargados.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer modal-footer-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-primary-custom" id="btnConfirmarPromocionCurso">Confirmar Promoción</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% for alumno in alumnos %}
+<div class="modal fade" id="modalArchivos-{{ alumno.id }}" tabindex="-1" aria-labelledby="modalArchivosLabel-{{ alumno.id }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content modal-rounded">
+      <div class="modal-header modal-header-blue modal-header-docs">
+        <div>
+          <div class="modal-docs-eyebrow">Documentación</div>
+          <h5 class="modal-title" id="modalArchivosLabel-{{ alumno.id }}">{{ alumno.apellido }}, {{ alumno.nombre }}</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar modal" aria-label="Cerrar modal"></button>
+      </div>
+      <div class="modal-body modal-body-pad">
+        {% if alumno.documentacion_archivos %}
+          {% if alumno.documentacion_completa %}
+            <div class="badge-doc-ok mb-3 d-inline-block">Documentación completa</div>
+          {% else %}
+            <div class="badge-doc-missing mb-3 d-inline-block">Falta: {{ alumno.documentacion_faltante|join:", " }}</div>
+          {% endif %}
+          <div class="docs-required-panel mb-3">
+            <div class="docs-required-title">Documentos requeridos</div>
+            <div class="docs-required-grid docs-required-grid-modal">
+              {% for doc in alumno.documentacion_requerida_estado %}
+                <section class="docs-required-card {% if doc.completo %}is-complete{% else %}is-missing{% endif %}">
+                  <div class="docs-required-card-head">
+                    <span>{{ doc.label }}</span>
+                    <span class="docs-required-status">{% if doc.completo %}Completo{% else %}Falta{% endif %}</span>
+                  </div>
+                  {% if doc.archivos %}
+                    <ul class="docs-required-files">
+                      {% for nombre in doc.archivos %}
+                        <li>
+                          <a href="{% url 'alumnos:ver_documento' alumno.id nombre %}" target="_blank" rel="noopener">{{ nombre }}</a>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <div class="text-muted small">Pendiente de carga.</div>
+                  {% endif %}
+                </section>
+              {% endfor %}
+            </div>
+            {% if alumno.documentacion_archivos_sin_categoria %}
+              <div class="docs-extra-files-title">Otros archivos cargados</div>
+              <ul class="docs-required-files mb-0">
+                {% for nombre in alumno.documentacion_archivos_sin_categoria %}
+                  <li>
+                    <a href="{% url 'alumnos:ver_documento' alumno.id nombre %}" target="_blank" rel="noopener">{{ nombre }}</a>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+          <div class="doc-modal-toolbar">
+            <input type="search" class="form-control doc-search-input" placeholder="Buscar archivo" aria-label="Buscar archivos">
+            
+            <span class="doc-modal-count">{{ alumno.documentacion_archivos|length }} archivos</span>
+          </div>
+          <div class="doc-modal-list">
+            {% for grupo in alumno.documentacion_archivos_grupos %}
+              <div class="doc-day-group">
+                <div class="doc-day-label">{{ grupo.fecha_label }}</div>
+                <ul class="doc-list-modal">
+                  {% for archivo in grupo.archivos %}
+                    <li class="doc-item" data-search="{{ archivo.nombre|lower }}">
+                      <div class="doc-item-top">
+                        <a href="{% url 'alumnos:ver_documento' alumno.id archivo.nombre %}" target="_blank" rel="noopener">{{ archivo.nombre }}</a>
+                        <span class="doc-item-time">{{ archivo.hora }}</span>
+                      </div>
+                      <div class="doc-item-actions">
+                        <a class="btn-quitar" href="{% url 'alumnos:quitar_documento' alumno.id archivo.nombre %}" data-confirm="¿Quitar '{{ archivo.nombre }}' de la documentación del alumno?" title="Quitar archivo">
+                          🗑️
+                          <span class="btn-quitar-text">Quitar</span>
+                        </a>
+                      </div>
+
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">No hay archivos cargados para este alumno.</p>
+        {% endif %}
+      </div>
+      <div class="modal-footer modal-footer-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+<!--Modal para ver los datos del alumno seleccionado.-->
+<!--Se abre desde el botón “Ver” en cada fila de la tabla.-->
+<!-- MODAL VER (3 solapas) -->
+<div class="modal fade" id="modalVer" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content modal-rounded">
+      <div class="modal-header modal-header-blue">
+        <h5 class="modal-title">Ficha del Alumno</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body modal-body-pad">
+        <ul class="nav nav-tabs" id="fichaTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-personal" data-bs-toggle="tab" data-bs-target="#panel-personal" type="button" role="tab" aria-controls="panel-personal" aria-selected="true">Información personal</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-tutores" data-bs-toggle="tab" data-bs-target="#panel-tutores" type="button" role="tab" aria-controls="panel-tutores" aria-selected="false">Padres / Tutores</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-retiro" data-bs-toggle="tab" data-bs-target="#panel-retiro" type="button" role="tab" aria-controls="panel-retiro" aria-selected="false">Retiro y autorización</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-expediente" data-bs-toggle="tab" data-bs-target="#panel-expediente" type="button" role="tab" aria-controls="panel-expediente" aria-selected="false">Legajo / Expediente</button>
+          </li>
+        </ul>
+
+        <div class="tab-content mt-3">
+          <!-- Solapa 1 -->
+          <div class="tab-pane fade show active" id="panel-personal" role="tabpanel" aria-labelledby="tab-personal">
+            <table class="detail-table mb-0">
+              <tr class="detail-row"><td class="detail-label detail-label-wide">ID</td><td id="v-id" class="detail-id"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Nombre completo</td><td id="v-nombre" class="detail-name"></td></tr>
+              <tr class="detail-row"><td class="detail-label">DNI</td><td id="v-dni" class="detail-dni"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Método identificación</td><td id="v-tipo-identificacion"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Fecha de nacimiento</td><td id="v-fecha"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Edad</td><td id="v-edad"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Domicilio</td><td id="v-domicilio"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Teléfono</td><td id="v-telefono"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Curso</td><td id="v-curso"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Estado</td><td id="v-estado"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Estado de promoción</td><td id="v-estado-promocion"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Motivo no promoción</td><td id="v-motivo-no-promocion"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Fecha de baja</td><td id="v-fecha-baja"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Motivo baja</td><td id="v-motivo-baja"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Certificado baja</td><td id="v-certificado-baja"></td></tr>
+              <tr class="detail-row"><td class="detail-label">Documentación</td><td id="v-documentacion-estado"></td></tr>
+            </table>
+          </div>
+
+          <!-- Solapa 2 -->
+          <div class="tab-pane fade" id="panel-tutores" role="tabpanel" aria-labelledby="tab-tutores">
+            <div id="tutoresContainer" class="tutores-container">
+              <div class="text-muted">Cargando tutores...</div>
+            </div>
+          </div>
+
+          <!-- Solapa 3 -->
+          <div class="tab-pane fade" id="panel-retiro" role="tabpanel" aria-labelledby="tab-retiro">
+            <div id="retiroContainer" class="retiro-container">
+              <div class="text-muted">Cargando retiro...</div>
+            </div>
+          </div>
+
+          <!-- Solapa 4 -->
+          <div class="tab-pane fade" id="panel-expediente" role="tabpanel" aria-labelledby="tab-expediente">
+            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+              <div>
+                <h6 class="mb-1">Legajo digital</h6>
+                <div class="text-muted">Certificados, analíticos y constancias del estudiante.</div>
+              </div>
+              <button type="button" class="btn btn-primary-custom js-open-expediente" data-alumno-id="">+ Agregar documento</button>
+            </div>
+            <div id="expedienteContainer" class="expediente-container">
+              <div class="text-muted">Cargando expediente...</div>
+            </div>
+            <div class="mt-4">
+              <h6 class="mb-2">Bitácora de cambios</h6>
+              <div id="historialActividadContainer" class="expediente-container">
+                <div class="text-muted">Cargando historial...</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer modal-footer-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para editar los datos del alumno (solapa aparte dentro del modal Ver) -->
+<!-- MODAL EDITAR (se mantiene separado del modalVer) -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content modal-rounded">
+      <div class="modal-header modal-header-yellow">
+        <h5 class="modal-title">Editar Alumno</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" title="Cerrar modal" aria-label="Cerrar modal"></button>
+      </div>
+      <div class="modal-body modal-body-pad">
+        <ul class="nav nav-tabs" id="editarTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-editar-personal" data-bs-toggle="tab" data-bs-target="#panel-editar-personal" type="button" role="tab" aria-controls="panel-editar-personal" aria-selected="true">Datos del alumno</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-editar-contacto" data-bs-toggle="tab" data-bs-target="#panel-editar-contacto" type="button" role="tab" aria-controls="panel-editar-contacto" aria-selected="false">Contacto</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-editar-expediente" data-bs-toggle="tab" data-bs-target="#panel-editar-expediente" type="button" role="tab" aria-controls="panel-editar-expediente" aria-selected="false">Legajo / Expediente</button>
+          </li>
+        </ul>
+
+        <form id="formEditar" method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+        <div class="tab-content mt-3">
+          <div class="tab-pane fade show active" id="panel-editar-personal" role="tabpanel" aria-labelledby="tab-editar-personal">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Nombre</label>
+                  <input type="text" name="nombre" id="e-nombre" class="form-control" placeholder="Nombre" title="Nombre" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Apellido</label>
+                  <input type="text" name="apellido" id="e-apellido" class="form-control" placeholder="Apellido" title="Apellido" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label" for="e-tipo-identificacion">Método de identificación</label>
+                  <select name="tipo_identificacion" id="e-tipo-identificacion" class="form-select" title="Método de identificación" aria-label="Método de identificación" required>
+                    <option value="documento">Documento</option>
+                    <option value="cuil_provisorio">CUIL provisorio (extranjero)</option>
+                  </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label" id="e-ident-label" for="e-dni">Documento</label>
+                  <input type="text" name="dni" id="e-dni" class="form-control" placeholder="Número de identificación" title="Número de identificación" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Fecha de Nacimiento</label>
+                  <input type="text" name="fecha_nacimiento" id="e-fecha" class="form-control date-input" placeholder="YYYY-MM-DD" title="Fecha de nacimiento" required>
+                  <div class="form-text">Edad: <span id="e-edad">-</span></div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Domicilio</label>
+                  <input type="text" name="domicilio" id="e-domicilio" class="form-control" placeholder="Domicilio" title="Domicilio">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Teléfono</label>
+                  <input type="text" name="telefono_contacto" id="e-telefono" class="form-control" placeholder="Teléfono" title="Teléfono">
+                </div>
+
+                <div class="col-md-2 mb-3">
+                  <label class="form-label">Año</label>
+                  <select name="anio" id="e-anio" class="form-select" title="Año" aria-label="Año" required>
+                    <option value="">—</option>
+                    {% for i in "1234567" %}<option value="{{ i }}">{{ i }}°</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                  <label class="form-label">División</label>
+                  <select name="division" id="e-division" class="form-select" title="División" aria-label="División" required>
+                    <option value="">—</option>
+                    {% for d in "ABCD" %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Estado</label>
+                  <select name="activo" id="e-activo" class="form-select" title="Estado" aria-label="Estado">
+                    <option value="1">Activo</option>
+                    <option value="0">Inactivo</option>
+                  </select>
+                </div>
+
+              
+
+                <div class="col-12 mb-3">
+                  <label class="form-label">Documentación</label>
+                  <div class="docs-required-panel mt-2" id="e-docs-required" aria-live="polite">
+                    <div class="docs-required-title">Documentos requeridos</div>
+                    <div class="docs-required-grid">
+                      <div class="docs-required-item is-missing" data-doc-key="identidad">
+                        <div class="docs-required-item-head">
+                          <span>Documento de identidad / CUIL</span>
+                          <span class="docs-required-status js-doc-required-status">Falta</span>
+                        </div>
+                        <input type="file" id="e-doc-identidad" name="documentacion_identidad" class="form-control form-control-sm js-doc-required-input" data-doc-key="identidad" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Documento de identidad / CUIL">
+                      </div>
+                      <div class="docs-required-item is-missing" data-doc-key="partida">
+                        <div class="docs-required-item-head">
+                          <span>Partida de nacimiento</span>
+                          <span class="docs-required-status js-doc-required-status">Falta</span>
+                        </div>
+                        <input type="file" id="e-doc-partida" name="documentacion_partida" class="form-control form-control-sm js-doc-required-input" data-doc-key="partida" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Partida de nacimiento">
+                      </div>
+                      <div class="docs-required-item is-missing" data-doc-key="vacunas">
+                        <div class="docs-required-item-head">
+                          <span>Certificado de vacunas</span>
+                          <span class="docs-required-status js-doc-required-status">Falta</span>
+                        </div>
+                        <input type="file" id="e-doc-vacunas" name="documentacion_vacunas" class="form-control form-control-sm js-doc-required-input" data-doc-key="vacunas" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Certificado de vacunas">
+                      </div>
+                      <div class="docs-required-item is-missing" data-doc-key="constancia">
+                        <div class="docs-required-item-head">
+                          <span>Constancia / ficha médica</span>
+                          <span class="docs-required-status js-doc-required-status">Falta</span>
+                        </div>
+                        <input type="file" id="e-doc-constancia" name="documentacion_constancia" class="form-control form-control-sm js-doc-required-input" data-doc-key="constancia" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Constancia / ficha médica">
+                      </div>
+                    </div>
+                    <div class="badge-doc-missing mt-2 d-inline-block" id="e-docs-warning">Falta: Documento de identidad / CUIL, Partida de nacimiento, Certificado de vacunas, Constancia / ficha médica</div>
+                  </div>
+                  <div class="form-text mt-2">Si necesitás, también podés adjuntar archivos extra que no estén en los apartados.</div>
+                  <input type="file" name="documentacion" id="e-documentacion-extra" class="form-control mt-1" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" title="Documentación adicional" aria-label="Documentación adicional" multiple>
+                </div>
+              </div>
+          </div>
+
+          <div class="tab-pane fade" id="panel-editar-contacto" role="tabpanel" aria-labelledby="tab-editar-contacto">
+
+            <hr class="my-3">
+
+
+              <div class="sge-card card-soft-transparent">
+              <div class="sge-card-header">
+                <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                  <span>Padres / Tutores (editar)</span>
+                  <button type="button" class="btn btn-primary-custom" id="btnAddResponsableEditar">+ Agregar Responsable</button>
+                </div>
+              </div>
+              <div class="sge-card-body">
+                <div id="editarTutoresContacto" class="tutores-edit-container">
+                  <div class="text-muted">Cargando padres/tutores...</div>
+                </div>
+              </div>
+            </div>
+
+
+          </div>
+
+          <div class="tab-pane fade" id="panel-editar-expediente" role="tabpanel" aria-labelledby="tab-editar-expediente">
+            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+              <div>
+                <h6 class="mb-1">Expediente del estudiante</h6>
+                <div class="text-muted">Mantené acá los documentos académicos y personales.</div>
+              </div>
+              <button type="button" class="btn btn-primary-custom js-open-expediente" data-alumno-id="">+ Agregar documento</button>
+            </div>
+            <div id="expedienteEditarContainer" class="expediente-container">
+              <div class="text-muted">Cargando expediente...</div>
+            </div>
+            <div class="mt-4">
+              <h6 class="mb-2">Bitácora de cambios</h6>
+              <div id="historialActividadEditarContainer" class="expediente-container">
+                <div class="text-muted">Cargando historial...</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        </form>
+      </div>
+
+      <div class="modal-footer modal-footer-top-yellow">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" form="formEditar" class="btn-primary-custom">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalExpediente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content modal-rounded">
+      <div class="modal-header modal-header-blue">
+        <h5 class="modal-title" id="expedienteModalTitle">Nuevo documento de expediente</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form id="formExpediente" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="expediente_id" id="expediente-id">
+        <div class="modal-body modal-body-pad">
+          <input type="hidden" name="alumno_id" id="expediente-alumno-id">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Nombre del documento</label>
+              <input type="text" class="form-control" name="expediente_nombre_documento" id="expediente-nombre-documento" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Tipo de documento</label>
+              <select class="form-select" name="expediente_tipo_documento" id="expediente-tipo-documento" required>
+                <option value="certificado_estudios_previos">Certificado de estudios previos</option>
+                <option value="partida_nacimiento">Partida de nacimiento</option>
+                <option value="analitico_calificaciones">Analítico de calificaciones</option>
+                <option value="constancia_titulo">Constancia / certificado de título</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Fecha de emisión</label>
+              <input type="text" class="form-control date-input" name="expediente_fecha_emision" id="expediente-fecha-emision" placeholder="YYYY-MM-DD">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Estado</label>
+              <select class="form-select" name="expediente_estado" id="expediente-estado">
+                <option value="vigente">Vigente</option>
+                <option value="vencido">Vencido</option>
+                <option value="pendiente_actualizacion">Pendiente de actualización</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Archivo adjunto</label>
+              <input type="file" class="form-control" name="expediente_archivo" id="expediente-archivo" accept=".pdf,.png,.jpg,.jpeg,.webp">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Observaciones</label>
+              <textarea class="form-control" name="expediente_observaciones" id="expediente-observaciones" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="form-text mt-3">Podés guardar el documento y después volver a editar sus datos cuando cambie el estado o se actualice el archivo.</div>
+        </div>
+        <div class="modal-footer modal-footer-top">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Guardar documento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalObservacionAcademica" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content modal-rounded">
+      <div class="modal-header modal-header-yellow">
+        <h5 class="modal-title" id="observacionAcademicaModalTitle">Nueva observación académica</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form id="formObservacionAcademica" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="observacion_id" id="observacion-academica-id">
+        <input type="hidden" name="alumno_id" id="observacion-academica-alumno-id">
+        <div class="modal-body modal-body-pad">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Período</label>
+              <select class="form-select" name="observacion_periodo" id="observacion-academica-periodo">
+                <option value="">General</option>
+                <option value="1B">1° Bimestre</option>
+                <option value="2B">2° Bimestre</option>
+                <option value="3B">3° Bimestre</option>
+                <option value="4B">4° Bimestre</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Conducta</label>
+              <select class="form-select" name="observacion_conducta" id="observacion-academica-conducta">
+                <option value="excelente">Excelente</option>
+                <option value="buena">Buena</option>
+                <option value="regular">Regular</option>
+                <option value="a_mejorar">A mejorar</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Observación</label>
+              <textarea class="form-control" name="observacion_texto" id="observacion-academica-texto" rows="4" required></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer modal-footer-top-yellow">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-primary-custom">Guardar observación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %} <!--fin del contenido del bloque-->

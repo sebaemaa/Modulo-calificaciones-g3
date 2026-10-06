@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{% if modo == 'editar' %}Editar Materia{% else %}Nueva Materia{% endif %}{% endblock %}
+{% block content %}
+<h1 class="mb-4">{% if modo == 'editar' %}Editar Materia{% else %}Nueva Materia{% endif %}</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{% url 'docentes:materias_list' %}" class="btn btn-secondary">Volver</a>
+</form>
+{% endblock %}

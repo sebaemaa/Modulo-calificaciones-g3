@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Confirmar baja{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h2>{% if docente.activo %}¿Dar de baja a {{ docente }}?{% else %}¿Reactivar a {{ docente }}?{% endif %}</h2>
+        <p>Esta acción {% if docente.activo %}desactiva{% else %}reactiva{% endif %} al docente. No se borran sus datos ni el historial de materias.</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Confirmar</button>
+            <a href="{% url 'docentes:index' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
