@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Panel Directivo — Comunicados{% endblock %}
+
+{% block content %}
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+.sge-header {
+    background: linear-gradient(135deg, #1a3a6b 0%, #2563eb 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    border-radius: 14px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hdr-left {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+}
+
+.hdr-logo-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.hdr-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sge-header h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+}
+
+.sge-header p {
+    margin: 4px 0 0;
+    font-size: .82rem;
+    opacity: .75;
+}
+
+.info-box {
+    background: #eef4ff;
+    border-left: 6px solid #1a3a6b;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    color: #1a3a6b;
+}
+
+.card-comunicado {
+    background: white;
+    border-left: 6px solid #1a3a6b;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+}
+
+.card-comunicado h3 {
+    color: #1a3a6b;
+    margin-top: 0;
+}
+
+.btn-publicar {
+    background: #1a3a6b;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-publicar:hover {
+    background: #16325c;
+}
+
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    margin-right: 8px;
+    margin-top: 10px;
+    color: white;
+}
+
+.btn-pdf {
+    background: #1a3a6b;
+}
+
+.btn-eliminar {
+    background: #1a3a6b;
+}
+
+.fecha {
+    color: #78909c;
+    font-size: .9rem;
+}
+
+.titulo-seccion {
+    color: #1a3a6b;
+    margin-bottom: 20px;
+}
+</style>
+
+<!-- CABECERA -->
+<div class="sge-header">
+    <div class="hdr-left">
+        <div class="hdr-logo-wrap">
+            <img src="https://tecnica3hurlingham.com/logot3.png"
+                 class="hdr-logo"
+                 alt="Logo EEST N°3">
+        </div>
+
+        <div>
+            <h1>Panel Directivo</h1>
+            <p>Gestión de Comunicados y Notificaciones</p>
+        </div>
+    </div>
+</div>
+
+<!-- CREAR COMUNICADO -->
+<div class="card-comunicado">
+    <h3>Crear comunicado</h3>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button type="submit" class="btn-publicar">
+            Publicar comunicado
+        </button>
+    </form>
+</div>
+
+<h2 class="titulo-seccion">
+    Comunicados publicados
+</h2>
+
+{% for comunicado in comunicados %}
+
+<div class="card-comunicado">
+
+    <h3>{{ comunicado.titulo }}</h3>
+
+    <p>{{ comunicado.contenido }}</p>
+
+    <p>
+        <strong>Destinatario:</strong>
+        {{ comunicado.get_destinatario_display }}
+    </p>
+
+    <div class="fecha">
+        Publicado: {{ comunicado.fecha }}
+    </div>
+
+    {% if comunicado.archivo_pdf %}
+        <a href="{% url 'comunicados:ver_pdf' comunicado.id %}"
+           target="_blank"
+           class="btn btn-pdf">
+            Ver PDF
+        </a>
+    {% endif %}
+
+    <a href="{% url 'comunicados:eliminar' comunicado.id %}"
+       class="btn btn-eliminar"
+       onclick="return confirm('¿Eliminar comunicado para todos?');">
+        Eliminar
+    </a>
+
+</div>
+
+{% empty %}
+
+<div class="info-box">
+    No hay comunicados creados.
+</div>
+
+{% endfor %}
+
+{% endblock %}

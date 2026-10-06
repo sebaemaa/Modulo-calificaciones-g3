@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Docentes{% endblock %}
+{% block content %}
+<div class="card mb-4 text-white" style="background: linear-gradient(90deg,#0d47a1,#1976d2);">
+    <div class="card-body">
+        <h1>Gestión de Docentes</h1>
+        <p class="mb-0">EEST N°3 Victor Mercante — Hurlingham</p>
+    </div>
+</div>
+{% include "docentes/_subnav.html" with activo="docentes" %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><h2>{{ total_docentes }}</h2><small>TOTAL DOCENTES</small></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><h2>{{ docentes_activos }}</h2><small>ACTIVOS</small></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><h2>{{ total_materias }}</h2><small>MATERIAS</small></div></div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        Lista de Docentes
+        <a href="{% url 'docentes:nuevo_docente' %}" class="btn btn-primary btn-sm">+ Nuevo Docente</a>
+    </div>
+    <div class="card-body">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Contacto</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+            <tbody>
+            {% for docente in docentes %}
+                <tr>
+                    <td>{{ docente.apellido }}</td>
+                    <td>{{ docente.nombre }}</td>
+                    <td>{{ docente.dni }}</td>
+                    <td>{{ docente.contacto }}</td>
+                    <td>{% if docente.activo %}<span class="badge bg-success">Activo</span>{% else %}<span class="badge bg-secondary">Inactivo</span>{% endif %}</td>
+                    <td class="text-end">
+                        <a href="{% url 'docentes:detalle_docente' docente.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+                        <a href="{% url 'docentes:editar_docente' docente.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                        <a href="{% url 'docentes:baja_docente' docente.pk %}" class="btn btn-sm btn-outline-danger">{% if docente.activo %}Dar de baja{% else %}Reactivar{% endif %}</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6">No hay docentes cargados.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

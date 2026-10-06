@@ -1,0 +1,161 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingreso al Sistema</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --line: #e2e8f0;
+      --primary: #0f4aa3;
+      --primary-2: #2563eb;
+      --text: #0f172a;
+      --muted: #475569;
+      --danger-bg: #fef2f2;
+      --danger: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Poppins", sans-serif;
+      background: radial-gradient(circle at 20% 10%, #dbeafe 0%, var(--bg) 45%, #e2e8f0 100%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .login-shell {
+      width: min(430px, 100%);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.13);
+      overflow: hidden;
+    }
+
+    .login-head {
+      padding: 24px 24px 14px;
+      text-align: center;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(165deg, #f8fbff, #eef5ff);
+    }
+
+    .logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      object-fit: cover;
+      border: 2px solid #dbeafe;
+      background: #fff;
+    }
+
+    .title {
+      margin: 12px 0 4px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1e3a8a;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    form {
+      padding: 22px 24px 24px;
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #1e293b;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 11px 12px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary-2);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+    }
+
+    .error-box {
+      border: 1px solid #fecaca;
+      background: var(--danger-bg);
+      color: var(--danger);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      margin-bottom: 2px;
+    }
+
+    .submit-btn {
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: #fff;
+      font-weight: 600;
+      padding: 11px 14px;
+      cursor: pointer;
+    }
+
+    .submit-btn:hover {
+      filter: brightness(1.06);
+    }
+  </style>
+</head>
+<body>
+  <main class="login-shell">
+    <header class="login-head">
+      <img src="{% static 'alumnos/logo/logo.png' %}" alt="Logo EESTN3" class="logo">
+      <h1 class="title">Sistema de Gestion Escolar</h1>
+      <p class="subtitle">Ingresar con usuario institucional</p>
+    </header>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next_url|default:''|escape }}">
+
+      {% if form.non_field_errors %}
+        <div class="error-box">{{ form.non_field_errors|striptags }}</div>
+      {% endif %}
+
+      <div>
+        <label for="id_username">Usuario</label>
+        {{ form.username }}
+      </div>
+
+      <div>
+        <label for="id_password">Contraseña</label>
+        {{ form.password }}
+      </div>
+
+      <button type="submit" class="submit-btn">Iniciar sesion</button>
+    </form>
+  </main>
+</body>
+</html>

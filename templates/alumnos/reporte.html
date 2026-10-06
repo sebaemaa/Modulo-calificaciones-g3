@@ -1,0 +1,1042 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reporte de Alumnos — SGE{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'alumnos/css/alumnos.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+  .reporte-wrap {
+    font-family: 'Inter', sans-serif;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.75rem 1rem;
+    background: #ffffff !important;
+  }
+
+  .rep-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(140deg, #f7fbff 0%, #eef6ff 100%);
+  }
+
+  .rep-header h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #1a3a6b;
+    margin: 0;
+  }
+
+  .rep-header p {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 4px 0 0;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .rep-header-right {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #64748b;
+    display: grid;
+    gap: 6px;
+    justify-items: end;
+  }
+
+  .rep-header-right strong {
+    color: #1a3a6b;
+    font-weight: 700;
+  }
+
+  .meta-chip {
+    display: inline-block;
+    border: 1px solid #dbeafe;
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: #ffffff;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .meta-chip.meta-main {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+  }
+
+  .filtro-bar {
+    background: #f8faff;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  }
+
+  .filtro-form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    align-items: end;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .filtro-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .filtro-bar label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #475569;
+    margin: 0;
+  }
+
+  .filtro-bar select {
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+    color: #1e293b;
+    font-family: 'Inter', sans-serif;
+    background: #fff;
+    width: 100%;
+  }
+
+  .btn-filtrar {
+    background: #1a3a6b;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 7px;
+    font-size: 0.82rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    height: 38px;
+    align-self: end;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+    border-left-width: 4px;
+  }
+
+  .stat-item.total { border-left-color: #2563eb; }
+  .stat-item.activos { border-left-color: #16a34a; }
+  .stat-item.inactivos { border-left-color: #dc2626; }
+
+  .stat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .stat-dot.total { background: #2563eb; }
+  .stat-dot.activo { background: #16a34a; }
+  .stat-dot.inact { background: #dc2626; }
+
+  .stat-val {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1;
+  }
+
+  .stat-lbl {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .rep-table-wrap {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .rep-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .rep-table thead tr {
+    background: #1a3a6b;
+    color: white;
+  }
+
+  .rep-table thead th {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    text-align: left;
+  }
+
+  .rep-table tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .rep-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .rep-table tbody tr:nth-child(even) {
+    background: #f8faff;
+  }
+
+  .rep-table td {
+    padding: 0.65rem 1rem;
+    color: #334155;
+    vertical-align: middle;
+  }
+
+  .td-id { font-family: monospace; font-size: 0.78rem; color: #94a3b8; }
+  .td-nombre { font-weight: 500; color: #1e293b; }
+  .td-dni { font-family: monospace; font-size: 0.8rem; color: #64748b; }
+
+  .curso-pill {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-family: monospace;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid #bfdbfe;
+  }
+
+  .est-activo {
+    background: #f0fdf4;
+    color: #166534;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid #bbf7d0;
+  }
+
+  .est-inactivo {
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid #fecaca;
+  }
+
+  .rep-empty-cell {
+    text-align: center;
+    padding: 2rem;
+    color: #94a3b8;
+  }
+
+  .rep-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-family: monospace;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .btn-print {
+    background: #1a3a6b;
+    color: white;
+    border: none;
+    padding: 7px 18px;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+
+  .rep-section {
+    margin-bottom: 1.25rem;
+  }
+
+  .rep-section-title {
+    margin: 0 0 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: #334155;
+  }
+
+  .rep-section-title.activos {
+    color: #166534;
+  }
+
+  .rep-section-title.inactivos {
+    color: #991b1b;
+  }
+
+  @media (max-width: 768px) {
+    .reporte-wrap {
+      padding: 1rem 0.5rem;
+    }
+
+    .rep-header {
+      margin-bottom: 1rem;
+      padding-bottom: 0.8rem;
+    }
+
+    .rep-header,
+    .filtro-bar,
+    .rep-footer {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .rep-header-right strong {
+      font-size: 0.95rem;
+    }
+
+    .rep-header-right {
+      text-align: left;
+      justify-items: start;
+    }
+
+    .stats-row {
+      grid-template-columns: 1fr;
+    }
+
+    .filtro-form {
+      grid-template-columns: 1fr;
+    }
+
+    .filtro-bar form > div {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filtro-bar select,
+    .btn-filtrar,
+    .btn-print {
+      width: 100%;
+    }
+
+    .btn-filtrar {
+      height: 40px;
+    }
+
+    .rep-table-wrap {
+      overflow-x: visible;
+    }
+
+    .rep-table {
+      min-width: 0;
+      border: 0;
+      display: block;
+    }
+
+    .rep-table thead {
+      display: none;
+    }
+
+    .rep-table tbody {
+      display: grid;
+      gap: 12px;
+    }
+
+    .rep-table tbody tr {
+      display: block;
+      border: 1px solid #dbeafe;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    .rep-table tbody td {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border-bottom: 1px solid #eef2f7;
+      white-space: normal;
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+
+    .rep-table tbody td::before {
+      content: attr(data-label);
+      font-weight: 700;
+      color: #475569;
+      flex: 0 0 40%;
+      max-width: 40%;
+    }
+
+    .rep-table tbody td > span,
+    .rep-table tbody td > div,
+    .rep-table tbody td > strong {
+      text-align: right;
+      margin-left: auto;
+    }
+
+    .rep-table tbody td:last-child {
+      border-bottom: 0;
+    }
+
+    .rep-table .curso-pill,
+    .rep-table .est-activo,
+    .rep-table .est-inactivo {
+      white-space: nowrap;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .reporte-wrap {
+      padding: 0.75rem 0.35rem;
+    }
+
+    .rep-header h1 {
+      font-size: 1.25rem;
+    }
+
+    .rep-header p {
+      font-size: 0.73rem;
+    }
+
+    .filtro-bar {
+      padding: 0.85rem;
+    }
+
+    .meta-chip {
+      white-space: normal;
+      width: 100%;
+      text-align: center;
+    }
+
+    .stats-row {
+      gap: 8px;
+    }
+
+    .stat-item {
+      padding: 0.65rem 0.8rem;
+    }
+
+    .stat-val {
+      font-size: 1.1rem;
+    }
+
+    .rep-table tbody tr {
+      border-radius: 12px;
+    }
+
+    .rep-table tbody td {
+      padding: 9px 10px;
+      gap: 8px;
+      font-size: 0.81rem;
+    }
+
+    .rep-table tbody td::before {
+      flex-basis: 44%;
+      max-width: 44%;
+      font-size: 0.74rem;
+    }
+
+    .rep-footer {
+      font-size: 0.7rem;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .rep-footer span {
+      text-align: center;
+    }
+
+  }
+
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+
+    * {
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+
+    .no-print,
+    nav,
+    footer,
+    .btn-print {
+      display: none !important;
+    }
+
+    html,
+    body {
+      background: white !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+    }
+
+    .reporte-wrap {
+      width: 100% !important;
+      max-width: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .rep-header,
+    .filtro-bar,
+    .rep-footer {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 4px !important;
+      margin-bottom: 8px !important;
+      padding: 0 !important;
+      border: 0 !important;
+    }
+
+    body[data-print-mode="activos"] .rep-section.inactivos {
+      display: none !important;
+    }
+
+    body[data-print-mode="inactivos"] .rep-section.activos {
+      display: none !important;
+    }
+
+    body[data-print-mode="activos"] .stat-item.inactivos,
+    body[data-print-mode="inactivos"] .stat-item.activos {
+      display: none !important;
+    }
+
+    .rep-header {
+      border-bottom: 1px solid #1a3a6b !important;
+      padding: 0 0 6px 0 !important;
+      margin-bottom: 6px !important;
+      display: grid !important;
+      grid-template-columns: 1fr auto;
+      align-items: start !important;
+      column-gap: 8px !important;
+      row-gap: 4px !important;
+    }
+
+    .rep-header h1 {
+      font-size: 16px !important;
+      margin-bottom: 0 !important;
+    }
+
+    .rep-header p,
+    .rep-header-right,
+    .filtro-bar,
+    .rep-footer {
+      font-size: 10px !important;
+      line-height: 1.2 !important;
+    }
+
+    .rep-header-right {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 4px !important;
+      text-align: left !important;
+      max-width: 100% !important;
+    }
+
+    .rep-header-right .meta-chip {
+      width: auto !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      border-radius: 999px !important;
+      border: 1px solid #cbd5e1 !important;
+      background: #fff !important;
+      padding: 2px 8px !important;
+      font-size: 9px !important;
+      line-height: 1.2 !important;
+    }
+
+    .rep-header-right .meta-chip.meta-main {
+      border-color: #93c5fd !important;
+      background: #eff6ff !important;
+      font-weight: 700 !important;
+    }
+
+    .stats-row {
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 6px !important;
+      margin-bottom: 8px !important;
+    }
+
+    .stat-item {
+      padding: 6px 8px !important;
+      break-inside: avoid;
+    }
+
+    .stat-val {
+      font-size: 12px !important;
+    }
+
+    .stat-lbl {
+      font-size: 9px !important;
+    }
+
+    .rep-table-wrap {
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 0 !important;
+      overflow: visible !important;
+      margin-bottom: 8px !important;
+      page-break-inside: auto !important;
+    }
+
+    .rep-table {
+      width: 100% !important;
+      table-layout: fixed !important;
+      font-size: 9px !important;
+      display: table !important;
+      border-collapse: collapse !important;
+    }
+
+    .rep-table thead {
+      display: table-header-group !important;
+    }
+
+    .rep-table tbody {
+      display: table-row-group !important;
+    }
+
+    .rep-table tr,
+    .rep-table tbody tr {
+      display: table-row !important;
+    }
+
+    .rep-table th,
+    .rep-table td,
+    .rep-table tbody td {
+      display: table-cell !important;
+      text-align: left !important;
+    }
+
+    html body .rep-table tbody td {
+      display: table-cell !important;
+    }
+
+    .rep-table thead tr {
+      background: #1a3a6b !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .rep-table thead th,
+    .rep-table td {
+      padding: 3px 4px !important;
+      word-break: break-word !important;
+      overflow-wrap: anywhere !important;
+      vertical-align: top !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+
+    .rep-table td::before,
+    .rep-table tbody td::before {
+      content: none !important;
+      display: none !important;
+    }
+
+    html body .rep-table tbody td::before {
+      content: none !important;
+      display: none !important;
+    }
+
+    .rep-table thead th {
+      white-space: nowrap !important;
+    }
+
+    .rep-table tbody tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .rep-table tbody tr:nth-child(even) {
+      background: #f8faff !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .curso-pill,
+    .est-activo,
+    .est-inactivo {
+      padding: 1px 6px !important;
+      font-size: 8px !important;
+      white-space: nowrap;
+    }
+
+    .rep-empty-cell {
+      padding: 12px !important;
+    }
+
+    .rep-section {
+      break-inside: auto;
+      page-break-inside: auto;
+      margin-bottom: 6px !important;
+    }
+
+    .rep-section-title {
+      font-size: 10px !important;
+      margin-bottom: 4px !important;
+    }
+
+    .rep-footer {
+      border-top: 1px solid #cbd5e1 !important;
+      margin-top: 6px !important;
+      padding-top: 4px !important;
+    }
+
+    .col-id,
+    .col-dni,
+    .col-curso,
+    .col-anio-baja,
+    .col-fecha-baja,
+    .col-estado {
+      white-space: nowrap !important;
+    }
+
+    .col-motivo,
+    .col-nombre {
+      white-space: normal !important;
+    }
+
+    .rep-section.activos col.col-a-id { width: 6% !important; }
+    .rep-section.activos col.col-a-nombre { width: 36% !important; }
+    .rep-section.activos col.col-a-dni { width: 18% !important; }
+    .rep-section.activos col.col-a-curso { width: 16% !important; }
+    .rep-section.activos col.col-a-estado { width: 24% !important; }
+
+    .rep-section.inactivos col.col-i-id { width: 5% !important; }
+    .rep-section.inactivos col.col-i-nombre { width: 24% !important; }
+    .rep-section.inactivos col.col-i-dni { width: 12% !important; }
+    .rep-section.inactivos col.col-i-curso { width: 10% !important; }
+    .rep-section.inactivos col.col-i-anio-baja { width: 10% !important; }
+    .rep-section.inactivos col.col-i-fecha-baja { width: 13% !important; }
+    .rep-section.inactivos col.col-i-motivo { width: 26% !important; }
+  }
+
+  /* Fallback: algunos navegadores móviles no aplican bien @media print */
+  body.is-printing .rep-table,
+  body.is-printing .rep-table thead,
+  body.is-printing .rep-table tbody,
+  body.is-printing .rep-table tr,
+  body.is-printing .rep-table th,
+  body.is-printing .rep-table td {
+    display: table !important;
+  }
+
+  body.is-printing .rep-table thead {
+    display: table-header-group !important;
+  }
+
+  body.is-printing .rep-table tbody {
+    display: table-row-group !important;
+  }
+
+  body.is-printing .rep-table tr {
+    display: table-row !important;
+  }
+
+  body.is-printing .rep-table th,
+  body.is-printing .rep-table td {
+    display: table-cell !important;
+    text-align: left !important;
+  }
+
+  body.is-printing .rep-table tbody td::before,
+  body.is-printing .rep-table td::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  body.is-printing .rep-table {
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  body.is-printing .rep-table th,
+  body.is-printing .rep-table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 3px 4px !important;
+    vertical-align: top !important;
+  }
+
+  body.is-printing .rep-header {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: start !important;
+    gap: 6px !important;
+    border-bottom: 1px solid #1a3a6b !important;
+    padding: 0 0 6px 0 !important;
+    margin-bottom: 6px !important;
+    background: transparent !important;
+  }
+
+  body.is-printing .rep-header-right {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 4px !important;
+    text-align: left !important;
+    max-width: 100% !important;
+  }
+
+  body.is-printing .rep-header-right .meta-chip {
+    width: auto !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    border-radius: 999px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #fff !important;
+    padding: 2px 8px !important;
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+  }
+
+  body.is-printing .rep-header-right .meta-chip.meta-main {
+    border-color: #93c5fd !important;
+    background: #eff6ff !important;
+    font-weight: 700 !important;
+  }
+</style>
+
+<script>
+  function imprimirReporte() {
+    const estado = document.getElementById('estado');
+    const mode = estado ? estado.value : 'ambos';
+    const printMode = mode === 'activos' || mode === 'inactivos' ? mode : 'todos';
+    document.body.setAttribute('data-print-mode', printMode);
+    document.body.classList.add('is-printing');
+    window.print();
+  }
+
+  window.addEventListener('afterprint', function () {
+    document.body.setAttribute('data-print-mode', 'todos');
+    document.body.classList.remove('is-printing');
+  });
+</script>
+
+<div class="reporte-wrap">
+  <div class="rep-header no-print">
+    <div>
+      <h1>Reporte de Alumnos</h1>
+      <p>Vista filtrada por curso y division</p>
+    </div>
+    <div class="rep-header-right">
+      <strong class="meta-chip meta-main">{{ anio_seleccionado|default:"Todos" }}{% if division_seleccionada %}° {{ division_seleccionada }}{% endif %}</strong>
+      <span class="meta-chip">Estado: {% if estado_seleccionado == "activos" %}Activos{% elif estado_seleccionado == "inactivos" %}Inactivos{% else %}Ambos{% endif %}</span>
+      <span class="meta-chip">Generado el {% now "d/m/Y H:i" %}</span>
+    </div>
+  </div>
+
+  <div class="filtro-bar no-print">
+    <form method="get" class="filtro-form">
+      <div class="filtro-group">
+        <label for="anio">Año</label>
+        <select id="anio" name="anio">
+          <option value="" {% if not anio_seleccionado %}selected{% endif %}>Todos</option>
+          {% for opcion in "1234567" %}
+            <option value="{{ opcion }}" {% if anio_seleccionado == opcion %}selected{% endif %}>{{ opcion }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filtro-group">
+        <label for="division">División</label>
+        <select id="division" name="division">
+          <option value="" {% if not division_seleccionada %}selected{% endif %}>Todas</option>
+          {% for opcion in "ABCD" %}
+            <option value="{{ opcion }}" {% if division_seleccionada == opcion %}selected{% endif %}>{{ opcion }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filtro-group">
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado">
+          <option value="ambos" {% if estado_seleccionado == "ambos" %}selected{% endif %}>Ambos</option>
+          <option value="activos" {% if estado_seleccionado == "activos" %}selected{% endif %}>Activos</option>
+          <option value="inactivos" {% if estado_seleccionado == "inactivos" %}selected{% endif %}>Inactivos</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-filtrar">Filtrar</button>
+    </form>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-item total">
+      <div class="stat-dot total"></div>
+      <div>
+        <div class="stat-val">{{ total }}</div>
+        <div class="stat-lbl">Total</div>
+      </div>
+    </div>
+    <div class="stat-item activos">
+      <div class="stat-dot activo"></div>
+      <div>
+        <div class="stat-val">{{ activos }}</div>
+        <div class="stat-lbl">Activos</div>
+      </div>
+    </div>
+    <div class="stat-item inactivos">
+      <div class="stat-dot inact"></div>
+      <div>
+        <div class="stat-val">{{ inactivos }}</div>
+        <div class="stat-lbl">Inactivos</div>
+      </div>
+    </div>
+  </div>
+
+  {% if estado_seleccionado != "inactivos" %}
+  <section class="rep-section activos">
+    <h2 class="rep-section-title activos">Alumnos activos</h2>
+    <div class="rep-table-wrap">
+      <table class="rep-table">
+        <colgroup>
+          <col class="col-id col-a-id" />
+          <col class="col-nombre col-a-nombre" />
+          <col class="col-dni col-a-dni" />
+          <col class="col-curso col-a-curso" />
+          <col class="col-estado col-a-estado" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Apellido y Nombre</th>
+            <th>DNI</th>
+            <th>Curso</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alumno in activos_lista %}
+          <tr>
+            <td class="td-id" data-label="#">{{ alumno.id }}</td>
+            <td class="td-nombre" data-label="Apellido y Nombre">{{ alumno.apellido }}, {{ alumno.nombre }}</td>
+            <td class="td-dni" data-label="DNI">{{ alumno.dni }}</td>
+            <td data-label="Curso"><span class="curso-pill">{{ alumno.anio }}° {{ alumno.division }}</span></td>
+            <td data-label="Estado"><span class="est-activo">Activo</span></td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="rep-empty-cell" data-label="Resultado">
+              No hay alumnos activos para este filtro.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if estado_seleccionado != "activos" %}
+  <section class="rep-section inactivos">
+    <h2 class="rep-section-title inactivos">Alumnos inactivos</h2>
+    <div class="rep-table-wrap">
+      <table class="rep-table">
+        <colgroup>
+          <col class="col-id col-i-id" />
+          <col class="col-nombre col-i-nombre" />
+          <col class="col-dni col-i-dni" />
+          <col class="col-curso col-i-curso" />
+          <col class="col-anio-baja col-i-anio-baja" />
+          <col class="col-fecha-baja col-i-fecha-baja" />
+          <col class="col-motivo col-i-motivo" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Apellido y Nombre</th>
+            <th>DNI</th>
+            <th>Curso</th>
+            <th>Año de baja</th>
+            <th>Fecha de baja</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alumno in inactivos_lista %}
+          <tr>
+            <td class="td-id" data-label="#">{{ alumno.id }}</td>
+            <td class="td-nombre" data-label="Apellido y Nombre">{{ alumno.apellido }}, {{ alumno.nombre }}</td>
+            <td class="td-dni" data-label="DNI">{{ alumno.dni }}</td>
+            <td data-label="Curso"><span class="curso-pill">{{ alumno.anio }}° {{ alumno.division }}</span></td>
+            <td data-label="Año de baja">
+              {% if alumno.fecha_baja %}
+                {{ alumno.fecha_baja|date:"Y" }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td data-label="Fecha de baja">
+              {% if alumno.fecha_baja %}
+                {{ alumno.fecha_baja|date:"d/m/Y" }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td data-label="Motivo">{{ alumno.motivo_baja|default:"-" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="rep-empty-cell" data-label="Resultado">
+              No hay alumnos inactivos para este filtro.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="rep-footer no-print">
+    <span>SGE © {% now "Y" %}</span>
+    <button class="btn-print no-print" onclick="imprimirReporte()">Imprimir / Guardar PDF</button>
+    <span>{{ total }} registro{{ total|pluralize }}</span>
+  </div>
+</div>
+
+{% endblock %}

@@ -17,3 +17,9 @@ __pycache__/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Archivos subidos por usuarios (no van al repo)
+alumnos/documentacion/
+alumnos/bajas/
+alumnos/responsables_certificados/
+media/

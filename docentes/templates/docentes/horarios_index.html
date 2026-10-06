@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Horarios{% endblock %}
+{% block content %}
+<div class="card mb-4 text-white" style="background: linear-gradient(90deg,#0d47a1,#1976d2);">
+    <div class="card-body">
+        <h1>Horarios</h1>
+        <p class="mb-0">EEST N°3 Victor Mercante — Hurlingham</p>
+    </div>
+</div>
+{% include "docentes/_subnav.html" with activo="horarios" %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        Elegí un curso para ver su horario semanal
+        <a href="{% url 'docentes:nuevo_horario' %}" class="btn btn-primary btn-sm">+ Cargar bloque horario</a>
+    </div>
+    <div class="card-body">
+        <div class="list-group">
+        {% for curso in cursos %}
+            <a href="{% url 'docentes:horario_curso' curso.pk %}" class="list-group-item list-group-item-action">{{ curso }}</a>
+        {% empty %}
+            <p class="text-muted mb-0">No hay cursos cargados todavía.</p>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
