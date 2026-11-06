@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from alumnos.models import Alumno
+from cuentas.decoradores import rol_requerido
 from docentes.models import Materia
 
 from .models import (
@@ -18,6 +19,7 @@ from .models import (
 )
 
 
+@rol_requerido('alumno', 'docente', 'administrativo')
 def menu(request):
     return render(request, "calificaciones/menu.html")
 
@@ -126,6 +128,7 @@ def _buscar_alumno_por_nombre(m, texto):
 #  PROFESOR
 # ─────────────────────────────────────────────
 
+@rol_requerido('docente')
 def profesor_seleccionar_materia(request):
     materias = _materias_existentes()
     return render(request, "calificaciones/profesor_materias.html", {
@@ -133,6 +136,7 @@ def profesor_seleccionar_materia(request):
     })
 
 
+@rol_requerido('docente', 'administrativo')
 @ensure_csrf_cookie
 def profesor_ver_alumnos(request, cuat, materia):
     if cuat not in (1, 2):
@@ -175,6 +179,7 @@ def profesor_ver_alumnos(request, cuat, materia):
     })
 
 
+@rol_requerido('docente')
 def profesor_guardar_nota(request, cuat, materia):
     """Endpoint AJAX: guarda la nota de una celda en particular."""
     if cuat not in (1, 2):
@@ -234,6 +239,7 @@ def profesor_guardar_nota(request, cuat, materia):
     })
 
 
+@rol_requerido('docente')
 def profesor_categorias(request, cuat, materia):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -246,6 +252,7 @@ def profesor_categorias(request, cuat, materia):
     })
 
 
+@rol_requerido('docente')
 def profesor_agregar_categoria(request, cuat, materia):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -275,6 +282,7 @@ def profesor_agregar_categoria(request, cuat, materia):
     return redirect("profesor_categorias", cuat=cuat, materia=materia)
 
 
+@rol_requerido('docente')
 def profesor_editar_categoria(request, cuat, materia, cat_id):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -297,6 +305,7 @@ def profesor_editar_categoria(request, cuat, materia, cat_id):
     return redirect("profesor_categorias", cuat=cuat, materia=materia)
 
 
+@rol_requerido('docente')
 def profesor_eliminar_categoria(request, cuat, materia, cat_id):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -311,6 +320,7 @@ def profesor_eliminar_categoria(request, cuat, materia, cat_id):
     return redirect("profesor_categorias", cuat=cuat, materia=materia)
 
 
+@rol_requerido('docente')
 def profesor_cargar_notas(request, cuat, materia):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -396,6 +406,7 @@ def profesor_cargar_notas(request, cuat, materia):
     })
 
 
+@rol_requerido('docente')
 def profesor_cargar_excel(request, cuat, materia):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -467,6 +478,7 @@ def profesor_cargar_excel(request, cuat, materia):
     })
 
 
+@rol_requerido('docente')
 def profesor_confirmar_excel(request, cuat, materia):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -517,6 +529,7 @@ def profesor_confirmar_excel(request, cuat, materia):
     return redirect("profesor_ver_alumnos", cuat=cuat, materia=materia)
 
 
+@rol_requerido('docente')
 def profesor_descargar_plantilla(request, cuat, materia):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
@@ -574,6 +587,7 @@ def profesor_descargar_plantilla(request, cuat, materia):
     return response
 
 
+@rol_requerido('docente')
 def profesor_toggle_boletin(request, cuat):
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
