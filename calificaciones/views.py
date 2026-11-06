@@ -124,6 +124,18 @@ def _buscar_alumno_por_nombre(m, texto):
     return qs.filter(Q(apellido__iexact=apellido.strip()) & Q(nombre__iexact=nombre.strip())).first()
 
 
+def _alumno_a_mostrar(request):
+    """Si entra un alumno, devuelve SU ficha e ignora ?alumno_id=.
+    Si entra otro rol, usa ?alumno_id= como hasta ahora (o None)."""
+    perfil = getattr(request.user, "perfil", None)
+    if perfil is not None and perfil.rol == "alumno":
+        return perfil.alumno
+    alumno_id = request.GET.get("alumno_id")
+    if not alumno_id:
+        return None
+    return get_object_or_404(Alumno, id=alumno_id, activo=True)
+
+
 # ─────────────────────────────────────────────
 #  PROFESOR
 # ─────────────────────────────────────────────
@@ -609,6 +621,7 @@ def profesor_toggle_boletin(request, cuat):
 #  ALUMNO
 # ─────────────────────────────────────────────
 
+@rol_requerido('docente', 'administrativo')
 def alumno_seleccionar(request):
     alumnos = Alumno.objects.filter(activo=True).order_by("apellido", "nombre")
     destino = request.GET.get("destino", "calificaciones")
@@ -618,17 +631,16 @@ def alumno_seleccionar(request):
     })
 
 
+@rol_requerido('alumno', 'docente', 'administrativo')
 def alumno_ver_calificaciones(request, cuat=None):
     if cuat is None:
         cuat = int(request.GET.get("cuat", 1))
     if cuat not in (1, 2):
         return redirect("calificaciones_menu")
 
-    alumno_id = request.GET.get("alumno_id")
-    if not alumno_id:
+    alumno = _alumno_a_mostrar(request)
+    if alumno is None:
         return redirect("alumno_seleccionar")
-
-    alumno = get_object_or_404(Alumno, id=alumno_id, activo=True)
 
     materias_data = []
     for materia in alumno.curso.materias.all().order_by("nombre"):
@@ -676,15 +688,14 @@ def alumno_ver_calificaciones(request, cuat=None):
     })
 
 
+@rol_requerido('alumno', 'docente', 'administrativo')
 def alumno_ver_boletin(request, cuat=None):
     if cuat and cuat not in (1, 2):
         cuat = None
 
-    alumno_id = request.GET.get("alumno_id")
-    if not alumno_id:
+    alumno = _alumno_a_mostrar(request)
+    if alumno is None:
         return redirect("alumno_seleccionar")
-
-    alumno = get_object_or_404(Alumno, id=alumno_id, activo=True)
 
     if cuat:
         configs = BoletinConfig.objects.filter(cuatrimestre=cuat, publicado=True)
@@ -693,7 +704,7 @@ def alumno_ver_boletin(request, cuat=None):
 
     if not configs.exists():
         messages.warning(request, "El boletín no está disponible aún.")
-        return redirect("alumno_seleccionar")
+        return redirect("calificaciones_menu")
 
     materias_data = []
     for config in configs:
