@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'calificaciones', # Módulo 3
     'docentes',    # Módulo 4
     'comunicados', # Módulo 5
+    'cuentas',     # compartido (login/perfiles)
 ]
 
 MIDDLEWARE = [
@@ -46,6 +47,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'cuentas.context_processors.perfil_usuario',
             ],
         },
     },
@@ -74,5 +76,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'post_login'
+LOGOUT_REDIRECT_URL = 'login'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
