@@ -1,63 +1,50 @@
-{% extends "base.html" %}
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   IMPORTAR NOTAS DESDE EXCEL — paso 2: vista previa.
+   Recién al confirmar se guardan las notas, así un archivo mal armado no
+   pisa nada. Los alumnos que no se encuentran en el curso salen en rojo.
+{% endcomment %}
 
-{% block title %}Confirmar Excel — {{ materia }}{% endblock %}
+{% block title %}Vista previa del Excel — {{ materia.nombre }} — SGE{% endblock %}
+
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <p class="miga">Calificaciones › Mis materias › {{ materia.nombre }} {{ curso }} › Importar Excel</p>
+        <h1>Vista previa del Excel — {{ materia.nombre }}</h1>
+    </div>
+    <div class="hero-acciones">
+        <a class="btn" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=materia.id %}">← Elegir otro archivo</a>
+    </div>
+</section>
+{% endblock %}
 
 {% block content %}
-<a class="volver" href="{% url 'profesor_cargar_excel' cuat=cuat materia=materia %}">&larr; Volver</a>
+<div class="card tarjeta">
+    {% if columnas %}
+    <div class="tabla-wrap">
+    <table class="tabla">
+        <tr><th>Alumno</th>{% for nombre in columnas %}<th class="c">{{ nombre }}</th>{% endfor %}</tr>
+        {% for fila in vista_previa %}
+        <tr>
+            <td class="{% if fila.encontrado %}fuerte{% else %}no-acredita{% endif %}">{{ fila.nombre }}{% if not fila.encontrado %} (no está en el curso){% endif %}</td>
+            {% for valor in fila.valores %}<td class="c">{{ valor }}</td>{% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td class="vacia" colspan="99">El archivo no tiene filas de alumnos.</td></tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% else %}
+    <p class="ayuda">Ninguna columna del Excel coincide con las categorías de la materia. Descargá la plantilla y volvé a intentar.</p>
+    {% endif %}
 
-<div class="bienvenida">
-    <h2>Vista previa del Excel</h2>
-    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
-</div>
+    <p class="ayuda">Solo se guardan las notas de los alumnos encontrados. Las celdas vacías no borran notas que ya estén cargadas.</p>
 
-<section>
-    <form method="post" action="{% url 'profesor_confirmar_excel' cuat=cuat materia=materia %}">
+    <form method="post" action="{% url 'profesor_confirmar_excel' cuat=cuat materia_id=materia.id %}" class="grupo-botones">
         {% csrf_token %}
-
-        <div style="overflow-x:auto;">
-        <table>
-            <thead>
-                <tr>
-                    {% for h in headers %}
-                        <th>{{ h }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for fila in preview %}
-                <tr>
-                    <td style="{% if not fila.encontrado %}color:#c62828; font-weight:600;{% endif %}">
-                        {{ fila.nombre }}
-                        {% if not fila.encontrado %}
-                            <span style="font-size:11px;">(no encontrado)</span>
-                        {% endif %}
-                    </td>
-                    {% for h in headers %}
-                        {% if forloop.counter > 1 %}
-                            <td>
-                                {% for cat_nombre, valor in fila.notas.items %}
-                                    {% if cat_nombre == h %}
-                                        {{ valor|default:"-" }}
-                                    {% endif %}
-                                {% endfor %}
-                            </td>
-                        {% endif %}
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        </div>
-
-        <p style="margin-top:14px; color:#555;">
-            Los alumnos en <span style="color:#c62828; font-weight:600;">rojo</span> no fueron encontrados en la materia.
-            Al confirmar, solo se guardan las notas de alumnos encontrados.
-        </p>
-
-        <div class="botones-form">
-            <button type="submit" class="boton boton-verde">Confirmar y guardar</button>
-            <a class="boton boton-rojo" href="{% url 'profesor_cargar_excel' cuat=cuat materia=materia %}">Cancelar</a>
-        </div>
+        {% if columnas and hay_para_guardar %}<button type="submit" class="btn p">Confirmar y guardar</button>{% endif %}
+        <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">Cancelar</a>
     </form>
-</section>
+</div>
 {% endblock %}

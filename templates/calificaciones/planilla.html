@@ -1,0 +1,209 @@
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   PLANILLA DE CALIFICACIONES (hoja oficio vertical, igual a la oficial)
+   - Las columnas calculadas (notas parciales, valoración, calificaciones,
+     intensificación, final y totales) NO se editan: salen de la carga de notas.
+   - El docente de la materia edita: turno, preceptor/a, cursa/recursa,
+     inasistencias, diciembre y febrero. N° de orden, nombre y filas en
+     blanco se pueden completar antes de imprimir (no se guardan).
+   - Secretaría y directivo la ven en modo lectura para imprimirla.
+   - TED va en negro, como en la planilla oficial. Solo la nota final de un
+     alumno que no llega al 80 % de asistencia se marca en rojo.
+{% endcomment %}
+
+{% block title %}Planilla de calificaciones — {{ materia.nombre }} — SGE{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Hoja oficio vertical (216 x 340 mm) con medidas en milímetros. */
+@page{size:216mm 340mm;margin:0}
+.sheet{width:216mm;height:340mm;margin:0 auto;background:#fff;padding:9mm 8mm 6mm;box-shadow:0 2px 10px rgba(0,0,0,.12);font-family:Arial,Helvetica,sans-serif;color:#111}
+.sheet h1{font-size:10pt;text-align:center;margin:2mm 0 3mm;font-weight:700;color:#111}
+/* Renglones del encabezado */
+.ln{display:flex;gap:4mm;align-items:flex-end;font-size:7pt;font-weight:700;margin-bottom:1.6mm}
+.ln span{white-space:nowrap}
+.f{flex:1;border-bottom:.2mm solid #222;min-height:3.6mm;font-weight:400;padding:0 1mm}
+.lh{flex:1;height:4mm;border:none;border-bottom:.2mm solid #222;background:transparent;font:400 7pt Arial,Helvetica,sans-serif;color:#111;padding:0 1mm}
+/* Tabla principal */
+table.p{border-collapse:collapse;table-layout:fixed;width:200mm}
+.p th,.p td{border:.18mm solid #333;padding:0;overflow:hidden}
+.p th{font-size:5.6pt;font-weight:700;text-align:center;line-height:1.15;padding:.5mm}
+.p th.g{font-size:6.2pt;height:4.5mm}
+.p td{height:4.4mm;font-size:7.5pt;line-height:4.2mm;white-space:nowrap}
+.p td.n{font-size:5pt;text-align:center}
+.p td.n b{font-size:7.5pt}
+.v span{display:inline-block;height:22.5mm;writing-mode:vertical-rl;transform:rotate(180deg);text-align:center}
+/* Celdas editables: se ven como texto de la hoja */
+.p .ll{width:100%;border:none;background:transparent;text-align:center;font:600 7.5pt Arial,Helvetica,sans-serif;color:#111;padding:0;height:4.2mm}
+.p .ll.nm{text-align:left;padding-left:.8mm;font-weight:400}
+.ll:focus,.lh:focus{outline:1px solid var(--azul);background:#eef4ff}
+.ll[readonly],.lh[readonly]{cursor:default}
+.ll[readonly]:focus,.lh[readonly]:focus{outline:none;background:transparent}
+/* Pie: totales y consideraciones */
+.bt{display:flex;gap:6mm;margin-top:5mm;align-items:flex-start}
+.lf{width:58mm;display:flex;flex-direction:column;gap:7mm}
+table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
+.s th,.s td{border:.18mm solid #333;height:4.6mm;padding:0;font-size:5.2pt;text-align:center}
+.s th.r{text-align:right;padding-right:1mm}
+.s .dg{background:linear-gradient(to top right,#fff calc(50% - .15mm),#333 calc(50% - .15mm),#333 calc(50% + .15mm),#fff calc(50% + .15mm))}
+.rt{flex:1;font-size:5.8pt;line-height:1.28}
+.rt p{margin:0 0 .6mm}
+.fi{text-align:right;font-weight:700;font-size:8pt;margin:0 12mm 1.5mm 0}
+.im{font-weight:700;font-size:6.6pt;margin-bottom:1.5mm!important}
+.planilla-scroll{overflow-x:auto;padding-bottom:8px}
+@media print{
+  .sheet{margin:0 !important;box-shadow:none !important}
+  .planilla-scroll{overflow:visible}
+}
+</style>
+{% endblock %}
+
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <p class="miga">Calificaciones › {% if puede_editar %}Mis materias › {% endif %}{{ materia.nombre }} {{ curso }} › Planilla</p>
+        <h1>Planilla de calificaciones — {{ materia.nombre }} · {{ curso }}</h1>
+    </div>
+    <div class="hero-acciones">
+        <a class="btn" href="{% url 'calificaciones_menu' %}?cuat={{ cuat }}">← Volver a {% if puede_editar %}mis materias{% else %}calificaciones{% endif %}</a>
+        {% if puede_editar %}<a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">Cargar notas</a>{% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block main_class %}ancho{% endblock %}
+
+{% block content %}
+<form method="post">
+{% csrf_token %}
+<div class="barra no-print">
+    <div class="grupo-botones">
+        <a class="btn {% if cuat == 1 %}p{% endif %}" href="{% url 'profesor_planilla' cuat=1 materia_id=materia.id %}">1° cuatrimestre</a>
+        <a class="btn {% if cuat == 2 %}p{% endif %}" href="{% url 'profesor_planilla' cuat=2 materia_id=materia.id %}">2° cuatrimestre</a>
+    </div>
+    <div class="grupo-botones">
+        {% if puede_editar %}
+        <button type="submit" class="btn p" name="accion" value="guardar">Guardar cambios</button>
+        <button type="submit" class="btn" name="accion" value="cerrar" onclick="return confirm('¿Cerrar el {{ cuat }}° cuatrimestre? Las calificaciones quedan fijas.')">Cerrar {{ cuat }}° cuatrimestre</button>
+        {% endif %}
+        <button type="button" class="btn" onclick="window.print()">Imprimir (oficio vertical)</button>
+    </div>
+</div>
+<p class="nota no-print">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. Las celdas calculadas no se editan: salen de "Cargar notas".{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
+
+<div class="planilla-scroll">
+<div class="sheet">
+    <div class="ln"><span>ESCUELA DE EDUCACIÓN SECUNDARIA:</span><span class="f">EEST N°3 "Víctor Mercante"</span></div>
+    <h1>PLANILLA DE CALIFICACIONES {{ ciclo_lectivo }}</h1>
+    <div class="ln"><span>MATERIA:</span><span class="f">{{ materia.nombre }}</span><span>PROFESOR/A:</span><span class="f">{{ docente_nombre }}</span></div>
+    <div class="ln">
+        <span>AÑO:</span><span class="f" style="flex:.4">{{ materia.curso.anio }}°</span>
+        <span>SECCIÓN:</span><span class="f" style="flex:.4">{{ materia.curso.division }}</span>
+        <span>TURNO:</span><input class="lh" type="text" name="turno" value="{{ turno }}" maxlength="50" style="flex:.5" aria-label="Turno"{% if not puede_editar %} readonly{% endif %}>
+        <span>PRECEPTOR/A:</span><input class="lh" type="text" name="preceptor" value="{{ preceptor }}" maxlength="100" aria-label="Preceptor/a"{% if not puede_editar %} readonly{% endif %}>
+    </div>
+
+    <table class="p">
+        <colgroup>
+            <col style="width:4.9mm"><col style="width:46mm"><col style="width:10.1mm">
+            {% for c in categorias %}<col style="width:{{ ancho_parcial }}mm">{% empty %}<col style="width:{{ ancho_parcial }}mm">{% endfor %}
+            <col style="width:7.4mm"><col style="width:8.9mm"><col style="width:8.6mm">
+            {% for c in categorias %}<col style="width:{{ ancho_parcial }}mm">{% empty %}<col style="width:{{ ancho_parcial }}mm">{% endfor %}
+            <col style="width:7.8mm"><col style="width:8mm"><col style="width:7.7mm"><col style="width:8mm">
+            <col style="width:7.8mm"><col style="width:8mm"><col style="width:10.7mm">
+        </colgroup>
+        <tr>
+            <th rowspan="2" class="v"><span>N° DE ORDEN</span></th>
+            <th rowspan="2">APELLIDO/S Y NOMBRE/S<br>DEL/LA ESTUDIANTE</th>
+            <th rowspan="2" style="font-size:5pt">CURSA<br>O<br>RECURSA<br>(C/R)</th>
+            <th colspan="{{ col_1c }}" class="g">1° CUATRIMESTRE</th>
+            <th colspan="{{ col_2c }}" class="g">2° CUATRIMESTRE</th>
+            <th colspan="2" class="g" style="font-size:4.4pt">INTENSIFICACIÓN</th>
+            <th class="v" rowspan="2"><span>CALIFICACIÓN FINAL</span></th>
+        </tr>
+        <tr>
+            <th colspan="{{ categorias|length|default:1 }}">CALIFICACIONES/<br>VALORACIONES<br>PARCIALES</th>
+            <th class="v"><span>1° VALORACIÓN PRELIMINAR</span></th>
+            <th class="v"><span>CALIFICACIÓN 1° CUATRIMESTRE</span></th>
+            <th class="v"><span>INASISTENCIAS DEL 1° CUATRIMESTRE</span></th>
+            <th colspan="{{ categorias|length|default:1 }}">CALIFICACIONES/<br>VALORACIONES<br>PARCIALES</th>
+            <th class="v"><span>2° VALORACIÓN PRELIMINAR</span></th>
+            <th class="v"><span>CALIFICACIÓN 2° CUATRIMESTRE</span></th>
+            <th class="v"><span>INTENSIFICACIÓN 1° CUATRIMESTRE</span></th>
+            <th class="v"><span>INASISTENCIAS DEL 2° CUATRIMESTRE</span></th>
+            <th class="v"><span>DICIEMBRE</span></th>
+            <th class="v"><span>FEBRERO</span></th>
+        </tr>
+
+        {% for f in filas %}
+        <tr>
+            <td class="n"><input class="ll" type="text" value="{{ f.nro }}" aria-label="{{ f.nombre }} — número de orden"{% if not puede_editar %} readonly{% endif %}></td>
+            <td><input class="ll nm" type="text" value="{{ f.nombre_planilla }}" aria-label="{{ f.nombre }} — apellido y nombre"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n"><input class="ll" type="text" maxlength="1" name="cursada_{{ f.id }}" value="{{ f.cursada }}" aria-label="{{ f.nombre }} — cursa (C) o recursa (R)"{% if not puede_editar %} readonly{% endif %}></td>
+            {% for v in f.d1.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
+            <td class="n">{{ f.d1.valoracion }}</td>
+            <td class="n"><b>{{ f.d1.calificacion }}</b></td>
+            <td class="n"><input class="ll" type="text" inputmode="decimal" name="inas1_{{ f.id }}" value="{{ f.inas1 }}" aria-label="{{ f.nombre }} — inasistencias 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
+            {% for v in f.d2.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
+            <td class="n">{{ f.d2.valoracion }}</td>
+            <td class="n"><b>{{ f.d2.calificacion }}</b></td>
+            <td class="n">{{ f.intensificacion }}</td>
+            <td class="n"><input class="ll" type="text" inputmode="decimal" name="inas2_{{ f.id }}" value="{{ f.inas2 }}" aria-label="{{ f.nombre }} — inasistencias 2° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n"><input class="ll" type="text" inputmode="decimal" name="dic_{{ f.id }}" value="{{ f.dic }}" aria-label="{{ f.nombre }} — diciembre"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n"><input class="ll" type="text" inputmode="decimal" name="feb_{{ f.id }}" value="{{ f.feb }}" aria-label="{{ f.nombre }} — febrero"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n">{% if f.final %}<b{% if f.no_acredita %} class="no-acredita" title="Asistencia menor al 80 %: no acredita la materia"{% endif %}>{{ f.final }}</b>{% endif %}</td>
+        </tr>
+        {% endfor %}
+
+        {% comment %} Renglones en blanco de la hoja oficial (hasta el 37), para completar a mano. {% endcomment %}
+        {% for i in numeros_vacios %}
+        <tr>
+            <td class="n"><input class="ll" type="text" value="{{ i }}" aria-label="Renglón {{ i }} — número de orden"{% if not puede_editar %} readonly{% endif %}></td>
+            <td><input class="ll nm" type="text" aria-label="Renglón {{ i }} — apellido y nombre"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n"><input class="ll" type="text" maxlength="1" aria-label="Renglón {{ i }} — cursa o recursa"{% if not puede_editar %} readonly{% endif %}></td>
+            {% for c in categorias %}<td class="n"></td>{% empty %}<td class="n"></td>{% endfor %}
+            <td class="n"></td><td class="n"></td>
+            <td class="n"><input class="ll" type="text" aria-label="Renglón {{ i }} — inasistencias 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
+            {% for c in categorias %}<td class="n"></td>{% empty %}<td class="n"></td>{% endfor %}
+            <td class="n"></td><td class="n"></td><td class="n"></td>
+            <td class="n"><input class="ll" type="text" aria-label="Renglón {{ i }} — inasistencias 2° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n"><input class="ll" type="text" aria-label="Renglón {{ i }} — diciembre"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n"><input class="ll" type="text" aria-label="Renglón {{ i }} — febrero"{% if not puede_editar %} readonly{% endif %}></td>
+            <td class="n"></td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="bt">
+        <div class="lf">
+            <table class="s">
+                <colgroup><col style="width:26mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"></colgroup>
+                <tr><th class="dg"></th><th>1°C</th><th>2°C</th><th>TOTAL</th><th>DIC</th><th>FEB/<br>MAR</th></tr>
+                <tr><th class="r">TOTAL DE ESTUDIANTES</th>{% for n in totales.estudiantes %}<td>{{ n }}</td>{% endfor %}</tr>
+                <tr><th class="r">APROBADAS/OS</th>{% for n in totales.aprobados %}<td>{{ n }}</td>{% endfor %}</tr>
+                <tr><th class="r">DESAPROBADAS/OS</th>{% for n in totales.desaprobados %}<td>{{ n }}</td>{% endfor %}</tr>
+                <tr><th class="r">SIN EVALUAR</th>{% for n in totales.sin_evaluar %}<td>{{ n }}</td>{% endfor %}</tr>
+            </table>
+            <table class="s">
+                <colgroup><col style="width:38mm"><col style="width:10mm"><col style="width:10mm"></colgroup>
+                <tr><th class="dg"></th><th>1°C</th><th>2°C</th></tr>
+                <tr><th class="r">TOTAL DE CLASES DE LA MATERIA</th><td></td><td></td></tr>
+                <tr><th class="r">CLASES EFECTIVAMENTE DADAS</th><td>{{ clases.1 }}</td><td>{{ clases.2 }}</td></tr>
+            </table>
+        </div>
+        <div class="rt">
+            <div class="fi">FIRMA</div>
+            <p class="im">IMPORTANTE: LEER LAS SIGUIENTES CONSIDERACIONES ANTES DE COMPLETAR LA PLANILLA</p>
+            <p><b>1 - La Valoración Preliminar</b> refiere a una valoración cualitativa que se entrega a las/os estudiantes y sus familias, y que comunica los avances en los aprendizajes de los primeros dos meses de cada cuatrimestre. La misma se expresa de acuerdo a las categorías: TEA-TEP-TED.</p>
+            <p><b>2 - La Calificación del cuatrimestre</b> resulta de la ponderación de las valoraciones parciales cualitativas y cuantitativas obtenidas por la/el estudiante, dando cuenta de su proceso de aprendizaje durante ese período, a través de diferentes instrumentos y/o instancias evaluativas. Se podrá expresar con números enteros, en la escala de 1 (uno) a 10 (diez).</p>
+            <p><b>3 - Intensificación 1° cuatrimestre:</b> debe completarse sólo si la/el estudiante obtuvo originalmente una calificación menor a 7 (siete) en el 1° cuatrimestre y, durante el 2° cuatrimestre intensifica los saberes pendientes logrando una calificación de 7 (siete) o más.</p>
+            <p><b>4 -</b> Considerar SIN EVALUAR a aquellas/os estudiantes que no concurrieron a ninguna clase del período.</p>
+            <p><b>5 - La Calificación final</b> de cada materia se registra al momento en que la misma haya sido aprobada y acreditada o al cierre del ciclo lectivo.</p>
+            <p><b>6 -</b> Las/os docentes deben firmar al pie de las calificaciones consignadas.</p>
+            <p><b>7 -</b> No se debe sacar de lista (tachar, borrar, rayar) a ningún/a estudiante.</p>
+        </div>
+    </div>
+</div>
+</div>
+</form>
+{% endblock %}

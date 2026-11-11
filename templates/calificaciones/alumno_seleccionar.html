@@ -1,40 +1,44 @@
-{% extends "base.html" %}
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   ELEGIR ALUMNO PARA VER SU BOLETÍN
+   Lo usan docentes, secretaría y directivo. El alumno no pasa por acá:
+   siempre ve su propio boletín.
+{% endcomment %}
 
-{% block title %}Consultar calificaciones{% endblock %}
+{% block title %}Consultar boletín — SGE{% endblock %}
+
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <p class="miga">Calificaciones › Consultar boletín</p>
+        <h1>Consultar boletín</h1>
+    </div>
+    <div class="hero-acciones">
+        <a class="btn" href="{% url 'calificaciones_menu' %}">← Volver a calificaciones</a>
+    </div>
+</section>
+{% endblock %}
 
 {% block content %}
-<div class="bienvenida">
-    <h2>{% if destino == 'boletin' %}Consultar boletín{% else %}Consultar calificaciones{% endif %}</h2>
-    <p>Ingresá tu nombre para continuar</p>
-</div>
-
-<section>
-    {% if destino == 'boletin' %}
-        <form method="get" action="{% url 'alumno_ver_boletin' %}">
-    {% else %}
-        <form method="get" action="{% url 'alumno_ver_calificaciones' %}">
-    {% endif %}
-        <label for="nombre">Tu nombre completo</label>
-        <select id="nombre" name="alumno_id" required>
-            <option value="">Seleccioná tu nombre...</option>
+{% if puede_ver %}
+<div class="card tarjeta form-angosto">
+    <form class="form" method="get" action="{% url 'alumno_ver_boletin' %}">
+        <label for="alumno">Alumno</label>
+        <select id="alumno" name="alumno_id" required>
+            <option value="">Elegí un alumno...</option>
             {% for alumno in alumnos %}
-                <option value="{{ alumno.id }}">{{ alumno.apellido }}, {{ alumno.nombre }}</option>
+            <option value="{{ alumno.id }}">{{ alumno.anio }}° {{ alumno.division }} — {{ alumno.apellido }}, {{ alumno.nombre }}</option>
             {% endfor %}
         </select>
-
-        {% if destino != 'boletin' %}
-            <label for="cuat">Cuatrimestre</label>
-            <select id="cuat" name="cuat" required>
-                <option value="1">1° Cuatrimestre</option>
-                <option value="2">2° Cuatrimestre</option>
-            </select>
-        {% endif %}
-
-        <div class="botones-form">
-            <button type="submit" class="boton boton-verde">
-                {% if destino == 'boletin' %}Ver boletín{% else %}Consultar{% endif %}
-            </button>
+        <div class="acciones">
+            <button type="submit" class="btn p">Ver boletín</button>
         </div>
     </form>
-</section>
+</div>
+{% else %}
+<div class="card tarjeta borde-rojo form-angosto">
+    <h3 class="tarjeta-titulo">El boletín todavía no está publicado</h3>
+    <p class="ayuda">Secretaría lo habilita a fin de año. Hasta entonces, las notas se consultan en la planilla de cada materia.</p>
+</div>
+{% endif %}
 {% endblock %}

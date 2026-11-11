@@ -1,32 +1,39 @@
-{% extends "base.html" %}
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   IMPORTAR NOTAS DESDE EXCEL — paso 1: subir el archivo.
+   La vista previa (paso 2) está en confirmar_excel.html.
+{% endcomment %}
 
-{% block title %}Cargar desde Excel — {{ materia }}{% endblock %}
+{% block title %}Importar Excel — {{ materia.nombre }} — SGE{% endblock %}
+
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <p class="miga">Calificaciones › Mis materias › {{ materia.nombre }} {{ curso }} › Importar Excel</p>
+        <h1>Importar notas desde Excel — {{ materia.nombre }}</h1>
+    </div>
+    <div class="hero-acciones">
+        <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">← Volver a {{ materia.nombre }}</a>
+    </div>
+</section>
+{% endblock %}
 
 {% block content %}
-<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
+<div class="card tarjeta">
+    <h2 class="seccion-titulo">Cómo se hace</h2>
+    <ol class="ayuda">
+        <li><a href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargá la plantilla</a> del {{ cuat }}° cuatrimestre (ya trae los alumnos y una columna por categoría).</li>
+        <li>Completá las notas en el Excel (de 0 a 10; podés usar coma o punto).</li>
+        <li>Subí el archivo: vas a ver una vista previa antes de guardar.</li>
+    </ol>
 
-<div class="bienvenida">
-    <h2>Cargar notas desde Excel</h2>
-    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
-</div>
-
-<section>
-    <div class="ayuda">
-        <strong>Instrucciones:</strong>
-        <ol style="margin:8px 0 0 18px; padding:0;">
-            <li>Descargá la plantilla desde la pantalla anterior</li>
-            <li>Completá las notas en el Excel (columna "Alumno" + columnas de cada categoría)</li>
-            <li>Subí el archivo completado acá</li>
-        </ol>
-    </div>
-
-    <form method="post" enctype="multipart/form-data">
+    <form class="form form-angosto" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <label for="archivo">Seleccionar archivo Excel (.xlsx)</label>
-        <input type="file" id="archivo" name="archivo" accept=".xlsx,.xls" required>
-        <div class="botones-form">
-            <button type="submit" class="boton boton-verde">Subir y previsualizar</button>
+        <label for="archivo">Archivo Excel (.xlsx)</label>
+        <input type="file" id="archivo" name="archivo" accept=".xlsx" required>
+        <div class="acciones">
+            <button type="submit" class="btn p">Subir y ver vista previa</button>
         </div>
     </form>
-</section>
+</div>
 {% endblock %}

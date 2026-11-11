@@ -1,0 +1,61 @@
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   INICIO DEL DOCENTE
+   - Resumen: materias a cargo, materias con notas sin cargar y fecha de
+     cierre del cuatrimestre.
+   - Una tarjeta por materia (y por curso) con sus accesos.
+{% endcomment %}
+
+{% block title %}Calificaciones — SGE{% endblock %}
+
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <h1>Calificaciones</h1>
+        <p class="hero-sub">Ciclo lectivo {{ ciclo_lectivo }} · Tus materias y planillas</p>
+    </div>
+    <div class="hero-acciones">
+        <a class="btn {% if cuat == 1 %}p{% endif %}" href="?cuat=1">1° cuatrimestre</a>
+        <a class="btn {% if cuat == 2 %}p{% endif %}" href="?cuat=2">2° cuatrimestre</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="stats">
+    <div class="card stat"><span class="numero">{{ total_materias }}</span><span class="ayuda">Materias a cargo</span></div>
+    <div class="card stat"><span class="numero">{{ sin_cargar }}</span><span class="ayuda">Materias con notas sin cargar</span></div>
+    <div class="card stat"><span class="numero">{{ fecha_cierre|default:"—" }}</span><span class="ayuda">Cierre del {{ cuat }}° cuatrimestre</span></div>
+</div>
+
+<h2 class="seccion-titulo">Mis materias</h2>
+
+{% if materias %}
+<div class="grid-tarjetas">
+    {% for m in materias %}
+    <div class="card tarjeta {% if m.completo %}borde-verde{% else %}borde-azul{% endif %}">
+        <div class="tarjeta-cabecera">
+            <h3 class="tarjeta-titulo">{{ m.nombre }}</h3>
+            {% if m.completo %}<span class="chip ok">{{ cuat }}° cuat. completo</span>{% else %}<span class="chip wa">{{ cuat }}° cuat. abierto</span>{% endif %}
+        </div>
+        <p class="ayuda">{{ m.curso }} · {{ m.estudiantes }} estudiantes</p>
+        <p class="nota">{% if m.pct is None %}Creá categorías para poder cargar notas{% else %}Notas cargadas: {{ m.pct }}%{% endif %}</p>
+        <div class="progreso"><div style="width: {{ m.pct|default:0 }}%"></div></div>
+        <div class="grupo-botones">
+            <a class="btn p" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=m.id %}">Cargar notas</a>
+            <a class="btn" href="{% url 'profesor_planilla' cuat=cuat materia_id=m.id %}">Ver planilla</a>
+        </div>
+        <p class="ayuda grupo-botones">
+            <a href="{% url 'profesor_categorias' cuat=cuat materia_id=m.id %}">Categorías</a>
+            <a href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=m.id %}">Importar Excel</a>
+        </p>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card tarjeta borde-azul">
+    <h3 class="tarjeta-titulo">Todavía no tenés materias asignadas</h3>
+    <p class="ayuda">Cuando el módulo Docentes te asigne materias, van a aparecer acá con su planilla.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   "MIS NOTAS" DEL ALUMNO
+   - El alumno ve solo sus notas: materia, valoración, calificación y estado.
+   - TED en rojo; si la asistencia no llega al 80 %, el estado dice
+     "No acredita por asistencia".
+   - El acceso al boletín aparece recién cuando secretaría lo publica.
+{% endcomment %}
+
+{% block title %}Mis notas — SGE{% endblock %}
+
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <h1>Mis notas</h1>
+        <p class="hero-sub">{{ nombre }} · {{ curso }} · Ciclo lectivo {{ ciclo_lectivo }}</p>
+    </div>
+    <div class="hero-acciones">
+        <a class="btn {% if cuat == 1 %}p{% endif %}" href="?cuat=1">1° cuatrimestre</a>
+        <a class="btn {% if cuat == 2 %}p{% endif %}" href="?cuat=2">2° cuatrimestre</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="dos-columnas">
+    <div class="card tabla-wrap">
+        <table class="tabla">
+            <tr><th>Materia</th><th>Val. preliminar</th><th>Calificación</th><th>Estado</th></tr>
+            {% for m in materias %}
+            <tr>
+                <td class="fuerte">{{ m.materia }}</td>
+                <td>{% if m.valoracion %}<span{% if m.valoracion == 'TED' %} class="ted"{% endif %}>{{ m.valoracion }}</span>{% else %}—{% endif %}</td>
+                <td class="fuerte">{{ m.calificacion|default:"—" }}</td>
+                <td>{% if m.estado %}<span class="chip {% if m.aprobada %}ok{% else %}wa{% endif %}">{{ m.estado }}</span>{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td class="vacia" colspan="4">Todavía no hay materias en tu curso.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="columna">
+        <div class="card tarjeta borde-oscuro">
+            <h3 class="tarjeta-titulo">Mi boletín</h3>
+            <p class="ayuda">Promedio del {{ cuat }}° cuatrimestre</p>
+            <p class="numero grande">{{ promedio_general|default:"—" }}</p>
+            {% if boletin_publicado %}
+            <a class="btn p" href="{% url 'alumno_ver_boletin' %}">Ver boletín completo</a>
+            <a class="btn" href="{% url 'alumno_ver_boletin' %}?imprimir=1">Imprimir / guardar como PDF</a>
+            {% else %}
+            <p class="ayuda">El boletín se habilita a fin de año. Mientras tanto, estas son tus notas.</p>
+            {% endif %}
+        </div>
+        <div class="card tarjeta borde-verde">
+            <h3 class="tarjeta-titulo">Inasistencias</h3>
+            <p class="numero grande">{{ inasistencias|default:"—" }}</p>
+            <p class="nota">{{ cuat }}° cuatrimestre</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

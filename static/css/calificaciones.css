@@ -1,0 +1,186 @@
+/* ================================================================
+   MÓDULO 3 — CALIFICACIONES
+   Hoja de estilos única del módulo. Solo la cargan las plantillas de
+   calificaciones (base_cal.html), así que no afecta a otros módulos.
+
+   Índice:
+   1. Layout general (barra, mensajes, footer) — igual a base.css
+   2. Encabezado de cada pantalla
+   3. Botones, chips y textos
+   4. Tarjetas y grillas
+   5. Tablas y celdas de carga
+   6. Formularios
+   7. Estados (TED, no acredita)
+   8. Pantallas chicas
+   ================================================================ */
+
+/* Colores del módulo (se usan con var(--nombre)) */
+:root{
+  --azul:#2563eb;          /* botones principales */
+  --azul-oscuro:#1a3b6e;   /* títulos y texto de botones */
+  --azul-titulo:#2a5d9f;   /* títulos grandes y números */
+  --celeste:#dce8f3;       /* fondo del encabezado */
+  --gris-texto:#44546a;    /* textos secundarios */
+  --borde:#e6ebf1;         /* líneas de tablas */
+  --verde:#2e7d32;
+  --rojo:#c62828;
+}
+
+/* ================================================================
+   1. LAYOUT GENERAL — copiado de static/css/base.css para que la barra,
+      los mensajes y el footer se vean igual que en los demás módulos.
+   ================================================================ */
+*{box-sizing:border-box}
+body{margin:0;padding:0;font-family:'Poppins',Arial,sans-serif;background:#eeeeee;color:#333;min-height:100vh;display:flex;flex-direction:column}
+h1,h2,h3,p{margin:0}
+a{color:var(--azul-oscuro)}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 50px;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.08);position:sticky;top:0;z-index:1000;flex-wrap:wrap;gap:10px}
+nav .logo{font-size:24px;font-weight:700;color:#1a3a6b;display:flex;align-items:center;gap:12px;text-decoration:none}
+nav .logo img{height:56px;border-radius:8px;object-fit:cover}
+nav ul{list-style:none;display:flex;gap:18px;margin:0;padding:0;align-items:center;flex-wrap:wrap}
+nav ul li a{text-decoration:none;color:#333;font-weight:500;font-size:15px;transition:color .3s}
+nav ul li a:hover{color:var(--azul)}
+nav ul li .nav-chip{display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;background:#eef4ff;border:1px solid #cfe0ff;color:#1a3a6b;font-size:12px;font-weight:600;letter-spacing:.3px;text-decoration:none}
+nav ul li a.nav-chip:hover{background:#e0ecff;border-color:var(--azul)}
+nav ul li .nav-logout-form{margin:0;display:flex}
+nav ul li .nav-logout{display:inline-grid;place-items:center;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid #dbe4f0;background:#fff;color:#1a3a6b;cursor:pointer}
+nav ul li .nav-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:6px;margin-left:auto;order:2}
+.hamburger span{display:block;width:26px;height:3px;background:#1a3a6b;border-radius:3px;transition:transform .3s,opacity .3s}
+nav.nav-open .hamburger span:nth-child(1){transform:translateY(8px) rotate(45deg)}
+nav.nav-open .hamburger span:nth-child(2){opacity:0}
+nav.nav-open .hamburger span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
+.messages-container{width:90%;max-width:1100px;margin:20px auto 0}
+.alert{padding:14px 18px;border-radius:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-weight:500}
+.alert-success{background:#e8f5e9;color:#2e7d32;border-left:5px solid #2e7d32}
+.alert-error,.alert-danger{background:#ffebee;color:#c62828;border-left:5px solid #c62828}
+.alert-warning{background:#fff8e1;color:#a15c00;border-left:5px solid #f9a825}
+.alert-info{background:#e3f2fd;color:#1565c0;border-left:5px solid #1565c0}
+.alert-close{background:none;border:none;font-size:22px;cursor:pointer;color:inherit;opacity:.6;padding:0 4px;line-height:1}
+.alert-close:hover{opacity:1}
+footer{background:rgba(40,90,140,.92);color:#fff;text-align:center;padding:40px 20px;margin-top:50px}
+footer p{margin:5px 0}
+.footer-titulo{font-size:20px;font-weight:700;margin-bottom:6px}
+.footer-sub{opacity:.9;font-size:15px}
+.footer-copy{margin-top:16px;font-size:13px;opacity:.65}
+
+/* Contenido de cada pantalla del módulo */
+.cal-main{flex:1;width:100%;max-width:1280px;margin:0 auto;padding:28px 40px;display:flex;flex-direction:column;gap:22px}
+.cal-main.ancho{max-width:none;padding:24px}  /* planilla: usa todo el ancho */
+
+/* ================================================================
+   2. ENCABEZADO DE CADA PANTALLA (título, miga de pan y acciones)
+   ================================================================ */
+.hero{background:var(--celeste);border-top:4px solid var(--azul-titulo);padding:22px 40px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.hero-textos{display:flex;flex-direction:column;gap:4px}
+.hero h1{font-size:26px;font-weight:500;color:var(--azul-titulo)}
+.miga,.hero-sub{font-size:13px;color:var(--gris-texto)}
+.hero-acciones{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ================================================================
+   3. BOTONES, CHIPS Y TEXTOS
+   ================================================================ */
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:8px;border:1.5px solid var(--azul);background:#fff;color:var(--azul-oscuro);font:600 14px Poppins,Arial,sans-serif;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{background:#eef4ff}
+.btn.p{background:var(--azul);color:#fff}
+.btn.p:hover{background:#1d4fd8}
+.btn.chico{min-height:32px;padding:0 12px;font-size:13px}
+.btn.peligro{border-color:#e57373;color:var(--rojo)}
+.btn.peligro:hover{background:#fdecea}
+.btn-link{background:none;border:none;padding:0;color:var(--azul-oscuro);font:inherit;text-decoration:underline;cursor:pointer}
+.chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.ok{background:#e3f1e4;color:#1b5e20}
+.wa{background:#fdecc8;color:#7a4b00}
+.ne{background:#e8eef6;color:var(--azul-oscuro)}
+.seccion-titulo{font-size:18px;font-weight:600;color:var(--azul-oscuro)}
+.ayuda{font-size:13px;color:var(--gris-texto)}
+.nota{font-size:12px;color:var(--gris-texto)}
+.barra{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.grupo-botones{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* ================================================================
+   4. TARJETAS Y GRILLAS
+   ================================================================ */
+.card{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(26,59,110,.1)}
+.tarjeta{padding:20px;display:flex;flex-direction:column;gap:12px}
+.tarjeta.borde-azul{border-top:4px solid var(--azul)}
+.tarjeta.borde-verde{border-top:4px solid #43a047}
+.tarjeta.borde-rojo{border-top:4px solid var(--rojo)}
+.tarjeta.borde-oscuro{border-top:4px solid #0d47a1}
+.tarjeta-titulo{font-size:16px;font-weight:600;color:var(--azul-oscuro)}
+.tarjeta-cabecera{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.grid-tarjetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}
+.stat{padding:18px 22px;display:flex;flex-direction:column;gap:2px}
+.numero{font-size:28px;font-weight:600;color:var(--azul-titulo)}
+.numero.grande{font-size:36px}
+.progreso{height:8px;border-radius:4px;background:#e1e6ec}
+.progreso>div{height:8px;border-radius:4px;background:var(--azul-titulo)}
+.dos-columnas{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
+.columna{display:flex;flex-direction:column;gap:20px}
+
+/* ================================================================
+   5. TABLAS Y CELDAS DE CARGA
+   ================================================================ */
+.tabla-wrap{padding:8px 10px;overflow-x:auto}
+.tabla{border-collapse:collapse;width:100%;font-size:14px}
+.tabla th{text-align:left;font-size:12px;color:var(--gris-texto);font-weight:600;padding:10px 14px;border-bottom:2px solid var(--celeste);background:#f5f9ff}
+.tabla td{padding:12px 14px;border-bottom:1px solid var(--borde);vertical-align:middle}
+.tabla tr:last-child td{border-bottom:none}
+.tabla .c{text-align:center}
+.tabla .fuerte{font-weight:500}
+.tabla .calc{background:#eef2f7;font-weight:600;font-size:16px}  /* celda calculada sola */
+.tabla .vacia{color:var(--gris-texto)}
+input.n{width:56px;height:36px;text-align:center;border:1.5px solid #b8c4d4;border-radius:6px;font:500 14px Poppins,Arial,sans-serif}
+input.n:focus,select.v:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+input.n.error{border-color:var(--rojo);background:#fdecea}
+select.v{height:36px;border:1.5px solid #b8c4d4;border-radius:6px;font:500 14px Poppins,Arial,sans-serif;padding:0 8px;background:#fff}
+.acciones-fila{display:flex;gap:6px;flex-wrap:wrap}
+.acciones-fila form{margin:0}
+
+/* ================================================================
+   6. FORMULARIOS
+   ================================================================ */
+.form label{display:block;margin-top:14px;font-weight:600;color:#444;font-size:14px}
+.form label:first-child{margin-top:0}
+.form input,.form select{width:100%;padding:10px 14px;margin-top:6px;border:1px solid #d0d0d0;border-radius:10px;font:400 15px Poppins,Arial,sans-serif;background:#fff;color:#1c1c1c}
+.form input:focus,.form select:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.form .acciones{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+.form-angosto{width:480px;max-width:100%}
+
+/* ================================================================
+   7. ESTADOS
+   ================================================================ */
+/* TED (Trayectoria Educativa Discontinua): en rojo en "Mis notas", en la
+   carga de notas y en el boletín. En la planilla oficial va en negro. */
+.ted{color:var(--rojo);font-weight:700}
+/* Nota que no acredita por tener menos de 80 % de asistencia. */
+.no-acredita{color:var(--rojo);font-weight:700}
+
+/* ================================================================
+   8. PANTALLAS CHICAS
+   ================================================================ */
+@media (max-width:900px){
+  .dos-columnas{grid-template-columns:1fr}
+}
+@media (max-width:768px){
+  nav{padding:12px 16px;flex-wrap:nowrap;align-items:center}
+  nav .logo{font-size:18px;flex:1}
+  nav .logo img{height:44px}
+  .hamburger{display:flex}
+  nav ul{display:none;width:100%;flex-direction:column;gap:4px;font-size:14px;padding:10px 0 4px;order:3}
+  nav.nav-open ul{display:flex}
+  nav ul li{width:100%}
+  nav ul li a{display:block;padding:8px 4px}
+  .hero{padding:18px 16px}
+  .cal-main{padding:20px 16px}
+  footer{padding:30px 16px}
+}
+@media (max-width:480px){ nav .logo{font-size:14px} }
+
+/* Al imprimir no se muestran la barra, los mensajes ni el footer. */
+@media print{
+  nav,footer,.messages-container,.hero,.no-print{display:none !important}
+  body{background:#fff !important}
+  .cal-main{padding:0 !important;max-width:none !important}
+}

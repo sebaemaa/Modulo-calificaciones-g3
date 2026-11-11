@@ -1,24 +1,45 @@
+"""Rutas del Módulo 3 — Gestión de Calificaciones (se monta en /calificaciones/).
+
+Las rutas del docente llevan el cuatrimestre (1 o 2) y el id de la materia,
+por ejemplo: /calificaciones/profesor/1/7/planilla-calificaciones/
+Se usa el id (y no el nombre) porque dos cursos pueden tener una materia con
+el mismo nombre. Las rutas del alumno no llevan datos: el sistema usa la
+ficha del usuario logueado.
+"""
 from django.urls import path
+
 from . import views
 
+# Prefijo común de las pantallas del docente.
+DOCENTE = "profesor/<int:cuat>/<int:materia_id>/"
+
 urlpatterns = [
+    # --- inicio del módulo (cambia según el rol) y publicación anual ---
     path("", views.menu, name="calificaciones_menu"),
+    path("publicar-boletines/", views.publicar_boletines, name="publicar_boletines"),
 
-    path("profesor/seleccionar/", views.profesor_seleccionar_materia, name="profesor_seleccionar"),
-    path("profesor/<int:cuat>/<str:materia>/", views.profesor_ver_alumnos, name="profesor_ver_alumnos"),
-    path("profesor/<int:cuat>/<str:materia>/guardar/", views.profesor_guardar_nota, name="profesor_guardar_nota"),
-    path("profesor/<int:cuat>/<str:materia>/categorias/", views.profesor_categorias, name="profesor_categorias"),
-    path("profesor/<int:cuat>/<str:materia>/categorias/agregar/", views.profesor_agregar_categoria, name="profesor_agregar_categoria"),
-    path("profesor/<int:cuat>/<str:materia>/categorias/editar/<int:cat_id>/", views.profesor_editar_categoria, name="profesor_editar_categoria"),
-    path("profesor/<int:cuat>/<str:materia>/categorias/eliminar/<int:cat_id>/", views.profesor_eliminar_categoria, name="profesor_eliminar_categoria"),
-    path("profesor/<int:cuat>/<str:materia>/cargar/", views.profesor_cargar_notas, name="profesor_cargar_notas"),
-    path("profesor/<int:cuat>/<str:materia>/excel/", views.profesor_cargar_excel, name="profesor_cargar_excel"),
-    path("profesor/<int:cuat>/<str:materia>/excel/confirmar/", views.profesor_confirmar_excel, name="profesor_confirmar_excel"),
-    path("profesor/<int:cuat>/<str:materia>/excel/descargar/", views.profesor_descargar_plantilla, name="profesor_descargar_plantilla"),
-    path("profesor/boletin/<int:cuat>/", views.profesor_toggle_boletin, name="profesor_toggle_boletin"),
+    # --- docente: carga de notas (guardado automático) ---
+    path(DOCENTE + "cargar-notas/", views.profesor_cargar_notas, name="profesor_cargar_notas"),
+    path(DOCENTE + "guardar-nota/", views.profesor_guardar_nota, name="profesor_guardar_nota"),
+    path(DOCENTE + "guardar-valoracion/", views.profesor_guardar_valoracion, name="profesor_guardar_valoracion"),
+    path(DOCENTE + "guardar-inasistencia/", views.profesor_guardar_inasistencia, name="profesor_guardar_inasistencia"),
 
+    # --- docente: categorías de evaluación ---
+    path(DOCENTE + "categorias/", views.profesor_categorias, name="profesor_categorias"),
+    path(DOCENTE + "categorias/agregar/", views.profesor_agregar_categoria, name="profesor_agregar_categoria"),
+    path(DOCENTE + "categorias/<int:cat_id>/editar/", views.profesor_editar_categoria, name="profesor_editar_categoria"),
+    path(DOCENTE + "categorias/<int:cat_id>/eliminar/", views.profesor_eliminar_categoria, name="profesor_eliminar_categoria"),
+
+    # --- docente: importar notas desde Excel ---
+    path(DOCENTE + "excel/", views.profesor_cargar_excel, name="profesor_cargar_excel"),
+    path(DOCENTE + "excel/confirmar/", views.profesor_confirmar_excel, name="profesor_confirmar_excel"),
+    path(DOCENTE + "excel/plantilla/", views.profesor_descargar_plantilla, name="profesor_descargar_plantilla"),
+
+    # --- planilla de calificaciones (docente; secretaría y directivo la ven) ---
+    path(DOCENTE + "planilla-calificaciones/", views.profesor_planilla, name="profesor_planilla"),
+
+    # --- boletín (RITE) ---
     path("alumno/seleccionar/", views.alumno_seleccionar, name="alumno_seleccionar"),
-    path("alumno/", views.alumno_ver_calificaciones, name="alumno_ver_calificaciones"),
     path("boletin/", views.alumno_ver_boletin, name="alumno_ver_boletin"),
-    path("boletin/<int:cuat>/", views.alumno_ver_boletin, name="alumno_ver_boletin_cuat"),
+    path("boletin/confirmar/", views.confirmar_rite, name="confirmar_rite"),
 ]
