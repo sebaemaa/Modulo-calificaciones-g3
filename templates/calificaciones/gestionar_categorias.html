@@ -52,6 +52,7 @@
         {% endfor %}
     </table>
     </div>
+    {% if hay_cerrados %}<p class="nota">Las categorías con notas de un cuatrimestre cerrado no se pueden eliminar. Cambiar el peso solo afecta a los cuatrimestres abiertos.</p>{% endif %}
     {% else %}
     <p class="ayuda">Todavía no hay categorías en esta materia. Agregá la primera acá abajo para poder cargar notas.</p>
     {% endif %}

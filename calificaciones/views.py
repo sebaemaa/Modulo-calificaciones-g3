@@ -17,6 +17,7 @@ El módulo solo LEE las tablas de otros módulos (alumnos, docentes,
 asistencia, cuentas); todo lo que guarda vive en sus propios modelos.
 """
 # --- Librería estándar -----------------------------------------------------
+import importlib.util  # para saber si está instalada la librería de Excel
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 # --- Django ----------------------------------------------------------------
@@ -37,7 +38,6 @@ from docentes.models import Materia
 
 # --- Modelos propios del módulo -------------------------------------------
 from .models import (
-    BoletinConfig,
     CategoriaEvaluacion,
     CierreCuatrimestre,
     ConfirmacionRite,
@@ -63,6 +63,10 @@ ASISTENCIA_MINIMA = Decimal("80")
 
 # Nota mínima para aprobar (RITE).
 NOTA_APROBACION = 7
+
+# Importar/descargar Excel necesita la librería openpyxl. No está en
+# requirements.txt (es un archivo compartido), así que se avisa si falta.
+EXCEL_DISPONIBLE = importlib.util.find_spec("openpyxl") is not None
 
 
 # ─────────────────────────────────────────────
@@ -347,22 +351,25 @@ def _datos_cuatrimestre(notas, categorias, cierre):
     }
 
 
-def _calificacion_final(d1, d2, cierre1, cierre2):
-    """Nota final del año (texto) o '' si todavía falta algún cuatrimestre.
+def _final_automatico(d1, d2, cierre1):
+    """Promedio entero del 1° cuatrimestre (o su intensificación) y el 2°.
 
-    - Si el cierre del 2° cuatrimestre tiene una final cargada, se usa esa.
-    - Si no, es el promedio entero del 1° (o su intensificación) y el 2°.
+    Devuelve '' si todavía falta la calificación de alguno de los dos.
     """
-    if cierre2 is not None and cierre2.calificacion_final is not None:
-        return _num_limpio(cierre2.calificacion_final)
     if not d1["calificacion"] or not d2["calificacion"]:
         return ""
-
     nota1 = Decimal(d1["calificacion"])
     if cierre1 is not None and cierre1.intensificacion and cierre1.calificacion_final is not None:
         nota1 = cierre1.calificacion_final
     nota2 = Decimal(d2["calificacion"])
     return _num_limpio(_redondear((nota1 + nota2) / 2, 0))
+
+
+def _calificacion_final(d1, d2, cierre1, cierre2):
+    """Nota final del año: la que cargó el docente a mano o, si no hay, la automática."""
+    if cierre2 is not None and cierre2.calificacion_final is not None:
+        return _num_limpio(cierre2.calificacion_final)
+    return _final_automatico(d1, d2, cierre1)
 
 
 def _intensificacion(cierre1):
@@ -425,6 +432,28 @@ def _clases_dadas(materia, cuat):
     return RegistroAsistencia.objects.filter(
         materia=materia, fecha__month__in=MESES_CUATRIMESTRE[cuat],
     ).values("fecha").distinct().count()
+
+
+# ─────────────────────────────────────────────
+#  HELPERS: CIERRE DEL CUATRIMESTRE (uno por materia)
+# ─────────────────────────────────────────────
+
+def _fecha_cierre(materia, cuat):
+    """Fecha de cierre ('30/07/2026') si el cuatrimestre de la materia está cerrado.
+
+    Devuelve None si sigue abierto. Mientras está cerrado no se pueden cambiar
+    las notas: el docente lo reabre desde la planilla si necesita corregir.
+    """
+    cerrados = CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat, cerrado=True)
+    if not cerrados.exists():
+        return None
+    ultimo = cerrados.exclude(fecha_cierre=None).order_by("-fecha_cierre").first()
+    return timezone.localtime(ultimo.fecha_cierre).strftime("%d/%m/%Y") if ultimo else "sin fecha"
+
+
+def _aviso_cerrado(cuat):
+    """Mensaje que se muestra cuando se intenta cambiar un cuatrimestre cerrado."""
+    return f"El {cuat}° cuatrimestre está cerrado. Para cambiar notas, reabrilo desde la planilla."
 
 
 # ─────────────────────────────────────────────
@@ -525,16 +554,15 @@ def _datos_menu_docente(docente, cuat):
             "estudiantes": cant_alumnos,
             "pct": pct,
             "completo": pct == 100,
+            "fecha_cierre": _fecha_cierre(m, cuat),  # None = cuatrimestre abierto
         })
-
-    config = BoletinConfig.objects.filter(cuatrimestre=cuat).first()
-    fecha_cierre = config.fecha_publicacion if config else None
 
     return {
         "materias": filas,
         "total_materias": len(filas),
         "sin_cargar": sum(1 for f in filas if not f["completo"]),
-        "fecha_cierre": fecha_cierre.strftime("%d/%m/%Y") if fecha_cierre else None,
+        "cerradas": sum(1 for f in filas if f["fecha_cierre"]),
+        "excel_disponible": EXCEL_DISPONIBLE,
     }
 
 
@@ -660,6 +688,8 @@ def profesor_cargar_notas(request, cuat, materia_id):
         "cuat": cuat,
         "materia": materia,
         "curso": _texto_curso(materia.curso),
+        "fecha_cierre": _fecha_cierre(materia, cuat),  # si está cerrado, la grilla es de solo lectura
+        "excel_disponible": EXCEL_DISPONIBLE,
         "filas": filas,
         "categorias": categorias,
         "grupos": grupos,
@@ -681,6 +711,8 @@ def _validar_ajax(request, cuat, materia_id):
     materia = _materia_del_docente(request, materia_id)
     if materia is None:
         return None, None, JsonResponse({"ok": False, "error": "Esa materia no es tuya"}, status=403)
+    if _fecha_cierre(materia, cuat):
+        return None, None, JsonResponse({"ok": False, "error": _aviso_cerrado(cuat)}, status=409)
     alumno = _alumno_de_la_materia(materia, request.POST.get("alumno_id") or 0)
     if alumno is None:
         return None, None, JsonResponse({"ok": False, "error": "Alumno no encontrado"}, status=404)
@@ -808,6 +840,7 @@ def profesor_categorias(request, cuat, materia_id):
     edit_id = request.GET.get("editar")
     editando = next((c for c in categorias if str(c["id"]) == edit_id), None)
     return render(request, "calificaciones/gestionar_categorias.html", {
+        "hay_cerrados": any(_fecha_cierre(materia, c) for c in (1, 2)),
         "cuat": cuat,
         "materia": materia,
         "curso": _texto_curso(materia.curso),
@@ -867,6 +900,14 @@ def profesor_eliminar_categoria(request, cuat, materia_id, cat_id):
         return redirect("calificaciones_menu")
 
     categoria = get_object_or_404(CategoriaEvaluacion, id=cat_id, materia=materia)
+
+    # Si la categoría tiene notas de un cuatrimestre cerrado, borrarla cambiaría
+    # notas que ya quedaron fijas: no se permite.
+    cerrados = [c for c in (1, 2) if _fecha_cierre(materia, c)]
+    if NotaEvaluacion.objects.filter(categoria=categoria, cuatrimestre__in=cerrados).exists():
+        messages.error(request, f"No se puede eliminar '{categoria.nombre}': tiene notas de un cuatrimestre cerrado.")
+        return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
+
     categoria.delete()
     messages.success(request, f"Categoría '{categoria.nombre}' eliminada.")
     return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
@@ -900,7 +941,16 @@ def profesor_cargar_excel(request, cuat, materia_id):
         messages.error(request, "Esa materia no es tuya.")
         return redirect("calificaciones_menu")
 
-    contexto = {"cuat": cuat, "materia": materia, "curso": _texto_curso(materia.curso)}
+    if _fecha_cierre(materia, cuat):
+        messages.error(request, _aviso_cerrado(cuat))
+        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
+
+    contexto = {
+        "cuat": cuat,
+        "materia": materia,
+        "curso": _texto_curso(materia.curso),
+        "excel_disponible": EXCEL_DISPONIBLE,
+    }
     if request.method != "POST":
         return render(request, "calificaciones/cargar_excel.html", contexto)
 
@@ -967,6 +1017,10 @@ def profesor_confirmar_excel(request, cuat, materia_id):
     if materia is None or cuat not in (1, 2):
         messages.error(request, "Esa materia no es tuya.")
         return redirect("calificaciones_menu")
+
+    if _fecha_cierre(materia, cuat):
+        messages.error(request, _aviso_cerrado(cuat))
+        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
 
     filas = request.session.pop(_clave_excel(cuat, materia), None)
     if not filas:
@@ -1085,6 +1139,7 @@ def profesor_planilla(request, cuat, materia_id):
         "turno": datos_planilla.turno if datos_planilla else "",
         "preceptor": datos_planilla.preceptor if datos_planilla else "",
         "puede_editar": puede_editar,
+        "fecha_cierre": _fecha_cierre(materia, cuat),  # None = cuatrimestre abierto
         "filas": filas,
         "categorias": categorias,
         "ancho_parcial": f"{ancho_parcial:.1f}",
@@ -1150,6 +1205,7 @@ def _filas_planilla(materia, categorias, cuat):
             "dic": _num_limpio(cierre_actual.nota_diciembre) if cierre_actual and cierre_actual.nota_diciembre is not None else "",
             "feb": _num_limpio(cierre_actual.nota_febrero) if cierre_actual and cierre_actual.nota_febrero is not None else "",
             "final": final,
+            "final_auto": _final_automatico(d1, d2, cierre1),  # para no guardar lo que ya es automático
             "final_aprobada": bool(final) and Decimal(final) >= NOTA_APROBACION and asistencia_ok,
             "no_acredita": not asistencia_ok,
         })
@@ -1193,8 +1249,19 @@ def _totales_planilla(filas):
 
 
 def _guardar_planilla(request, materia, cuat):
-    """Guarda lo editable de la planilla y, si se pidió, cierra el cuatrimestre."""
-    cerrar = request.POST.get("accion") == "cerrar"
+    """Guarda lo editable de la planilla. Según el botón, además cierra o
+    reabre el cuatrimestre."""
+    accion = request.POST.get("accion", "guardar")
+
+    if accion == "reabrir":
+        # Reabrir libera las notas: la calificación vuelve a calcularse sola.
+        CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat, cerrado=True).update(
+            cerrado=False, calificacion=None, fecha_cierre=None,
+        )
+        messages.success(request, f"El {cuat}° cuatrimestre se reabrió: ya se pueden cambiar las notas.")
+        return
+
+    cerrar = accion == "cerrar" and not _fecha_cierre(materia, cuat)
 
     # Encabezado: turno y preceptor/a.
     PlanillaDatos.objects.update_or_create(materia=materia, defaults={
@@ -1203,17 +1270,58 @@ def _guardar_planilla(request, materia, cuat):
     })
 
     categorias = _categorias(materia)
+    filas = {f["id"]: f for f in _filas_planilla(materia, categorias, cuat)}
+    avisos = []
+    ahora = timezone.now()
+
     for alumno in _alumnos_del_curso(materia.curso):
-        cierre, _ = CierreCuatrimestre.objects.get_or_create(
-            alumno=alumno, materia=materia, cuatrimestre=cuat,
-        )
+        fila = filas[alumno.id]
+        cierres = {
+            c: CierreCuatrimestre.objects.get_or_create(alumno=alumno, materia=materia, cuatrimestre=c)[0]
+            for c in (1, 2)
+        }
+        cierre = cierres[cuat]  # el cuatrimestre que se está mirando
+
+        # Cursa/recursa, diciembre y febrero van en el cuatrimestre que se mira.
         cursada = request.POST.get(f"cursada_{alumno.id}", "C").strip().upper()
         cierre.cursada = cursada if cursada in ("C", "R") else "C"
         cierre.nota_diciembre = _nota_desde_texto(request.POST.get(f"dic_{alumno.id}"))
         cierre.nota_febrero = _nota_desde_texto(request.POST.get(f"feb_{alumno.id}"))
 
+        # Intensificación del 1° cuatrimestre: solo si no lo había aprobado y
+        # al intensificar llegó a 7 o más.
+        texto = request.POST.get(f"intens_{alumno.id}")
+        if texto is not None:
+            nota = _nota_desde_texto(texto)
+            calif1 = fila["d1"]["calificacion"]
+            if texto.strip() == "":
+                cierres[1].intensificacion = False
+                cierres[1].calificacion_final = None
+            elif nota is None or nota < NOTA_APROBACION:
+                avisos.append(f"{fila['nombre']}: la intensificación tiene que ser una nota de 7 a 10.")
+            elif calif1 and Decimal(calif1) >= NOTA_APROBACION:
+                avisos.append(f"{fila['nombre']}: aprobó el 1° cuatrimestre, no necesita intensificación.")
+            else:
+                cierres[1].intensificacion = True
+                cierres[1].calificacion_final = nota
+
+        # Nota final: se guarda solo si el docente la cambió (si coincide con
+        # la automática o queda vacía, se sigue calculando sola).
+        texto = request.POST.get(f"final_{alumno.id}")
+        if texto is not None:
+            nota = _nota_desde_texto(texto)
+            automatica = _final_automatico(fila["d1"], fila["d2"], cierres[1])
+            if texto.strip() == "":
+                cierres[2].calificacion_final = None
+            elif nota is None:
+                avisos.append(f"{fila['nombre']}: la nota final tiene que ser de 0 a 10.")
+            elif automatica and nota == Decimal(automatica):
+                cierres[2].calificacion_final = None
+            else:
+                cierres[2].calificacion_final = nota
+
         if cerrar:
-            # Al cerrar, la calificación calculada queda fija en el cierre.
+            # Al cerrar, la calificación calculada queda fija con la fecha de cierre.
             notas = {
                 n.categoria_id: n.valor
                 for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
@@ -1222,7 +1330,10 @@ def _guardar_planilla(request, materia, cuat):
             if calif is not None:
                 cierre.calificacion = calif
             cierre.cerrado = True
-        cierre.save()
+            cierre.fecha_cierre = ahora
+
+        cierres[1].save()
+        cierres[2].save()
 
         # Inasistencias de los dos cuatrimestres (vacío = volver a las de Asistencia).
         for c in (1, 2):
@@ -1236,11 +1347,9 @@ def _guardar_planilla(request, materia, cuat):
             elif texto.strip() == "":
                 InasistenciaMateria.objects.filter(**filtro).delete()
 
+    for aviso in avisos:
+        messages.warning(request, aviso)
     if cerrar:
-        # Fecha de cierre del cuatrimestre (se muestra en el inicio del docente).
-        BoletinConfig.objects.update_or_create(
-            cuatrimestre=cuat, defaults={"publicado": True, "fecha_publicacion": timezone.now()},
-        )
         messages.success(request, f"Cierre del {cuat}° cuatrimestre guardado.")
     else:
         messages.success(request, "Cambios guardados.")
@@ -1252,13 +1361,30 @@ def _guardar_planilla(request, materia, cuat):
 
 @rol_requerido("docente", "administrativo", "directivo")
 def alumno_seleccionar(request):
-    """Buscador de alumno para abrir su boletín."""
-    alumnos = Alumno.objects.filter(activo=True).order_by("anio", "division", "apellido", "nombre")
+    """Buscador de alumno para abrir su boletín (el docente ve solo sus cursos)."""
+    alumnos = _alumnos_que_puede_ver(request).order_by("anio", "division", "apellido", "nombre")
     return render(request, "calificaciones/alumno_seleccionar.html", {
         "alumnos": alumnos,
         "boletin_publicado": _boletin_publicado(),
         "puede_ver": _puede_ver_boletin(request),
     })
+
+
+def _alumnos_que_puede_ver(request):
+    """Alumnos cuyo boletín puede abrir el usuario.
+
+    Secretaría y directivo: todos. Docente: solo los de los cursos donde da
+    alguna materia.
+    """
+    alumnos = Alumno.objects.filter(activo=True)
+    if _rol(request) != "docente":
+        return alumnos
+    docente = _docente_logueado(request)
+    cursos = Materia.objects.filter(docente=docente).values_list("curso__anio", "curso__division").distinct()
+    filtro = Q(pk__in=[])  # arranca sin ningún alumno
+    for anio, division in cursos:
+        filtro |= Q(anio=anio, division=division)
+    return alumnos.filter(filtro)
 
 
 def _alumno_a_mostrar(request):
@@ -1269,10 +1395,28 @@ def _alumno_a_mostrar(request):
     alumno_id = request.POST.get("alumno_id") or request.GET.get("alumno_id")
     if not alumno_id or not str(alumno_id).isdigit():
         return None
-    return get_object_or_404(Alumno, id=alumno_id, activo=True)
+    alumno = _alumnos_que_puede_ver(request).filter(id=alumno_id).first()
+    if alumno is None:
+        messages.error(request, "Solo podés ver el boletín de alumnos de tus cursos.")
+    return alumno
 
 
-def _datos_rite(alumno, usuario):
+def _puede_firmar(request, tipo):
+    """Quién registra cada firma del boletín.
+
+    - Estudiante: el propio alumno.
+    - Adulta/o responsable: el docente del curso, secretaría o directivo.
+    - Director/a: solo el equipo directivo.
+    """
+    rol = _rol(request)
+    if tipo == "estudiante":
+        return rol == "alumno"
+    if tipo == "director":
+        return rol == "directivo" or request.user.is_superuser
+    return rol in ("docente", "administrativo", "directivo")
+
+
+def _datos_rite(alumno, request):
     """Datos del boletín: frente (calificaciones) y dorso (intensificación,
     asistencia y firmas)."""
     notas = {}  # {(materia_id, cuat): {categoria_id: valor}}
@@ -1340,8 +1484,6 @@ def _datos_rite(alumno, usuario):
 
     # Firmas: quién tomó conocimiento en cada cuatrimestre.
     firmadas = set(ConfirmacionRite.objects.filter(alumno=alumno).values_list("cuatrimestre", "tipo"))
-    perfil = getattr(usuario, "perfil", None)
-    es_alumno = perfil is not None and perfil.rol == "alumno"
     firmas = []
     for tipo, nombre in ConfirmacionRite.TIPO_CHOICES:
         firmas.append({
@@ -1351,8 +1493,7 @@ def _datos_rite(alumno, usuario):
             "c2": (2, tipo) in firmadas,
             # [(1, firmada?), (2, firmada?)] para dibujar una celda por cuatrimestre.
             "estados": [(c, (c, tipo) in firmadas) for c in (1, 2)],
-            # El alumno firma solo como estudiante; los demás, por el resto.
-            "puede_firmar": (tipo == "estudiante") == es_alumno,
+            "puede_firmar": _puede_firmar(request, tipo),
         })
 
     # Preceptor/a: el que figura en alguna planilla del curso del alumno.
@@ -1375,7 +1516,7 @@ def _datos_rite(alumno, usuario):
         "inasistencias": {c: _formato_ar(inas[c]) for c in (1, 2)},
         "total_inasistencias": _formato_ar(inas[1] + inas[2]),
         "firmas": firmas,
-        "es_alumno": es_alumno,
+        "es_alumno": _rol(request) == "alumno",
         "ciclo_lectivo": timezone.now().year,
     }
 
@@ -1390,7 +1531,7 @@ def alumno_ver_boletin(request):
     alumno = _alumno_a_mostrar(request)
     if alumno is None:
         return redirect("alumno_seleccionar")
-    return render(request, "calificaciones/boletin.html", _datos_rite(alumno, request.user))
+    return render(request, "calificaciones/boletin.html", _datos_rite(alumno, request))
 
 
 @rol_requerido("alumno", "docente", "administrativo", "directivo")
@@ -1411,12 +1552,9 @@ def confirmar_rite(request):
     if tipo not in dict(ConfirmacionRite.TIPO_CHOICES) or cuat not in ("1", "2"):
         return destino
 
-    es_alumno = _rol(request) == "alumno"
-    if es_alumno and tipo != "estudiante":
-        messages.error(request, "Solo podés firmar por vos.")
-        return destino
-    if not es_alumno and tipo == "estudiante":
-        messages.error(request, "La firma del estudiante la registra el propio alumno.")
+    if not _puede_firmar(request, tipo):
+        nombre = dict(ConfirmacionRite.TIPO_CHOICES)[tipo]
+        messages.error(request, f"Tu usuario no puede registrar la firma de {nombre}.")
         return destino
 
     ConfirmacionRite.objects.update_or_create(

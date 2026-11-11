@@ -3,9 +3,13 @@
    PLANILLA DE CALIFICACIONES (hoja oficio vertical, igual a la oficial)
    - Las columnas calculadas (notas parciales, valoración, calificaciones,
      intensificación, final y totales) NO se editan: salen de la carga de notas.
-   - El docente de la materia edita: turno, preceptor/a, cursa/recursa,
-     inasistencias, diciembre y febrero. N° de orden, nombre y filas en
-     blanco se pueden completar antes de imprimir (no se guardan).
+   - El docente de la materia edita y guarda: turno, preceptor/a,
+     cursa/recursa, inasistencias, intensificación del 1° cuatrimestre,
+     diciembre, febrero y la calificación final (si la deja como está, se
+     sigue calculando sola). N° de orden, nombre y renglones en blanco se
+     pueden completar antes de imprimir (no se guardan).
+   - "Cerrar" deja fijas las calificaciones del cuatrimestre; "Reabrir"
+     las libera para corregir notas.
    - Secretaría y directivo la ven en modo lectura para imprimirla.
    - TED va en negro, como en la planilla oficial. Solo la nota final de un
      alumno que no llega al 80 % de asistencia se marca en rojo.
@@ -82,14 +86,19 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
         <a class="btn {% if cuat == 2 %}p{% endif %}" href="{% url 'profesor_planilla' cuat=2 materia_id=materia.id %}">2° cuatrimestre</a>
     </div>
     <div class="grupo-botones">
+        {% if fecha_cierre %}<span class="chip ne">🔒 {{ cuat }}° cuatrimestre cerrado el {{ fecha_cierre }}</span>{% endif %}
         {% if puede_editar %}
         <button type="submit" class="btn p" name="accion" value="guardar">Guardar cambios</button>
+        {% if fecha_cierre %}
+        <button type="submit" class="btn" name="accion" value="reabrir" onclick="return confirm('¿Reabrir el {{ cuat }}° cuatrimestre? Las calificaciones se vuelven a calcular con las notas.')">Reabrir {{ cuat }}° cuatrimestre</button>
+        {% else %}
         <button type="submit" class="btn" name="accion" value="cerrar" onclick="return confirm('¿Cerrar el {{ cuat }}° cuatrimestre? Las calificaciones quedan fijas.')">Cerrar {{ cuat }}° cuatrimestre</button>
+        {% endif %}
         {% endif %}
         <button type="button" class="btn" onclick="window.print()">Imprimir (oficio vertical)</button>
     </div>
 </div>
-<p class="nota no-print">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. Las celdas calculadas no se editan: salen de "Cargar notas".{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
+<p class="nota no-print">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. La intensificación va solo si el 1° no estaba aprobado (nota de 7 a 10). La calificación final se calcula sola; si la cambiás, queda la tuya. Las notas parciales y calificaciones salen de "Cargar notas".{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
 
 <div class="planilla-scroll">
 <div class="sheet">
@@ -147,11 +156,11 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
             {% for v in f.d2.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
             <td class="n">{{ f.d2.valoracion }}</td>
             <td class="n"><b>{{ f.d2.calificacion }}</b></td>
-            <td class="n">{{ f.intensificacion }}</td>
+            <td class="n"><input class="ll" type="text" inputmode="decimal" name="intens_{{ f.id }}" value="{{ f.intensificacion }}" aria-label="{{ f.nombre }} — intensificación 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="inas2_{{ f.id }}" value="{{ f.inas2 }}" aria-label="{{ f.nombre }} — inasistencias 2° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="dic_{{ f.id }}" value="{{ f.dic }}" aria-label="{{ f.nombre }} — diciembre"{% if not puede_editar %} readonly{% endif %}></td>
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="feb_{{ f.id }}" value="{{ f.feb }}" aria-label="{{ f.nombre }} — febrero"{% if not puede_editar %} readonly{% endif %}></td>
-            <td class="n">{% if f.final %}<b{% if f.no_acredita %} class="no-acredita" title="Asistencia menor al 80 %: no acredita la materia"{% endif %}>{{ f.final }}</b>{% endif %}</td>
+            <td class="n"><input class="ll{% if f.no_acredita %} no-acredita{% endif %}" type="text" inputmode="decimal" name="final_{{ f.id }}" value="{{ f.final }}" aria-label="{{ f.nombre }} — calificación final"{% if f.no_acredita %} title="Asistencia menor al 80 %: no acredita la materia"{% endif %}{% if not puede_editar %} readonly{% endif %}></td>
         </tr>
         {% endfor %}
 

@@ -19,6 +19,13 @@
 {% endblock %}
 
 {% block content %}
+{% if not excel_disponible %}
+<div class="card tarjeta borde-rojo">
+    <h3 class="tarjeta-titulo">Falta instalar la librería de Excel</h3>
+    <p class="ayuda">Para importar o descargar planillas de Excel hay que instalar <b>openpyxl</b> en el entorno del proyecto: <code>pip install openpyxl</code>. Mientras tanto podés cargar las notas a mano en la grilla.</p>
+</div>
+{% endif %}
+
 <div class="card tarjeta">
     <h2 class="seccion-titulo">Cómo se hace</h2>
     <ol class="ayuda">
@@ -30,9 +37,9 @@
     <form class="form form-angosto" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <label for="archivo">Archivo Excel (.xlsx)</label>
-        <input type="file" id="archivo" name="archivo" accept=".xlsx" required>
+        <input type="file" id="archivo" name="archivo" accept=".xlsx" required{% if not excel_disponible %} disabled{% endif %}>
         <div class="acciones">
-            <button type="submit" class="btn p">Subir y ver vista previa</button>
+            <button type="submit" class="btn p"{% if not excel_disponible %} disabled{% endif %}>Subir y ver vista previa</button>
         </div>
     </form>
 </div>

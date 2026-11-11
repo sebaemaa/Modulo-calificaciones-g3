@@ -5,6 +5,8 @@
    - La calificación (celda gris) se recalcula en pantalla con el peso de
      cada categoría, igual que en el servidor.
    - Si la asistencia es menor al 80 %, el estado avisa que no acredita.
+   - Si el cuatrimestre está cerrado, la grilla queda de solo lectura: para
+     corregir hay que reabrirlo desde la planilla.
 {% endcomment %}
 
 {% block title %}Cargar notas — {{ materia.nombre }} — SGE{% endblock %}
@@ -29,19 +31,31 @@
         <a class="btn {% if cuat == 2 %}p{% endif %}" href="{% url 'profesor_cargar_notas' cuat=2 materia_id=materia.id %}">2° cuatrimestre</a>
     </div>
     <div class="grupo-botones">
+        {% if fecha_cierre %}
+        <span class="chip ne">🔒 Cerrado el {{ fecha_cierre }}</span>
+        <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
+        {% else %}
         <span class="chip ok" id="estado-guardado">✓ Guardado automático</span>
         <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
         <a class="btn" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=materia.id %}">Importar Excel</a>
-        <a class="btn" href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargar plantilla</a>
+        {% if excel_disponible %}<a class="btn" href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargar plantilla</a>{% endif %}
+        {% endif %}
     </div>
 </div>
+
+{% if fecha_cierre %}
+<div class="card tarjeta borde-oscuro">
+    <p class="ayuda"><b>El {{ cuat }}° cuatrimestre está cerrado</b>: las calificaciones quedaron fijas y no se pueden cambiar las notas. Si tenés que corregir algo, reabrilo desde la <a href="{% url 'profesor_planilla' cuat=cuat materia_id=materia.id %}">planilla</a>.</p>
+</div>
+{% endif %}
 
 <div class="card tabla-wrap">
 <table class="tabla" id="tabla-notas"
        data-url-nota="{% url 'profesor_guardar_nota' cuat=cuat materia_id=materia.id %}"
        data-url-valoracion="{% url 'profesor_guardar_valoracion' cuat=cuat materia_id=materia.id %}"
        data-url-inasistencia="{% url 'profesor_guardar_inasistencia' cuat=cuat materia_id=materia.id %}"
-       data-con-pesos="{% if con_pesos %}1{% endif %}">
+       data-con-pesos="{% if con_pesos %}1{% endif %}"
+       data-cerrado="{% if fecha_cierre %}1{% endif %}">
     <thead>
     <tr>
         <th rowspan="2">Estudiante</th>
@@ -67,10 +81,10 @@
         <td class="c"><input class="n nota" type="text" inputmode="decimal" value="{{ celda.valor }}"
             data-cat="{{ celda.cat.id }}" data-grupo="{{ celda.cat.grupo_key }}"
             data-peso="{{ celda.cat.peso_js }}" data-peso-grupo="{{ celda.cat.peso_grupo_js }}"
-            aria-label="{{ a.nombre }} — {{ celda.cat.nombre }}"></td>
+            aria-label="{{ a.nombre }} — {{ celda.cat.nombre }}"{% if fecha_cierre %} readonly{% endif %}></td>
         {% endfor %}
         <td class="c">
-            <select class="v{% if a.valoracion == 'TED' %} ted{% endif %}" aria-label="{{ a.nombre }} — Valoración preliminar">
+            <select class="v{% if a.valoracion == 'TED' %} ted{% endif %}" aria-label="{{ a.nombre }} — Valoración preliminar"{% if fecha_cierre %} disabled{% endif %}>
                 <option value=""{% if not a.valoracion %} selected{% endif %}>—</option>
                 <option value="TEA"{% if a.valoracion == 'TEA' %} selected{% endif %}>TEA</option>
                 <option value="TEP"{% if a.valoracion == 'TEP' %} selected{% endif %}>TEP</option>
@@ -79,7 +93,7 @@
         </td>
         <td class="c calc calif-fila">{{ a.calificacion|default:"—" }}</td>
         <td class="estado-fila"{% if a.asistencia_pct %} title="Asistencia: {{ a.asistencia_pct }} %"{% endif %}>{% if a.estado %}<span class="chip {% if a.aprobada %}ok{% else %}wa{% endif %}">{{ a.estado }}</span>{% else %}—{% endif %}</td>
-        <td class="c"><input class="n inasistencia" type="text" inputmode="decimal" value="{{ a.inasistencias }}" aria-label="{{ a.nombre }} — Inasistencias"></td>
+        <td class="c"><input class="n inasistencia" type="text" inputmode="decimal" value="{{ a.inasistencias }}" aria-label="{{ a.nombre }} — Inasistencias"{% if fecha_cierre %} readonly{% endif %}></td>
     </tr>
     {% empty %}
     <tr><td class="vacia" colspan="99">Todavía no hay alumnos activos en el curso de esta materia.</td></tr>
@@ -170,7 +184,7 @@
     function guardar(url, datos, campo) {
         var fd = new FormData();
         Object.keys(datos).forEach(function (k) { fd.append(k, datos[k]); });
-        avisoGuardado.textContent = 'Guardando…';
+        if (avisoGuardado) avisoGuardado.textContent = 'Guardando…';
         fetch(url, {
             method: 'POST',
             headers: { 'X-CSRFToken': cookie('csrftoken') },
@@ -178,16 +192,17 @@
             credentials: 'same-origin'
         }).then(function (r) { return r.json(); }).then(function (d) {
             campo.classList.toggle('error', !d.ok);
-            avisoGuardado.textContent = d.ok ? '✓ Guardado automático' : '⚠ Hay un dato sin guardar';
+            if (avisoGuardado) avisoGuardado.textContent = d.ok ? '✓ Guardado automático' : '⚠ Hay un dato sin guardar';
             if (!d.ok) alert(d.error || 'No se pudo guardar.');
         }).catch(function () {
             campo.classList.add('error');
-            avisoGuardado.textContent = '⚠ Sin conexión';
+            if (avisoGuardado) avisoGuardado.textContent = '⚠ Sin conexión';
             alert('No se pudo guardar. Revisá la conexión.');
         });
     }
 
     tabla.addEventListener('change', function (e) {
+        if (tabla.dataset.cerrado === '1') return;  // cuatrimestre cerrado: no se guarda nada
         var campo = e.target;
         var fila = campo.closest('tr');
         var alumno = fila.dataset.alumno;
@@ -234,7 +249,7 @@
 
     // Recalcular mientras se escribe.
     tabla.addEventListener('input', function (e) {
-        if (e.target.classList.contains('nota')) actualizarFila(e.target.closest('tr'));
+        if (e.target.classList.contains('nota') && !e.target.readOnly) actualizarFila(e.target.closest('tr'));
     });
 })();
 </script>

@@ -28,7 +28,11 @@ PERIODO_CHOICES = [
 
 
 class Calificacion(models.Model):
-    """Calificación simple por bimestre (registro histórico del módulo)."""
+    """Calificación por bimestre del esqueleto original.
+
+    No la usa ninguna pantalla del módulo: queda para no romper el esqueleto
+    que armó el profesor (su tabla ya existe en la base).
+    """
     alumno = models.ForeignKey('alumnos.Alumno', on_delete=models.CASCADE, related_name='calificaciones')
     materia = models.ForeignKey('docentes.Materia', on_delete=models.CASCADE, related_name='calificaciones')
     periodo = models.CharField(max_length=2, choices=PERIODO_CHOICES)
@@ -92,10 +96,11 @@ class NotaEvaluacion(models.Model):
 
 
 class BoletinConfig(models.Model):
-    """Configuración por cuatrimestre: fecha de cierre y estado de publicación.
+    """Configuración vieja por cuatrimestre (una sola para toda la escuela).
 
-    Ojo: este modelo NO habilita el boletín del alumno. La publicación real
-    es anual y la controla ``PublicacionBoletin``.
+    Ya no la usa ninguna pantalla: la fecha de cierre ahora se guarda por
+    materia en ``CierreCuatrimestre.fecha_cierre`` y la publicación del
+    boletín es anual (``PublicacionBoletin``). Queda para no perder datos.
     """
     CUATRIMESTRE_CHOICES = [(1, '1° Cuatrimestre'), (2, '2° Cuatrimestre')]
 
@@ -120,8 +125,14 @@ class CierreCuatrimestre(models.Model):
     """Cierre de un alumno en una materia para un cuatrimestre (RITE).
 
     Guarda la valoración de trayectoria que elige el docente al cargar
-    notas y, al cerrar el cuatrimestre, la calificación oficial y las
-    notas de recuperación (diciembre / febrero).
+    notas, la cursada (C/R), las notas de diciembre / febrero y, al cerrar
+    el cuatrimestre, la calificación oficial y la fecha de cierre.
+
+    ``calificacion_final`` significa algo distinto según el cuatrimestre:
+    - 1° cuatrimestre: con ``intensificacion`` marcada, es la nota con la que
+      el alumno aprobó al intensificar (columna "Intensificación 1° cuat.").
+    - 2° cuatrimestre: es la nota final del año cargada a mano. Si está
+      vacía, la planilla la calcula sola con el promedio de los dos.
     """
     TEA = 'TEA'
     TEP = 'TEP'
@@ -151,6 +162,7 @@ class CierreCuatrimestre(models.Model):
     nota_febrero = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     calificacion_final = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     cerrado = models.BooleanField(default=False)
+    fecha_cierre = models.DateTimeField(null=True, blank=True, help_text='Cuándo el docente cerró el cuatrimestre')
 
     def __str__(self):
         valoracion = self.valoracion_preliminar or 'sin valorar'

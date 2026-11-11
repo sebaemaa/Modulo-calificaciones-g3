@@ -1,8 +1,10 @@
 {% extends "calificaciones/base_cal.html" %}
 {% comment %}
    INICIO DEL DOCENTE
-   - Resumen: materias a cargo, materias con notas sin cargar y fecha de
-     cierre del cuatrimestre.
+   - Resumen: materias a cargo, materias con notas sin cargar y materias
+     con el cuatrimestre cerrado.
+   - Cada materia muestra si su cuatrimestre está abierto, completo o
+     cerrado (con la fecha de cierre de ESA materia).
    - Una tarjeta por materia (y por curso) con sus accesos.
 {% endcomment %}
 
@@ -25,7 +27,7 @@
 <div class="stats">
     <div class="card stat"><span class="numero">{{ total_materias }}</span><span class="ayuda">Materias a cargo</span></div>
     <div class="card stat"><span class="numero">{{ sin_cargar }}</span><span class="ayuda">Materias con notas sin cargar</span></div>
-    <div class="card stat"><span class="numero">{{ fecha_cierre|default:"—" }}</span><span class="ayuda">Cierre del {{ cuat }}° cuatrimestre</span></div>
+    <div class="card stat"><span class="numero">{{ cerradas }} de {{ total_materias }}</span><span class="ayuda">Materias con el {{ cuat }}° cuatrimestre cerrado</span></div>
 </div>
 
 <h2 class="seccion-titulo">Mis materias</h2>
@@ -33,10 +35,12 @@
 {% if materias %}
 <div class="grid-tarjetas">
     {% for m in materias %}
-    <div class="card tarjeta {% if m.completo %}borde-verde{% else %}borde-azul{% endif %}">
+    <div class="card tarjeta {% if m.fecha_cierre or m.completo %}borde-verde{% else %}borde-azul{% endif %}">
         <div class="tarjeta-cabecera">
             <h3 class="tarjeta-titulo">{{ m.nombre }}</h3>
-            {% if m.completo %}<span class="chip ok">{{ cuat }}° cuat. completo</span>{% else %}<span class="chip wa">{{ cuat }}° cuat. abierto</span>{% endif %}
+            {% if m.fecha_cierre %}<span class="chip ne">{{ cuat }}° cuat. cerrado el {{ m.fecha_cierre }}</span>
+            {% elif m.completo %}<span class="chip ok">{{ cuat }}° cuat. completo</span>
+            {% else %}<span class="chip wa">{{ cuat }}° cuat. abierto</span>{% endif %}
         </div>
         <p class="ayuda">{{ m.curso }} · {{ m.estudiantes }} estudiantes</p>
         <p class="nota">{% if m.pct is None %}Creá categorías para poder cargar notas{% else %}Notas cargadas: {{ m.pct }}%{% endif %}</p>
@@ -47,7 +51,7 @@
         </div>
         <p class="ayuda grupo-botones">
             <a href="{% url 'profesor_categorias' cuat=cuat materia_id=m.id %}">Categorías</a>
-            <a href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=m.id %}">Importar Excel</a>
+            {% if not m.fecha_cierre %}<a href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=m.id %}">Importar Excel</a>{% endif %}
         </p>
     </div>
     {% endfor %}

@@ -21,7 +21,7 @@ Reproduce los datos de ejemplo de las maquetas de diseño:
 El comando es idempotente: primero borra lo que haya creado en una corrida
 anterior, así que se puede ejecutar todas las veces que haga falta.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
@@ -252,13 +252,6 @@ class Command(BaseCommand):
                 ))
         RegistroAsistencia.objects.bulk_create(registros)
 
-        # ---- Boletín: 1° cuatrimestre publicado con fecha de cierre ----
-        BoletinConfig.objects.create(
-            cuatrimestre=1, publicado=True,
-            fecha_publicacion=timezone.make_aware(datetime(2026, 7, 30, 12, 0)),
-        )
-        BoletinConfig.objects.create(cuatrimestre=2, publicado=False)
-
         # ---- Boletín anual: arranca oculto para mostrar el interruptor en la expo ----
         PublicacionBoletin.objects.update_or_create(
             anio=timezone.now().year,
@@ -312,7 +305,8 @@ class Command(BaseCommand):
         # se borran sus notas, categorías y asistencias).
         Materia.objects.filter(docente__dni__in=DNI_DOCENTES_DEMO).delete()
         Alumno.objects.filter(dni__in=DNI_ALUMNOS_DEMO).delete()
-        # Tablas propias del módulo: se reinician completas.
+        # Tablas propias del módulo: se reinician completas (BoletinConfig ya
+        # no se usa, se limpia por si quedó de versiones anteriores).
         BoletinConfig.objects.all().delete()
         PublicacionBoletin.objects.all().delete()
 

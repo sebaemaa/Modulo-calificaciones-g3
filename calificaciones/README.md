@@ -2,7 +2,7 @@
 
 Ficha técnica del módulo. Es la referencia para cualquier técnico que tome el
 proyecto: qué hace, cómo está armado, qué reglas de negocio aplica y cómo se
-prueba.
+prueba. Para preparar la exposición, ver la [guía de estudio](GUIA.md).
 
 - **Proyecto**: SGE (Sistema de Gestión Escolar) — Django 6 + SQLite
 - **Módulo**: `calificaciones` (Módulo 3 del grupo)
@@ -33,7 +33,10 @@ que muestra el acceso a todos los módulos.
 | Ver la planilla | solo de sus materias | de todas (solo lectura) | de todas (solo lectura) | — |
 | Cargar notas / categorías / Excel | de sus materias | — | — | — |
 | Guardar o cerrar un cuatrimestre | de sus materias | — | — | — |
-| Ver el boletín | solo si está publicado | siempre | siempre | solo el suyo y solo si está publicado |
+| Ver el boletín | alumnos de sus cursos, solo si está publicado | siempre | siempre | solo el suyo y solo si está publicado |
+| Registrar firma "Adulta/o responsable" | sí | sí | sí | — |
+| Registrar firma "Director/a" | — | — | sí | — |
+| Registrar firma "Estudiante" | — | — | — | la suya |
 | Publicar / ocultar el boletín anual | — | sí | sí | — |
 
 **Regla del boletín**: el alumno **nunca** puede abrir el boletín antes de fin de
@@ -61,9 +64,10 @@ calificaciones/
 ├── admin.py                     # registro en el admin de Django
 ├── tests.py                     # tests de las pantallas
 ├── tests_roles.py               # tests de roles y permisos
+├── README.md / GUIA.md          # ficha técnica y guía de estudio
 ├── management/commands/
 │   └── cargar_datos_demo.py     # datos de ejemplo (idempotente)
-├── migrations/                  # 0001 a 0008
+├── migrations/                  # 0001 a 0009
 └── templates/calificaciones/    # 11 plantillas (ver §6)
 ```
 
@@ -93,10 +97,10 @@ ruta `perfil`; si no existe, muestra el usuario sin link (no da error).
 |---|---|---|
 | `CategoriaEvaluacion` | Categorías de evaluación de una materia: nombre, orden, **grupo** (agrupa columnas) y **peso** (%) | → `docentes.Materia` |
 | `NotaEvaluacion` | La nota de un alumno en una categoría de un cuatrimestre (0 a 10) | → `alumnos.Alumno`, `docentes.Materia`, `CategoriaEvaluacion` |
-| `CierreCuatrimestre` | Cierre de un alumno en una materia por cuatrimestre: valoración TEA/TEP/TED, cursada C/R, calificación oficial, intensificación, notas de diciembre/febrero, calificación final y estado "cerrado" | → `alumnos.Alumno`, `docentes.Materia` |
+| `CierreCuatrimestre` | Cierre de un alumno en una materia por cuatrimestre: valoración TEA/TEP/TED, cursada C/R, calificación oficial, intensificación, notas de diciembre/febrero, calificación final, estado "cerrado" y fecha de cierre. En el 1° cuatrimestre `calificacion_final` es la nota de intensificación; en el 2°, la final cargada a mano | → `alumnos.Alumno`, `docentes.Materia` |
 | `InasistenciaMateria` | Inasistencias cargadas a mano por el docente para un alumno, materia y cuatrimestre (admite medias faltas) | → `alumnos.Alumno`, `docentes.Materia` |
 | `ConfirmacionRite` | Quién tomó conocimiento del boletín y cuándo (director, adulto responsable o estudiante) | → `alumnos.Alumno` |
-| `BoletinConfig` | Por cuatrimestre: si el cuatrimestre está cerrado y su fecha de cierre (para el inicio del docente) | — |
+| `BoletinConfig` | Modelo viejo (una fecha de cierre para toda la escuela). **Ya no lo usa ninguna pantalla**: la fecha de cierre ahora va por materia en `CierreCuatrimestre`. Queda para no perder datos | — |
 | `PublicacionBoletin` | Interruptor **anual** del boletín: año, si está publicado, fecha y usuario que lo cambió. Es la única fuente de verdad para que el alumno vea el boletín | — |
 | `PlanillaDatos` | Turno y preceptor/a del encabezado de la planilla imprimible | → `docentes.Materia` |
 | `Calificacion` | Modelo del esqueleto original (bimestre + nota). **No lo usa ninguna vista**: quedó por compatibilidad con el esqueleto | → `alumnos.Alumno`, `docentes.Materia` |
@@ -158,35 +162,48 @@ manual, esa manda en las dos pantallas.
 **Promedio anual** (boletín): promedio de ambos cuatrimestres **solo si los
 dos son 7 o más** y la asistencia anual llega al 80 %; si no, queda en blanco.
 
-**Calificación final de la planilla** (`_calificacion_final`): aparece sola
-cuando **los dos cuatrimestres tienen calificación**. Si el cierre del 2°
-cuatrimestre ya tiene una `calificacion_final` cargada, se usa esa; si no, se
-promedia la nota del 1° cuatrimestre (con la intensificación, si la hubo) y la
-del 2°, redondeada a entero. Con asistencia insuficiente se sigue mostrando,
-pero en rojo y sin contar como aprobada.
+**Calificación final de la planilla** (`_final_automatico` y
+`_calificacion_final`): aparece sola cuando **los dos cuatrimestres tienen
+calificación**: promedio del 1° cuatrimestre (o su intensificación, si la hubo)
+y el 2°, redondeado a entero. El docente la puede cambiar a mano en la
+planilla; solo se guarda si es distinta de la automática (se guarda en
+`calificacion_final` del 2° cuatrimestre) y, si se vacía, vuelve a calcularse
+sola. Con asistencia insuficiente se sigue mostrando, pero en rojo y sin
+contar como aprobada.
 
-**Intensificación del 1° cuatrimestre**: solo corresponde si la nota original
-fue menor a 7; se muestra la nota que alcanzó.
+**Intensificación del 1° cuatrimestre**: el docente la carga en la planilla.
+Solo se acepta si el alumno **no** aprobó el 1° cuatrimestre y la nota es de 7
+a 10 (si no, la planilla avisa y no la guarda). Se guarda en el cierre del 1°
+cuatrimestre (`intensificacion` + `calificacion_final`).
 
 **Planilla editable sin cambiar el diseño** (`profesor_planilla` +
 `planilla.html`):
 
 - **Se editan y se guardan**: cursada (C/R), inasistencias de cada
-  cuatrimestre, diciembre y febrero. El encabezado (turno y preceptor/a) también
-  se guarda en `PlanillaDatos`.
+  cuatrimestre, intensificación del 1° cuatrimestre, diciembre, febrero y la
+  calificación final (solo si se cambia). El encabezado (turno y preceptor/a)
+  también se guarda en `PlanillaDatos`.
 - **Se editan solo para imprimir** (no se guardan en la base): número de orden y
   apellido/nombre del alumno, y todas las casillas de los renglones en blanco
   de la hoja oficial (hasta el 37).
 - Secretaría y directivo la ven en **modo lectura**: sin botones de guardar y
   con las casillas bloqueadas.
 - **No se editan** (son calculadas): parciales, valoración preliminar,
-  calificación de cada cuatrimestre, intensificación, calificación final,
-  totales y clases.
+  calificación de cada cuatrimestre, totales y clases.
 
-**Cierre del cuatrimestre** (planilla del docente): congela la calificación
-oficial de cada alumno (queda guardada en `CierreCuatrimestre.cerrado` +
-`calificacion`) y registra la fecha de cierre en `BoletinConfig` (se muestra en
-el inicio del docente). **No** habilita el boletín del alumno.
+**Cierre del cuatrimestre** (planilla del docente, uno **por materia**):
+congela la calificación oficial de cada alumno (`CierreCuatrimestre.cerrado` +
+`calificacion`) y guarda la fecha (`fecha_cierre`), que se muestra en la
+tarjeta de esa materia en el inicio del docente. Mientras está cerrado:
+
+- "Cargar notas" queda de solo lectura y los guardados automáticos responden
+  error 409;
+- no se puede importar Excel;
+- no se puede borrar una categoría que tenga notas de ese cuatrimestre.
+
+El docente lo **reabre** desde la planilla (botón "Reabrir"): las
+calificaciones vuelven a calcularse con las notas. El cierre **no** habilita el
+boletín del alumno.
 
 **Publicación anual del boletín** (`PublicacionBoletin`): la activan secretaría
 o el directivo desde el menú con el botón "Publicar boletines del año".
@@ -355,7 +372,7 @@ Usuarios que crea el comando de demostración (clave `prueba1234`):
 ## 8. Tests
 
 ```bash
-python manage.py test calificaciones          # 62 tests
+python manage.py test calificaciones          # 72 tests
 python manage.py test calificaciones.tests_roles
 ```
 
@@ -363,8 +380,9 @@ Qué cubren:
 
 - **`tests.py`** — menús por rol, carga de notas (guardado automático,
   ponderación, coma decimal, Excel, botones de volver), planilla del docente
-  (URL, guardado, cierre, inasistencias, celdas editables, modo lectura, TED en
-  negro y nota final automática), materias con el mismo nombre en dos cursos,
+  (URL, guardado, cierre y reapertura, inasistencias, intensificación, nota
+  final automática y a mano, celdas editables, modo lectura, TED en negro),
+  materias con el mismo nombre en dos cursos, permisos de firmas y de boletín,
   boletín del alumno (frente + dorso, firmas de ambos cuatrimestres, TED y aviso
   por asistencia) y la publicación anual del boletín (alumno y docente
   bloqueados, secretaría y directivo siempre habilitados, interruptor). Incluye
@@ -387,6 +405,7 @@ Qué cubren:
 | `0006_inasistenciamateria` | Modelo `InasistenciaMateria` |
 | `0007_planilladatos` | Modelo `PlanillaDatos` (turno y preceptor/a) |
 | `0008_publicacionboletin` | Modelo `PublicacionBoletin` (interruptor anual del boletín) |
+| `0009_cierrecuatrimestre_fecha_cierre` | Fecha de cierre por materia en `CierreCuatrimestre` |
 
 ---
 
@@ -411,16 +430,15 @@ Qué cubren:
 
 - "Imprimir / guardar como PDF" usa la impresión del navegador (se puede elegir
   "Guardar como PDF"); no hay generación de PDF en el backend.
-- La planilla no guarda las "saberes pendientes" del dorso del boletín (se
-  imprimen en blanco a mano).
 - La secretaría puede ver las planillas de todos los docentes, pero no
   modificarlas; si hace falta que pueda corregir una carga, hay que darle
   también el rol docente o habilitarle la edición.
 - Las pantallas de categorías y de Excel no tienen maqueta en el zip: están
   hechas con el mismo shell y estilo que el resto, pero su contenido es
   propuesta propia.
-- **Fuera del alcance de la entrega**: calcular y guardar automáticamente
-  `calificacion_final` e `intensificacion` (hoy solo las cargan los datos demo)
-  y bloquear de verdad la edición de un cuatrimestre cerrado.
-- `BoletinConfig` (fecha de cierre) es uno por cuatrimestre para toda la
-  escuela: el primer docente que cierra marca la fecha para todos.
+- `openpyxl` (para Excel) no está en `requirements.txt` porque es un archivo
+  compartido: hay que instalarlo a mano. Sin la librería, la pantalla de Excel
+  lo avisa.
+- `Calificacion` (por bimestres) y `BoletinConfig` no los usa ninguna
+  pantalla; quedan para no romper el esqueleto ni perder datos.
+- Los "saberes pendientes" del dorso del boletín se completan a mano.

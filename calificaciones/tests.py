@@ -111,7 +111,7 @@ class MenuPorRolTests(TestCase):
         self.assertTemplateUsed(r, "calificaciones/menu_docente.html")
         for texto in ("Mis materias", "Materias a cargo", "Laboratorio de Programación",
                       "Notas cargadas: 75%", "Cargar notas", "Ver planilla",
-                      "Cierre del 1° cuatrimestre", "1° cuat. abierto"):
+                      "Materias con el 1° cuatrimestre cerrado", "1° cuat. abierto"):
             self.assertContains(r, texto)
         # barra superior y footer compartidos con el resto de los módulos
         self.assertContains(r, 'class="logo"')
@@ -244,7 +244,7 @@ class CargarNotasTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertTemplateUsed(r, "calificaciones/cargar_notas.html")
         for texto in ("Guardado automático", "Categorías", "Importar Excel", "Ver planilla",
-                      "Descargar plantilla", "Trabajos prácticos · 60 %",
+                      "Trabajos prácticos · 60 %",
                       "Evaluación · 40 %",
                       "Val. preliminar", "Calificación", "Estado",
                       "Acosta, Lucía", "Aprobada"):
@@ -260,6 +260,20 @@ class CargarNotasTests(TestCase):
         self.assertContains(r, ">TEA</option>")
         self.assertContains(r, ">TEP</option>")
         self.assertContains(r, ">TED</option>")
+
+    def test_aviso_si_falta_la_libreria_de_excel(self):
+        """Sin openpyxl, la pantalla de Excel avisa qué instalar en vez de fallar."""
+        from calificaciones import views
+        self._login()
+        url = reverse("profesor_cargar_excel", kwargs={"cuat": 1, "materia_id": self.materia.id})
+        original = views.EXCEL_DISPONIBLE
+        try:
+            views.EXCEL_DISPONIBLE = False
+            self.assertContains(self.client.get(url), "Falta instalar la librería de Excel")
+            views.EXCEL_DISPONIBLE = True
+            self.assertNotContains(self.client.get(url), "Falta instalar la librería de Excel")
+        finally:
+            views.EXCEL_DISPONIBLE = original
 
     def test_guardar_nota_devuelve_calificacion_ponderada(self):
         self._login()
@@ -522,8 +536,108 @@ class PlanillaDocenteTests(TestCase):
             alumno=self.alumno, materia=self.materia, cuatrimestre=1
         )
         self.assertTrue(cierre.cerrado)
+        self.assertIsNotNone(cierre.fecha_cierre)
         # la calificación oficial queda fija con lo cargado
         self.assertEqual(cierre.calificacion, Decimal("9"))
+        # la planilla muestra la fecha y el botón para reabrir
+        r = self.client.get(self._url())
+        self.assertContains(r, "cuatrimestre cerrado el")
+        self.assertContains(r, "Reabrir 1° cuatrimestre")
+        self.assertNotContains(r, "Cerrar 1° cuatrimestre")
+
+    def test_cuatrimestre_cerrado_bloquea_las_notas(self):
+        """Con el cuatrimestre cerrado la grilla es de solo lectura y no se guardan notas."""
+        self.client.force_login(self.u_docente)
+        self.client.post(self._url(), {"accion": "cerrar"})
+        kwargs = {"cuat": 1, "materia_id": self.materia.id}
+
+        r = self.client.get(reverse("profesor_cargar_notas", kwargs=kwargs))
+        self.assertContains(r, "está cerrado")
+        self.assertContains(r, "readonly")
+
+        r = self.client.post(reverse("profesor_guardar_nota", kwargs=kwargs),
+                             {"alumno_id": self.alumno.id, "cat_id": self.tp.id, "valor": "2"})
+        self.assertEqual(r.status_code, 409)
+        self.assertEqual(NotaEvaluacion.objects.get(categoria=self.tp, cuatrimestre=1).valor, Decimal("8"))
+
+        # el 2° cuatrimestre sigue abierto
+        r = self.client.post(reverse("profesor_guardar_nota", kwargs={"cuat": 2, "materia_id": self.materia.id}),
+                             {"alumno_id": self.alumno.id, "cat_id": self.tp2.id, "valor": "7"})
+        self.assertEqual(r.status_code, 200)
+
+    def test_reabrir_libera_las_notas(self):
+        self.client.force_login(self.u_docente)
+        self.client.post(self._url(), {"accion": "cerrar"})
+        self.client.post(self._url(), {"accion": "reabrir"})
+        cierre = CierreCuatrimestre.objects.get(alumno=self.alumno, materia=self.materia, cuatrimestre=1)
+        self.assertFalse(cierre.cerrado)
+        self.assertIsNone(cierre.calificacion)
+        self.assertIsNone(cierre.fecha_cierre)
+        r = self.client.post(reverse("profesor_guardar_nota", kwargs={"cuat": 1, "materia_id": self.materia.id}),
+                             {"alumno_id": self.alumno.id, "cat_id": self.tp.id, "valor": "2"})
+        self.assertEqual(r.status_code, 200)
+
+    def test_cada_materia_tiene_su_fecha_de_cierre(self):
+        """Cerrar una materia no marca como cerradas a las demás."""
+        otra = Materia.objects.create(nombre="Sistemas digitales", curso=self.curso, docente=self.docente)
+        self.client.force_login(self.u_docente)
+        self.client.post(self._url(), {"accion": "cerrar"})
+        r = self.client.get(reverse("calificaciones_menu"))
+        materias = {m["id"]: m for m in r.context["materias"]}
+        self.assertIsNotNone(materias[self.materia.id]["fecha_cierre"])
+        self.assertIsNone(materias[otra.id]["fecha_cierre"])
+        self.assertEqual(r.context["cerradas"], 1)
+
+    def test_no_se_borra_una_categoria_con_notas_cerradas(self):
+        self.client.force_login(self.u_docente)
+        self.client.post(self._url(), {"accion": "cerrar"})
+        url = reverse("profesor_eliminar_categoria",
+                      kwargs={"cuat": 2, "materia_id": self.materia.id, "cat_id": self.tp.id})
+        r = self.client.post(url, follow=True)
+        self.assertContains(r, "tiene notas de un cuatrimestre cerrado")
+        self.assertTrue(CategoriaEvaluacion.objects.filter(id=self.tp.id).exists())
+
+    def test_cargar_intensificacion(self):
+        """La intensificación se guarda solo si el 1° no estaba aprobado y es 7 o más."""
+        NotaEvaluacion.objects.filter(cuatrimestre=1).update(valor=Decimal("4"))
+        self.client.force_login(self.u_docente)
+        r = self.client.post(self._url(), {"accion": "guardar", f"intens_{self.alumno.id}": "5"}, follow=True)
+        self.assertContains(r, "la intensificación tiene que ser una nota de 7 a 10")
+        self.client.post(self._url(), {"accion": "guardar", f"intens_{self.alumno.id}": "8"})
+        cierre1 = CierreCuatrimestre.objects.get(alumno=self.alumno, materia=self.materia, cuatrimestre=1)
+        self.assertTrue(cierre1.intensificacion)
+        self.assertEqual(cierre1.calificacion_final, Decimal("8"))
+        # la final usa la intensificación: (8 + 9) / 2 = 8,5 -> 9
+        r = self.client.get(self._url())
+        self.assertEqual(r.context["filas"][0]["intensificacion"], "8")
+        self.assertEqual(r.context["filas"][0]["final"], "9")
+        # vaciar la casilla la borra
+        self.client.post(self._url(), {"accion": "guardar", f"intens_{self.alumno.id}": ""})
+        cierre1.refresh_from_db()
+        self.assertFalse(cierre1.intensificacion)
+
+    def test_no_intensifica_quien_aprobo_el_primer_cuatrimestre(self):
+        self.client.force_login(self.u_docente)
+        r = self.client.post(self._url(), {"accion": "guardar", f"intens_{self.alumno.id}": "8"}, follow=True)
+        self.assertContains(r, "no necesita intensificación")
+        self.assertFalse(CierreCuatrimestre.objects.get(
+            alumno=self.alumno, materia=self.materia, cuatrimestre=1).intensificacion)
+
+    def test_nota_final_a_mano(self):
+        """Si el docente deja la final automática no se guarda; si la cambia, queda la suya."""
+        self.client.force_login(self.u_docente)
+        self.client.post(self._url(), {"accion": "guardar", f"final_{self.alumno.id}": "9"})
+        cierre2 = CierreCuatrimestre.objects.get(alumno=self.alumno, materia=self.materia, cuatrimestre=2)
+        self.assertIsNone(cierre2.calificacion_final)  # 9 es la automática
+
+        self.client.post(self._url(), {"accion": "guardar", f"final_{self.alumno.id}": "10"})
+        cierre2.refresh_from_db()
+        self.assertEqual(cierre2.calificacion_final, Decimal("10"))
+        self.assertEqual(self.client.get(self._url()).context["filas"][0]["final"], "10")
+
+        # vaciarla vuelve a la automática
+        self.client.post(self._url(), {"accion": "guardar", f"final_{self.alumno.id}": ""})
+        self.assertEqual(self.client.get(self._url()).context["filas"][0]["final"], "9")
 
     def test_guardar_inasistencias_mayores_a_diez(self):
         """Las inasistencias no tienen el tope 10 de las notas."""
@@ -563,7 +677,8 @@ class PlanillaDocenteTests(TestCase):
         self.assertFalse(fila["d1"]["aprobada"])
         self.assertFalse(fila["final_aprobada"])
         # la final se sigue viendo, pero en rojo y con la aclaración
-        self.assertContains(r, 'class="no-acredita" title="Asistencia menor al 80 %')
+        self.assertContains(r, 'class="ll no-acredita"')
+        self.assertContains(r, 'title="Asistencia menor al 80 %: no acredita la materia"')
 
     def test_planilla_muestra_ted_en_negro(self):
         """En la planilla oficial TED no va en rojo (sí en Mis notas y en el boletín)."""
@@ -789,6 +904,31 @@ class RiteTests(TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertTrue(ConfirmacionRite.objects.filter(
             alumno=self.alumno, tipo="adulto", cuatrimestre=1).exists())
+
+    def test_solo_el_directivo_registra_la_firma_del_director(self):
+        self.client.force_login(self.u_docente)
+        r = self.client.post(reverse("confirmar_rite"),
+                             {"tipo": "director", "cuat": 1, "alumno_id": self.alumno.id}, follow=True)
+        self.assertContains(r, "no puede registrar la firma de Director/a")
+        self.assertFalse(ConfirmacionRite.objects.filter(tipo="director").exists())
+
+        u_directivo = User.objects.create_user("directivo_rite", password="clave123")
+        Perfil.objects.create(usuario=u_directivo, rol=Perfil.DIRECTIVO)
+        self.client.force_login(u_directivo)
+        self.client.post(reverse("confirmar_rite"), {"tipo": "director", "cuat": 1, "alumno_id": self.alumno.id})
+        self.assertTrue(ConfirmacionRite.objects.filter(tipo="director", cuatrimestre=1).exists())
+
+    def test_el_docente_solo_ve_boletines_de_sus_cursos(self):
+        otro_curso = Curso.objects.create(anio=3, division="C")
+        ajeno = Alumno.objects.create(nombre="Zoe", apellido="Zárate", dni="90000033",
+                                      fecha_nacimiento=date(2010, 1, 1), anio=3, division="C")
+        self.client.force_login(self.u_docente)
+        r = self.client.get(reverse("alumno_seleccionar"))
+        self.assertContains(r, "Acosta, Lucía")
+        self.assertNotContains(r, "Zárate, Zoe")
+        r = self.client.get(reverse("alumno_ver_boletin"), {"alumno_id": ajeno.id}, follow=True)
+        self.assertContains(r, "Solo podés ver el boletín de alumnos de tus cursos.")
+        self.assertIsNotNone(otro_curso)
 
     def test_firma_del_segundo_cuatrimestre(self):
         """El boletín permite registrar la firma del 2° cuatrimestre."""
