@@ -1,27 +1,108 @@
-{% extends "base.html" %}
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   INICIO DE SECRETARÍA / DIRECTIVO
+   - Resumen y planillas de todos los docentes (para ver e imprimir), con
+     un buscador por docente, materia o curso.
+   - Interruptor anual de publicación de boletines.
+   - Acceso al boletín de cualquier alumno.
+{% endcomment %}
 
 {% block title %}Calificaciones — SGE{% endblock %}
 
-{% block content %}
-<div class="bienvenida">
-    <h2>Calificaciones</h2>
-    <p>Seleccioná una opción para continuar</p>
-</div>
-
-<section>
-    <div class="roles">
-        <a href="{% url 'profesor_seleccionar' %}" class="card-rol" style="text-decoration:none; color:inherit;">
-            <h3 style="color:#2563eb;">Profesor</h3>
-            <p>Cargar y gestionar calificaciones de tus materias</p>
-        </a>
-        <a href="{% url 'alumno_seleccionar' %}" class="card-rol" style="text-decoration:none; color:inherit; border-top-color:#43a047;">
-            <h3 style="color:#43a047;">Alumno</h3>
-            <p>Consultar tus calificaciones de cada cuatrimestre</p>
-        </a>
-        <a href="{% url 'alumno_seleccionar' %}?destino=boletin" class="card-rol" style="text-decoration:none; color:inherit; border-top-color:#0d47a1;">
-            <h3 style="color:#0d47a1;">Boletín</h3>
-            <p>Ver el boletín con el promedio final de todas tus materias</p>
-        </a>
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <h1>Calificaciones</h1>
+        <p class="hero-sub">Ciclo lectivo {{ ciclo_lectivo }} · Planillas de los docentes y boletines de los alumnos</p>
+    </div>
+    <div class="segmento" role="group" aria-label="Cuatrimestre">
+        <a class="{% if cuat == 1 %}activo{% endif %}" href="?cuat=1">1° cuatrimestre</a>
+        <a class="{% if cuat == 2 %}activo{% endif %}" href="?cuat=2">2° cuatrimestre</a>
     </div>
 </section>
+{% endblock %}
+
+{% block content %}
+<div class="stats">
+    <div class="card stat"><span class="numero">{{ materias_todas|length }}</span><span class="ayuda">Planillas de calificaciones</span></div>
+    <div class="card stat {% if boletin_publicado %}verde{% else %}ambar{% endif %}"><span class="numero">{% if boletin_publicado %}Publicado{% else %}Oculto{% endif %}</span><span class="ayuda">Boletín {{ ciclo_lectivo }}</span></div>
+</div>
+
+<div class="card">
+    <div class="card-cabecera">
+        <div>
+            <h2 class="seccion-titulo">Planillas de calificaciones</h2>
+            <p class="nota">Se abren en modo lectura. Para imprimir, usá el botón "Imprimir" de cada planilla.</p>
+        </div>
+        {% if materias_todas %}<input type="search" class="buscador" id="buscar-planilla" placeholder="Buscar docente, materia o curso…" aria-label="Buscar planilla">{% endif %}
+    </div>
+    {% if materias_todas %}
+    <div class="tabla-wrap">
+        <table class="tabla" id="tabla-planillas">
+            <tr><th>Docente</th><th>Materia</th><th>Curso</th><th></th></tr>
+            {% for m in materias_todas %}
+            <tr>
+                <td class="fuerte">{{ m.docente }}</td>
+                <td>{{ m.nombre }}</td>
+                <td>{{ m.curso }}</td>
+                <td class="c"><a class="btn chico" href="{% url 'profesor_planilla' cuat=cuat materia_id=m.id %}">Ver planilla</a></td>
+            </tr>
+            {% endfor %}
+            <tr class="sin-resultados" hidden><td class="vacia" colspan="4">No hay planillas que coincidan con la búsqueda.</td></tr>
+        </table>
+    </div>
+    {% else %}
+    <div class="tarjeta"><p class="ayuda">Todavía no hay materias cargadas. Cuando el módulo Docentes asigne materias, van a aparecer acá.</p></div>
+    {% endif %}
+</div>
+
+<div class="grid-2">
+    {% if puede_publicar_boletin %}
+    <div class="card tarjeta {% if boletin_publicado %}borde-verde{% else %}borde-rojo{% endif %}">
+        <div class="tarjeta-cabecera">
+            <h3 class="tarjeta-titulo">Publicación del boletín {{ ciclo_lectivo }}</h3>
+            {% if boletin_publicado %}<span class="chip ok">Publicado</span>{% else %}<span class="chip wa">Oculto</span>{% endif %}
+        </div>
+        {% if boletin_publicado %}
+        <p class="ayuda">Alumnos y docentes pueden ver el boletín y registrar las firmas.</p>
+        {% else %}
+        <p class="ayuda">Los alumnos ven solo "Mis notas" y los docentes no pueden abrir boletines. Se publica a fin de año.</p>
+        {% endif %}
+        <form method="post" action="{% url 'publicar_boletines' %}" class="tarjeta-pie">
+            {% csrf_token %}
+            <button type="submit" class="btn {% if not boletin_publicado %}p{% endif %}">{% if boletin_publicado %}Ocultar boletines del año{% else %}Publicar boletines del año{% endif %}</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="card tarjeta borde-oscuro">
+        <h3 class="tarjeta-titulo">Boletín de un alumno</h3>
+        <p class="ayuda">Buscá un alumno para ver su boletín: calificaciones por cuatrimestre, intensificación, asistencia y firmas.</p>
+        <div class="tarjeta-pie">
+            <a class="btn p" href="{% url 'alumno_seleccionar' %}">Consultar boletines</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Buscador: oculta las filas que no contienen el texto escrito.
+(function () {
+    var buscador = document.getElementById('buscar-planilla');
+    if (!buscador) return;
+    var filas = document.querySelectorAll('#tabla-planillas tr:not(:first-child):not(.sin-resultados)');
+    var vacio = document.querySelector('#tabla-planillas .sin-resultados');
+    buscador.addEventListener('input', function () {
+        var texto = buscador.value.trim().toLowerCase();
+        var visibles = 0;
+        filas.forEach(function (fila) {
+            var coincide = fila.textContent.toLowerCase().indexOf(texto) !== -1;
+            fila.hidden = !coincide;
+            if (coincide) visibles++;
+        });
+        vacio.hidden = visibles > 0;
+    });
+})();
+</script>
 {% endblock %}
