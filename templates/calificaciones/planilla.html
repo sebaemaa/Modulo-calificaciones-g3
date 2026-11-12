@@ -3,8 +3,9 @@
    PLANILLA DE CALIFICACIONES (hoja oficio vertical, igual a la oficial)
    - Las columnas calculadas (notas parciales, valoración, calificaciones,
      intensificación, final y totales) NO se editan: salen de la carga de notas.
+   - Las inasistencias tampoco se editan: se leen del módulo Asistencia.
    - El docente de la materia edita y guarda: turno, preceptor/a,
-     cursa/recursa, inasistencias, intensificación del 1° cuatrimestre,
+     cursa/recursa, intensificación del 1° cuatrimestre,
      diciembre, febrero y la calificación final (si la deja como está, se
      sigue calculando sola). N° de orden, nombre y renglones en blanco se
      pueden completar antes de imprimir (no se guardan).
@@ -131,7 +132,7 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
     </div>
 </div>
 {# Texto de ayuda distinto para el docente y para lectura. #}
-<p class="nota" style="padding:12px 20px">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. La intensificación va solo si el 1° no estaba aprobado (nota de 7 a 10). La calificación final se calcula sola; si la cambiás, queda la tuya. Las notas parciales y calificaciones salen de "Cargar notas".{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
+<p class="nota" style="padding:12px 20px">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. La intensificación va solo si el 1° no estaba aprobado (nota de 7 a 10). La calificación final se calcula sola; si la cambiás, queda la tuya. Las notas parciales y calificaciones salen de "Cargar notas"; las inasistencias, del módulo Asistencia.{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
 </div>
 
 {# La hoja. #}
@@ -208,8 +209,8 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
             <td class="n">{{ f.d1.valoracion }}</td>
             {# Calificacion del 1° cuatrimestre. #}
             <td class="n"><b>{{ f.d1.calificacion }}</b></td>
-            {# Inasistencias del 1° cuatrimestre (editable). #}
-            <td class="n"><input class="ll" type="text" inputmode="decimal" name="inas1_{{ f.id }}" value="{{ f.inas1 }}" aria-label="{{ f.nombre }} — inasistencias 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
+            {# Inasistencias del 1° cuatrimestre: solo lectura, salen del modulo Asistencia. #}
+            <td class="n">{{ f.inas1 }}</td>
             {# Notas parciales del 2° cuatrimestre. #}
             {% for v in f.d2.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
             {# Valoracion del 2°. #}
@@ -218,8 +219,8 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
             <td class="n"><b>{{ f.d2.calificacion }}</b></td>
             {# Intensificacion del 1° cuatrimestre (editable). #}
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="intens_{{ f.id }}" value="{{ f.intensificacion }}" aria-label="{{ f.nombre }} — intensificación 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
-            {# Inasistencias del 2° cuatrimestre. #}
-            <td class="n"><input class="ll" type="text" inputmode="decimal" name="inas2_{{ f.id }}" value="{{ f.inas2 }}" aria-label="{{ f.nombre }} — inasistencias 2° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
+            {# Inasistencias del 2° cuatrimestre: solo lectura. #}
+            <td class="n">{{ f.inas2 }}</td>
             {# Nota de diciembre. #}
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="dic_{{ f.id }}" value="{{ f.dic }}" aria-label="{{ f.nombre }} — diciembre"{% if not puede_editar %} readonly{% endif %}></td>
             {# Nota de febrero. #}

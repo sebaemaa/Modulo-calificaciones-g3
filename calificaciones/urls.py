@@ -35,12 +35,10 @@ urlpatterns = [
     # --- docente: carga de notas (guardado automático) ---
     # Grilla donde el docente carga las notas.
     path(DOCENTE + "cargar-notas/", views.profesor_cargar_notas, name="profesor_cargar_notas"),
-    # Guarda UNA nota (la llama el JavaScript cada vez que se escribe en una celda).
+    # Guarda UNA nota (la llama el JavaScript cada vez que se cambia una celda).
     path(DOCENTE + "guardar-nota/", views.profesor_guardar_nota, name="profesor_guardar_nota"),
     # Guarda la valoracion TEA/TEP/TED de un alumno.
     path(DOCENTE + "guardar-valoracion/", views.profesor_guardar_valoracion, name="profesor_guardar_valoracion"),
-    # Guarda las faltas de un alumno.
-    path(DOCENTE + "guardar-inasistencia/", views.profesor_guardar_inasistencia, name="profesor_guardar_inasistencia"),
 
     # --- docente: categorías de evaluación ---
     # Lista las categorias (columnas) de la materia.

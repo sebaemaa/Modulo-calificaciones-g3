@@ -1,8 +1,9 @@
 """Modelos del Módulo 3 — Gestión de Calificaciones.
 
 Se guardan las notas por categoría de evaluación, el cierre de cada
-cuatrimestre (valoración RITE, notas de diciembre/febrero y final), las
-inasistencias por materia y la publicación anual del boletín.
+cuatrimestre (valoración RITE, notas de diciembre/febrero y final) y la
+publicación anual del boletín. Las inasistencias no se guardan acá: se leen
+del módulo Asistencia.
 
 El módulo consulta las tablas de alumnos y docentes, pero no las modifica:
 los datos propios de la planilla viven acá.
@@ -159,7 +160,7 @@ class BoletinConfig(models.Model):
 
 
 # ─────────────────────────────────────────────
-#  CIERRE DEL CUATRIMESTRE Y ASISTENCIA
+#  CIERRE DEL CUATRIMESTRE
 # ─────────────────────────────────────────────
 
 # Tabla CLAVE: el "cierre" de un alumno en una materia y cuatrimestre (valoracion, nota oficial, etc.).
@@ -232,42 +233,10 @@ class CierreCuatrimestre(models.Model):
     class Meta:
         verbose_name = "Cierre de cuatrimestre"
         verbose_name_plural = "Cierres de cuatrimestre"
+        # Un solo registro por alumno + materia + cuatrimestre.
         # Un solo cierre por alumno + materia + cuatrimestre.
         unique_together = ('alumno', 'materia', 'cuatrimestre')
         # Orden por defecto.
-        ordering = ['materia', 'alumno']
-
-
-# Tabla: faltas de un alumno en una materia y cuatrimestre, cargadas a mano por el docente.
-class InasistenciaMateria(models.Model):
-    """Inasistencias de un alumno en una materia para un cuatrimestre.
-
-    El docente las puede cargar desde "Cargar notas" o desde la planilla.
-    Si no hay carga manual, la planilla y el boletín leen el módulo Asistencia.
-    Se usa un campo Decimal para permitir medias faltas (tardanzas = 0,5).
-    """
-    # Opciones de cuatrimestre.
-    CUATRIMESTRE_CHOICES = [(1, '1° Cuatrimestre'), (2, '2° Cuatrimestre')]
-
-    # De que alumno.
-    alumno = models.ForeignKey('alumnos.Alumno', on_delete=models.CASCADE, related_name='inasistencias_materia')
-    # De que materia.
-    materia = models.ForeignKey('docentes.Materia', on_delete=models.CASCADE, related_name='inasistencias_materia')
-    # De que cuatrimestre.
-    cuatrimestre = models.IntegerField(choices=CUATRIMESTRE_CHOICES)
-    # Cantidad de faltas; decimal para permitir medias faltas (0,5).
-    cantidad = models.DecimalField(max_digits=5, decimal_places=1, default=0, help_text="Cantidad de inasistencias (0,5 = media falta)")
-
-    # Texto con el que se muestra.
-    def __str__(self):
-        return f"{self.alumno} — {self.materia} — {self.cuatrimestre}° cuat.: {self.cantidad} inasist."
-
-    # Configuracion de la tabla.
-    class Meta:
-        verbose_name = "Inasistencia por materia"
-        verbose_name_plural = "Inasistencias por materia"
-        # Un solo registro por alumno + materia + cuatrimestre.
-        unique_together = ('alumno', 'materia', 'cuatrimestre')
         ordering = ['materia', 'alumno']
 
 

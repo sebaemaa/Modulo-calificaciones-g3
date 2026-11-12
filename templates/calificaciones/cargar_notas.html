@@ -1,7 +1,9 @@
 {% extends "calificaciones/base_cal.html" %}
 {% comment %}
    CARGAR NOTAS (grilla con guardado automático)
-   - Cada nota, valoración e inasistencia se guarda sola al cambiarla.
+   - Cada nota y cada valoración se guarda sola al cambiarla.
+   - Las inasistencias se muestran pero no se editan: salen del módulo
+     Asistencia.
    - La calificación (celda gris) se recalcula en pantalla con el peso de
      cada categoría, igual que en el servidor.
    - Si la asistencia es menor al 80 %, el estado avisa que no acredita.
@@ -65,7 +67,6 @@
 <table class="tabla" id="tabla-notas"
        data-url-nota="{% url 'profesor_guardar_nota' cuat=cuat materia_id=materia.id %}"
        data-url-valoracion="{% url 'profesor_guardar_valoracion' cuat=cuat materia_id=materia.id %}"
-       data-url-inasistencia="{% url 'profesor_guardar_inasistencia' cuat=cuat materia_id=materia.id %}"
        data-con-pesos="{% if con_pesos %}1{% endif %}"
        data-cerrado="{% if fecha_cierre %}1{% endif %}">
     <thead>
@@ -119,8 +120,8 @@
         <td class="c calc calif-fila">{{ a.calificacion|default:"—" }}</td>
         {# Estado del alumno con etiqueta de color. #}
         <td class="estado-fila"{% if a.asistencia_pct %} title="Asistencia: {{ a.asistencia_pct }} %"{% endif %}>{% if a.estado %}<span class="chip {% if a.aprobada %}ok{% else %}wa{% endif %}">{{ a.estado }}</span>{% else %}—{% endif %}</td>
-        {# Campo de inasistencias. #}
-        <td class="c"><input class="n inasistencia" type="text" inputmode="decimal" value="{{ a.inasistencias }}" aria-label="{{ a.nombre }} — Inasistencias"{% if fecha_cierre %} readonly{% endif %}></td>
+        {# Inasistencias: solo se muestran (salen del modulo Asistencia, no se editan). #}
+        <td class="c">{{ a.inasistencias|default:"—" }}</td>
     </tr>
     {# Si no hay alumnos. #}
     {% empty %}
@@ -154,7 +155,6 @@
 
     // Calcula la nota de una fila, igual que _calificacion_cuat en views.py.
     function calificacionFila(fila) {
-        // Solo los inputs de notas (no el de inasistencias).
         // Campos de nota de la fila que tienen un numero.
         var conNota = Array.prototype.filter.call(fila.querySelectorAll('input.nota'), function (i) {
             return numero(i.value) !== null;
@@ -275,9 +275,6 @@
         } else if (campo.classList.contains('v')) {
             campo.classList.toggle('ted', campo.value === 'TED');
             guardar(tabla.dataset.urlValoracion, { alumno_id: alumno, valoracion: campo.value }, campo);
-        // Si son inasistencias las guarda con guardar_inasistencia.
-        } else if (campo.classList.contains('inasistencia')) {
-            guardar(tabla.dataset.urlInasistencia, { alumno_id: alumno, valor: campo.value.trim() }, campo);
         }
     });
 

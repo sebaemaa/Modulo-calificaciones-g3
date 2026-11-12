@@ -11,7 +11,6 @@ from django.contrib import admin
 from .models import (
     BoletinConfig,
     CategoriaEvaluacion,
-    InasistenciaMateria,
     NotaEvaluacion,
     PublicacionBoletin,
 )
@@ -46,17 +45,6 @@ class BoletinConfigAdmin(admin.ModelAdmin):
     # Solo guarda la fecha de cierre de cada cuatrimestre.
     # Columnas del listado.
     list_display = ('cuatrimestre', 'publicado', 'fecha_publicacion')
-
-
-# Registra las inasistencias por materia.
-@admin.register(InasistenciaMateria)
-class InasistenciaMateriaAdmin(admin.ModelAdmin):
-    # Columnas del listado.
-    list_display = ('alumno', 'materia', 'cuatrimestre', 'cantidad')
-    # Filtros laterales.
-    list_filter = ('cuatrimestre', 'materia')
-    # Buscador por alumno.
-    search_fields = ('alumno__nombre', 'alumno__apellido')
 
 
 # Registra la publicacion anual del boletin.

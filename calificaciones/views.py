@@ -55,7 +55,6 @@ from .models import (
     CategoriaEvaluacion,
     CierreCuatrimestre,
     ConfirmacionRite,
-    InasistenciaMateria,
     NotaEvaluacion,
     PlanillaDatos,
     PublicacionBoletin,
@@ -324,12 +323,6 @@ def _decimal_desde_texto(texto, minimo=None, maximo=None):
 def _nota_desde_texto(texto):
     """Nota de 0 a 10, o None."""
     return _decimal_desde_texto(texto, minimo=Decimal("0"), maximo=Decimal("10"))
-
-
-# Valida faltas: 0 o mas.
-def _inasistencia_desde_texto(texto):
-    """Cantidad de inasistencias (0 o más, sin tope), o None."""
-    return _decimal_desde_texto(texto, minimo=Decimal("0"))
 
 
 # ─────────────────────────────────────────────
@@ -1216,11 +1209,6 @@ def profesor_cargar_notas(request, cuat, materia_id):
         c.alumno_id: c
         for c in CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat)
     }
-    # Faltas cargadas a mano por alumno.
-    inasistencias = {
-        i.alumno_id: i.cantidad
-        for i in InasistenciaMateria.objects.filter(materia=materia, cuatrimestre=cuat)
-    }
 
     # Una fila por alumno.
     filas = []
@@ -1241,13 +1229,9 @@ def profesor_cargar_notas(request, cuat, materia_id):
         # OK si no hay registros o llega al 80 %.
         asistencia_ok = asistencia is None or asistencia["suficiente"]
 
-        # Inasistencias: la carga del docente o, si no hay, las del módulo Asistencia.
-        # Faltas cargadas a mano...
-        inas = inasistencias.get(alumno.id)
-        # ...y si no hay...
-        if inas is None:
-            # ...usa las del modulo Asistencia.
-            inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
+        # Inasistencias: se leen del módulo Asistencia (no se cargan acá).
+        # Faltas del alumno en esta materia y cuatrimestre (ausente = 1, tardanza = 0,5). Ya no hay carga manual.
+        inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
 
         # Fila del alumno para la grilla.
         filas.append({
@@ -1287,7 +1271,7 @@ def profesor_cargar_notas(request, cuat, materia_id):
     })
 
 
-# Controles que repiten los 3 guardados automaticos.
+# Controles que comparten los 2 guardados automaticos (nota y valoracion).
 def _validar_ajax(request, cuat, materia_id):
     """Chequeos comunes de los guardados automáticos.
 
@@ -1401,37 +1385,6 @@ def profesor_guardar_valoracion(request, cuat, materia_id):
     )
     # Responde OK.
     return JsonResponse({"ok": True, "valoracion": valoracion})
-
-
-# Solo docentes.
-@rol_requerido("docente")
-# VISTA AJAX: guarda las faltas de un alumno.
-def profesor_guardar_inasistencia(request, cuat, materia_id):
-    """Guardado automático de las inasistencias del alumno en la materia."""
-    # Controles comunes.
-    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
-    if error:
-        return error
-
-    # Lo que escribio el docente.
-    texto = request.POST.get("valor", "").strip()
-    # Datos que identifican el registro.
-    filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": cuat}
-    # Si lo dejo vacio...
-    if texto == "":
-        # ...borra la carga manual (vuelve a usarse el modulo Asistencia).
-        InasistenciaMateria.objects.filter(**filtro).delete()
-        return JsonResponse({"ok": True, "borrado": True})
-
-    # Convierte el texto en cantidad...
-    cantidad = _inasistencia_desde_texto(texto)
-    # ...y si no es valida, error.
-    if cantidad is None:
-        return JsonResponse({"ok": False, "error": f"'{texto}' no es una cantidad válida"}, status=400)
-    # Crea o actualiza las faltas.
-    InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
-    # Responde con la cantidad con coma.
-    return JsonResponse({"ok": True, "cantidad": _formato_ar(cantidad)})
 
 
 # ─────────────────────────────────────────────
@@ -1975,11 +1928,6 @@ def _filas_planilla(materia, categorias, cuat):
         (c.alumno_id, c.cuatrimestre): c
         for c in CierreCuatrimestre.objects.filter(materia=materia)
     }
-    # Faltas manuales con clave (alumno, cuatrimestre).
-    inasistencias = {
-        (i.alumno_id, i.cuatrimestre): i.cantidad
-        for i in InasistenciaMateria.objects.filter(materia=materia)
-    }
 
     # Lista de filas.
     filas = []
@@ -2004,18 +1952,12 @@ def _filas_planilla(materia, categorias, cuat):
             # ...ningun cuatrimestre cuenta como aprobado.
             d1["aprobada"] = d2["aprobada"] = False
 
-        # Faltas de cada cuatrimestre.
-        inas = {}
-        # Para el 1 y el 2...
-        for c in (1, 2):
-            # ...faltas cargadas a mano...
-            valor = inasistencias.get((alumno.id, c))
-            # ...y si no hay...
-            if valor is None:
-                # ...las del modulo Asistencia.
-                valor = _inasistencias_materia_cuat(alumno.id, materia, c)
-            # Con coma.
-            inas[c] = _formato_ar(valor) or ""
+        # Inasistencias: se leen del módulo Asistencia (no se cargan acá).
+        inas = {
+            # Diccionario {1: faltas del 1° cuat., 2: faltas del 2° cuat.}, ya con coma. Solo lectura.
+            c: _formato_ar(_inasistencias_materia_cuat(alumno.id, materia, c)) or ""
+            for c in (1, 2)
+        }
 
         cierre_actual = cierres.get((alumno.id, cuat))  # el cuatrimestre que se edita
         # Nota final (manual o automatica).
@@ -2232,27 +2174,6 @@ def _guardar_planilla(request, materia, cuat):
         # Guarda los dos cierres en la base.
         cierres[1].save()
         cierres[2].save()
-
-        # Inasistencias de los dos cuatrimestres (vacío = volver a las de Asistencia).
-        # Para cada cuatrimestre...
-        for c in (1, 2):
-            # ...lee el campo de faltas...
-            texto = request.POST.get(f"inas{c}_{alumno.id}")
-            # ...si no vino, lo saltea.
-            if texto is None:
-                continue
-            # Datos que identifican el registro.
-            filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": c}
-            # Convierte a cantidad.
-            cantidad = _inasistencia_desde_texto(texto)
-            # Si es valida...
-            if cantidad is not None:
-                # ...la crea o actualiza.
-                InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
-            # Si quedo vacia...
-            elif texto.strip() == "":
-                # ...borra la carga manual.
-                InasistenciaMateria.objects.filter(**filtro).delete()
 
     # Muestra los avisos acumulados.
     for aviso in avisos:
