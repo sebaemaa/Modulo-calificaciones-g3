@@ -1,0 +1,1389 @@
+diff --git a/calificaciones/urls.py b/calificaciones/urls.py
+index 9481472..5411565 100644
+--- a/calificaciones/urls.py
++++ b/calificaciones/urls.py
+@@ -22,4 +22,21 @@ urlpatterns = [
+     path("alumno/seleccionar/", views.alumno_seleccionar, name="alumno_seleccionar"),
+     path("boletin/", views.alumno_ver_boletin, name="alumno_ver_boletin"),
+     path("boletin/confirmar/", views.confirmar_rite, name="confirmar_rite"),
++
++    # --- docente: carga de notas (guardado automático) ---
++    path(DOCENTE + "cargar-notas/", views.profesor_cargar_notas, name="profesor_cargar_notas"),
++    path(DOCENTE + "guardar-nota/", views.profesor_guardar_nota, name="profesor_guardar_nota"),
++    path(DOCENTE + "guardar-valoracion/", views.profesor_guardar_valoracion, name="profesor_guardar_valoracion"),
++    path(DOCENTE + "guardar-inasistencia/", views.profesor_guardar_inasistencia, name="profesor_guardar_inasistencia"),
++
++    # --- docente: categorías de evaluación ---
++    path(DOCENTE + "categorias/", views.profesor_categorias, name="profesor_categorias"),
++    path(DOCENTE + "categorias/agregar/", views.profesor_agregar_categoria, name="profesor_agregar_categoria"),
++    path(DOCENTE + "categorias/<int:cat_id>/editar/", views.profesor_editar_categoria, name="profesor_editar_categoria"),
++    path(DOCENTE + "categorias/<int:cat_id>/eliminar/", views.profesor_eliminar_categoria, name="profesor_eliminar_categoria"),
++
++    # --- docente: importar notas desde Excel ---
++    path(DOCENTE + "excel/", views.profesor_cargar_excel, name="profesor_cargar_excel"),
++    path(DOCENTE + "excel/confirmar/", views.profesor_confirmar_excel, name="profesor_confirmar_excel"),
++    path(DOCENTE + "excel/plantilla/", views.profesor_descargar_plantilla, name="profesor_descargar_plantilla"),
+ ]
+diff --git a/calificaciones/views.py b/calificaciones/views.py
+index 04fc59f..773e869 100644
+--- a/calificaciones/views.py
++++ b/calificaciones/views.py
+@@ -817,3 +817,492 @@ def confirmar_rite(request):
+     )
+     messages.success(request, "Firma registrada.")
+     return destino
++
++
++# ─────────────────────────────────────────────
++#  DOCENTE: CARGAR NOTAS (grilla con guardado automático)
++# ─────────────────────────────────────────────
++
++@rol_requerido("docente")
++@ensure_csrf_cookie
++def profesor_cargar_notas(request, cuat, materia_id):
++    """Grilla de notas del cuatrimestre: cada celda se guarda sola al cambiarla."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "No podés cargar notas en esa materia.")
++        return redirect("calificaciones_menu")
++
++    categorias = _categorias(materia)
++    if not categorias:
++        messages.warning(request, "Primero creá al menos una categoría de evaluación para esta materia.")
++        return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
++
++    # Datos para que el JavaScript calcule igual que el servidor.
++    grupos = _grupos_de_categorias(categorias)
++    for grupo in grupos:
++        peso_grupo = grupo["peso"] if grupo["peso"] is not None else Decimal(len(grupo["cats"]))
++        for cat in grupo["cats"]:
++            cat["grupo_key"] = grupo["nombre"] or f"_cat{cat['id']}"
++            cat["peso_js"] = _num_limpio(cat["peso"] if cat["peso"] is not None else Decimal("1"))
++            cat["peso_grupo_js"] = _num_limpio(peso_grupo)
++
++    notas = {}  # {(alumno_id, categoria_id): valor}
++    for n in NotaEvaluacion.objects.filter(materia=materia, cuatrimestre=cuat).order_by("id"):
++        notas[(n.alumno_id, n.categoria_id)] = n.valor
++    cierres = {
++        c.alumno_id: c
++        for c in CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat)
++    }
++    inasistencias = {
++        i.alumno_id: i.cantidad
++        for i in InasistenciaMateria.objects.filter(materia=materia, cuatrimestre=cuat)
++    }
++
++    filas = []
++    for alumno in _alumnos_del_curso(materia.curso):
++        notas_alumno = {
++            cat["id"]: notas[(alumno.id, cat["id"])]
++            for cat in categorias if (alumno.id, cat["id"]) in notas
++        }
++        datos = _datos_cuatrimestre(notas_alumno, categorias, cierres.get(alumno.id))
++        calif = Decimal(datos["calificacion"]) if datos["calificacion"] else None
++
++        asistencia = _asistencia_materia(alumno.id, materia)
++        asistencia_ok = asistencia is None or asistencia["suficiente"]
++
++        # Inasistencias: la carga del docente o, si no hay, las del módulo Asistencia.
++        inas = inasistencias.get(alumno.id)
++        if inas is None:
++            inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
++
++        filas.append({
++            "id": alumno.id,
++            "nombre": f"{alumno.apellido}, {alumno.nombre}",
++            "celdas": [
++                {
++                    "cat": cat,
++                    "valor": _formato_ar(notas_alumno.get(cat["id"])) or "",
++                }
++                for cat in categorias
++            ],
++            "valoracion": datos["valoracion"],
++            "calificacion": datos["calificacion"],
++            "estado": _estado_materia(calif, asistencia_ok),
++            "aprobada": datos["aprobada"] and asistencia_ok,
++            "asistencia_ok": asistencia_ok,
++            "asistencia_pct": _formato_ar(asistencia["porcentaje"]) if asistencia else "",
++            "inasistencias": _formato_ar(inas) or "",
++        })
++
++    return render(request, "calificaciones/cargar_notas.html", {
++        "cuat": cuat,
++        "materia": materia,
++        "curso": _texto_curso(materia.curso),
++        "fecha_cierre": _fecha_cierre(materia, cuat),  # si está cerrado, la grilla es de solo lectura
++        "excel_disponible": EXCEL_DISPONIBLE,
++        "filas": filas,
++        "categorias": categorias,
++        "grupos": grupos,
++        "tiene_grupos": any(g["nombre"] for g in grupos),
++        "con_pesos": any(c["peso"] is not None for c in categorias),
++    })
++
++
++def _validar_ajax(request, cuat, materia_id):
++    """Chequeos comunes de los guardados automáticos.
++
++    Devuelve (materia, alumno, None) si todo está bien, o (None, None, respuesta
++    de error) si algo falla.
++    """
++    if request.method != "POST":
++        return None, None, JsonResponse({"ok": False, "error": "Método no permitido"}, status=405)
++    if cuat not in (1, 2):
++        return None, None, JsonResponse({"ok": False, "error": "Cuatrimestre inválido"}, status=400)
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None:
++        return None, None, JsonResponse({"ok": False, "error": "Esa materia no es tuya"}, status=403)
++    if _fecha_cierre(materia, cuat):
++        return None, None, JsonResponse({"ok": False, "error": _aviso_cerrado(cuat)}, status=409)
++    alumno = _alumno_de_la_materia(materia, request.POST.get("alumno_id") or 0)
++    if alumno is None:
++        return None, None, JsonResponse({"ok": False, "error": "Alumno no encontrado"}, status=404)
++    return materia, alumno, None
++
++
++@rol_requerido("docente")
++def profesor_guardar_nota(request, cuat, materia_id):
++    """Guardado automático de una celda de nota. Celda vacía = borrar la nota."""
++    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
++    if error:
++        return error
++
++    categoria = CategoriaEvaluacion.objects.filter(
++        id=request.POST.get("cat_id") or 0, materia=materia,
++    ).first()
++    if categoria is None:
++        return JsonResponse({"ok": False, "error": "Categoría no encontrada"}, status=404)
++
++    texto = request.POST.get("valor", "").strip()
++    filtro = {"alumno": alumno, "materia": materia, "categoria": categoria, "cuatrimestre": cuat}
++    if texto == "":
++        NotaEvaluacion.objects.filter(**filtro).delete()
++    else:
++        valor = _nota_desde_texto(texto)
++        if valor is None:
++            return JsonResponse({"ok": False, "error": f"'{texto}' no es una nota válida (0 a 10)"}, status=400)
++        # Si por algún motivo hubiera notas repetidas en la celda, quedan en una sola.
++        NotaEvaluacion.objects.filter(**filtro).delete()
++        NotaEvaluacion.objects.create(valor=valor, **filtro)
++
++    # Devuelve la calificación recalculada para refrescar la fila.
++    notas = {
++        n.categoria_id: n.valor
++        for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
++    }
++    calif = _calificacion_entera(notas, _categorias(materia))
++    asistencia = _asistencia_materia(alumno.id, materia)
++    asistencia_ok = asistencia is None or asistencia["suficiente"]
++    return JsonResponse({
++        "ok": True,
++        "calificacion": str(calif) if calif is not None else "",
++        "estado_materia": _estado_materia(calif, asistencia_ok),
++    })
++
++
++@rol_requerido("docente")
++def profesor_guardar_valoracion(request, cuat, materia_id):
++    """Guardado automático de la valoración preliminar (TEA / TEP / TED)."""
++    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
++    if error:
++        return error
++
++    valoracion = request.POST.get("valoracion", "").strip().upper()
++    if valoracion not in ("TEA", "TEP", "TED", ""):
++        return JsonResponse({"ok": False, "error": "Valoración inválida"}, status=400)
++
++    CierreCuatrimestre.objects.update_or_create(
++        alumno=alumno, materia=materia, cuatrimestre=cuat,
++        defaults={"valoracion_preliminar": valoracion},
++    )
++    return JsonResponse({"ok": True, "valoracion": valoracion})
++
++
++@rol_requerido("docente")
++def profesor_guardar_inasistencia(request, cuat, materia_id):
++    """Guardado automático de las inasistencias del alumno en la materia."""
++    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
++    if error:
++        return error
++
++    texto = request.POST.get("valor", "").strip()
++    filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": cuat}
++    if texto == "":
++        InasistenciaMateria.objects.filter(**filtro).delete()
++        return JsonResponse({"ok": True, "borrado": True})
++
++    cantidad = _inasistencia_desde_texto(texto)
++    if cantidad is None:
++        return JsonResponse({"ok": False, "error": f"'{texto}' no es una cantidad válida"}, status=400)
++    InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
++    return JsonResponse({"ok": True, "cantidad": _formato_ar(cantidad)})
++
++
++# ─────────────────────────────────────────────
++#  DOCENTE: CATEGORÍAS DE EVALUACIÓN
++# ─────────────────────────────────────────────
++
++def _peso_desde_texto(texto):
++    """Peso % de una categoría (mayor a 0 y hasta 100), o None si está vacío.
++
++    Lanza ValueError con el motivo si el texto no sirve.
++    """
++    if not (texto or "").strip():
++        return None
++    peso = _decimal_desde_texto(texto)
++    if peso is None:
++        raise ValueError("no es un número")
++    if peso <= 0 or peso > 100:
++        raise ValueError("tiene que estar entre 0 y 100")
++    return peso
++
++
++def _datos_categoria(request):
++    """Lee nombre, grupo y peso del formulario. Devuelve (datos, error)."""
++    nombre = request.POST.get("nombre", "").strip()
++    if not nombre:
++        return None, "El nombre no puede estar vacío."
++    try:
++        peso = _peso_desde_texto(request.POST.get("peso", ""))
++    except ValueError as motivo:
++        return None, f"El peso '{request.POST.get('peso')}' {motivo}."
++    return {"nombre": nombre, "grupo": request.POST.get("grupo", "").strip(), "peso": peso}, None
++
++
++@rol_requerido("docente")
++def profesor_categorias(request, cuat, materia_id):
++    """Lista de categorías con el formulario para agregar o editar."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "Esa materia no es tuya.")
++        return redirect("calificaciones_menu")
++
++    categorias = _categorias(materia)
++    edit_id = request.GET.get("editar")
++    editando = next((c for c in categorias if str(c["id"]) == edit_id), None)
++    return render(request, "calificaciones/gestionar_categorias.html", {
++        "hay_cerrados": any(_fecha_cierre(materia, c) for c in (1, 2)),
++        "cuat": cuat,
++        "materia": materia,
++        "curso": _texto_curso(materia.curso),
++        "categorias": categorias,
++        "editando": editando,
++    })
++
++
++@rol_requerido("docente")
++@require_POST
++def profesor_agregar_categoria(request, cuat, materia_id):
++    """Crea una categoría nueva al final de la grilla."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "Esa materia no es tuya.")
++        return redirect("calificaciones_menu")
++
++    datos, error = _datos_categoria(request)
++    if error:
++        messages.error(request, error)
++    else:
++        ultimo = CategoriaEvaluacion.objects.filter(materia=materia).order_by("-orden").first()
++        orden = (ultimo.orden if ultimo else 0) + 1
++        CategoriaEvaluacion.objects.create(materia=materia, orden=orden, **datos)
++        messages.success(request, f"Categoría '{datos['nombre']}' creada.")
++    return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
++
++
++@rol_requerido("docente")
++@require_POST
++def profesor_editar_categoria(request, cuat, materia_id, cat_id):
++    """Cambia nombre, grupo y peso de una categoría."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "Esa materia no es tuya.")
++        return redirect("calificaciones_menu")
++
++    categoria = get_object_or_404(CategoriaEvaluacion, id=cat_id, materia=materia)
++    datos, error = _datos_categoria(request)
++    if error:
++        messages.error(request, error)
++    else:
++        for campo, valor in datos.items():
++            setattr(categoria, campo, valor)
++        categoria.save()
++        messages.success(request, "Categoría actualizada.")
++    return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
++
++
++@rol_requerido("docente")
++@require_POST
++def profesor_eliminar_categoria(request, cuat, materia_id, cat_id):
++    """Borra una categoría y sus notas (solo por POST, con confirmación)."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "Esa materia no es tuya.")
++        return redirect("calificaciones_menu")
++
++    categoria = get_object_or_404(CategoriaEvaluacion, id=cat_id, materia=materia)
++
++    # Si la categoría tiene notas de un cuatrimestre cerrado, borrarla cambiaría
++    # notas que ya quedaron fijas: no se permite.
++    cerrados = [c for c in (1, 2) if _fecha_cierre(materia, c)]
++    if NotaEvaluacion.objects.filter(categoria=categoria, cuatrimestre__in=cerrados).exists():
++        messages.error(request, f"No se puede eliminar '{categoria.nombre}': tiene notas de un cuatrimestre cerrado.")
++        return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
++
++    categoria.delete()
++    messages.success(request, f"Categoría '{categoria.nombre}' eliminada.")
++    return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
++
++
++# ─────────────────────────────────────────────
++#  DOCENTE: IMPORTAR NOTAS DESDE EXCEL
++# ─────────────────────────────────────────────
++
++def _clave_excel(cuat, materia):
++    """Clave de sesión donde se guarda el Excel leído hasta que se confirma."""
++    return f"excel_{cuat}_{materia.id}"
++
++
++def _buscar_alumno_por_nombre(materia, texto):
++    """Alumno del curso por 'Apellido, Nombre', o por apellido/nombre solo."""
++    alumnos = _alumnos_del_curso(materia.curso)
++    if ", " in texto:
++        apellido, _, nombre = texto.partition(", ")
++        alumno = alumnos.filter(apellido__iexact=apellido.strip(), nombre__iexact=nombre.strip()).first()
++        if alumno:
++            return alumno
++    return alumnos.filter(Q(nombre__iexact=texto) | Q(apellido__iexact=texto)).first()
++
++
++@rol_requerido("docente")
++def profesor_cargar_excel(request, cuat, materia_id):
++    """Paso 1: subir el Excel y mostrar la vista previa."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "Esa materia no es tuya.")
++        return redirect("calificaciones_menu")
++
++    if _fecha_cierre(materia, cuat):
++        messages.error(request, _aviso_cerrado(cuat))
++        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
++
++    contexto = {
++        "cuat": cuat,
++        "materia": materia,
++        "curso": _texto_curso(materia.curso),
++        "excel_disponible": EXCEL_DISPONIBLE,
++    }
++    if request.method != "POST":
++        return render(request, "calificaciones/cargar_excel.html", contexto)
++
++    archivo = request.FILES.get("archivo")
++    if archivo is None:
++        messages.error(request, "Elegí un archivo Excel para subir.")
++        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
++
++    try:
++        import openpyxl
++    except ImportError:
++        messages.error(request, "Falta instalar la librería openpyxl (pip install openpyxl).")
++        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
++
++    try:
++        hoja = openpyxl.load_workbook(archivo, read_only=True, data_only=True).active
++        filas_excel = list(hoja.iter_rows(values_only=True))
++    except Exception:
++        messages.error(request, "No se pudo leer el archivo. Tiene que ser un Excel (.xlsx).")
++        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
++
++    if not filas_excel:
++        messages.error(request, "El archivo está vacío.")
++        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
++
++    encabezados = [str(h).strip() if h is not None else "" for h in filas_excel[0]]
++    categorias = {c["nombre"]: c for c in _categorias(materia)}
++    # Columnas del Excel que coinciden con una categoría: {índice: categoría}.
++    columnas = {i: categorias[h] for i, h in enumerate(encabezados) if i > 0 and h in categorias}
++
++    vista_previa = []
++    para_guardar = []
++    for fila in filas_excel[1:]:
++        if not fila or not fila[0]:
++            continue
++        nombre = str(fila[0]).strip()
++        alumno = _buscar_alumno_por_nombre(materia, nombre)
++        notas = {}
++        for i, cat in columnas.items():
++            valor = fila[i] if i < len(fila) else None
++            notas[cat["id"]] = "" if valor is None else str(valor).strip()
++        vista_previa.append({
++            "nombre": nombre,
++            "encontrado": alumno is not None,
++            "valores": [notas.get(cat["id"]) or "—" for cat in columnas.values()],
++        })
++        if alumno is not None:
++            para_guardar.append({"alumno_id": alumno.id, "notas": {str(k): v for k, v in notas.items()}})
++
++    request.session[_clave_excel(cuat, materia)] = para_guardar
++    contexto.update({
++        "columnas": [cat["nombre"] for cat in columnas.values()],
++        "vista_previa": vista_previa,
++        "hay_para_guardar": bool(para_guardar),
++    })
++    return render(request, "calificaciones/confirmar_excel.html", contexto)
++
++
++@rol_requerido("docente")
++@require_POST
++def profesor_confirmar_excel(request, cuat, materia_id):
++    """Paso 2: guardar las notas de la vista previa confirmada."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "Esa materia no es tuya.")
++        return redirect("calificaciones_menu")
++
++    if _fecha_cierre(materia, cuat):
++        messages.error(request, _aviso_cerrado(cuat))
++        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
++
++    filas = request.session.pop(_clave_excel(cuat, materia), None)
++    if not filas:
++        messages.error(request, "No se encontraron datos del Excel. Volvé a subir el archivo.")
++        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
++
++    categorias = {str(c["id"]): c["id"] for c in _categorias(materia)}
++    guardadas = 0
++    omitidas = 0
++    for fila in filas:
++        alumno = _alumno_de_la_materia(materia, fila["alumno_id"])
++        if alumno is None:
++            continue
++        for cat_id, texto in fila["notas"].items():
++            if cat_id not in categorias or texto == "":
++                continue
++            valor = _nota_desde_texto(texto)
++            if valor is None:
++                omitidas += 1
++                continue
++            filtro = {"alumno": alumno, "materia": materia,
++                      "categoria_id": categorias[cat_id], "cuatrimestre": cuat}
++            NotaEvaluacion.objects.filter(**filtro).delete()
++            NotaEvaluacion.objects.create(valor=valor, **filtro)
++            guardadas += 1
++
++    messages.success(request, f"Se cargaron {guardadas} notas desde Excel.")
++    if omitidas:
++        messages.warning(request, f"Se omitieron {omitidas} valores que no eran notas de 0 a 10.")
++    return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
++
++
++@rol_requerido("docente")
++def profesor_descargar_plantilla(request, cuat, materia_id):
++    """Descarga un Excel con los alumnos y una columna por categoría."""
++    materia = _materia_del_docente(request, materia_id)
++    if materia is None or cuat not in (1, 2):
++        messages.error(request, "Esa materia no es tuya.")
++        return redirect("calificaciones_menu")
++
++    try:
++        import openpyxl
++        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
++        from openpyxl.utils import get_column_letter
++    except ImportError:
++        messages.error(request, "Falta instalar la librería openpyxl (pip install openpyxl).")
++        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
++
++    categorias = _categorias(materia)
++    libro = openpyxl.Workbook()
++    hoja = libro.active
++    hoja.title = f"{cuat}° cuatrimestre"
++
++    borde = Border(*(Side(style="thin"),) * 4)
++    encabezado = ["Alumno"] + [c["nombre"] for c in categorias]
++    for col, texto in enumerate(encabezado, start=1):
++        celda = hoja.cell(row=1, column=col, value=texto)
++        celda.font = Font(bold=True, color="FFFFFF")
++        celda.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
++        celda.alignment = Alignment(horizontal="center")
++        celda.border = borde
++        hoja.column_dimensions[get_column_letter(col)].width = 30 if col == 1 else 18
++
++    for fila, alumno in enumerate(_alumnos_del_curso(materia.curso), start=2):
++        hoja.cell(row=fila, column=1, value=f"{alumno.apellido}, {alumno.nombre}")
++        for col in range(1, len(encabezado) + 1):
++            hoja.cell(row=fila, column=col).border = borde
++
++    respuesta = HttpResponse(
++        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
++    )
++    nombre_archivo = f"plantilla_{materia.nombre}_{_texto_curso(materia.curso)}_{cuat}cuat.xlsx"
++    respuesta["Content-Disposition"] = f'attachment; filename="{nombre_archivo.replace(" ", "_")}"'
++    libro.save(respuesta)
++    return respuesta
+diff --git a/templates/calificaciones/cargar_excel.html b/templates/calificaciones/cargar_excel.html
+index aa520ca..bd3e4a7 100644
+--- a/templates/calificaciones/cargar_excel.html
++++ b/templates/calificaciones/cargar_excel.html
+@@ -1,32 +1,46 @@
+-{% extends "base.html" %}
++{% extends "calificaciones/base_cal.html" %}
++{% comment %}
++   IMPORTAR NOTAS DESDE EXCEL — paso 1: subir el archivo.
++   La vista previa (paso 2) está en confirmar_excel.html.
++{% endcomment %}
+ 
+-{% block title %}Cargar desde Excel — {{ materia }}{% endblock %}
++{% block title %}Importar Excel — {{ materia.nombre }} — SGE{% endblock %}
+ 
+-{% block content %}
+-<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
++{% block hero %}
++<section class="hero">
++    <div class="hero-textos">
++        <p class="miga">Calificaciones › Mis materias › {{ materia.nombre }} {{ curso }} › Importar Excel</p>
++        <h1>Importar notas desde Excel — {{ materia.nombre }}</h1>
++    </div>
++    <div class="hero-acciones">
++        <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">← Volver a {{ materia.nombre }}</a>
++    </div>
++</section>
++{% endblock %}
+ 
+-<div class="bienvenida">
+-    <h2>Cargar notas desde Excel</h2>
+-    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
++{% block content %}
++{% if not excel_disponible %}
++<div class="card tarjeta borde-rojo">
++    <h3 class="tarjeta-titulo">Falta instalar la librería de Excel</h3>
++    <p class="ayuda">Para importar o descargar planillas de Excel hay que instalar <b>openpyxl</b> en el entorno del proyecto: <code>pip install openpyxl</code>. Mientras tanto podés cargar las notas a mano en la grilla.</p>
+ </div>
++{% endif %}
+ 
+-<section>
+-    <div class="ayuda">
+-        <strong>Instrucciones:</strong>
+-        <ol style="margin:8px 0 0 18px; padding:0;">
+-            <li>Descargá la plantilla desde la pantalla anterior</li>
+-            <li>Completá las notas en el Excel (columna "Alumno" + columnas de cada categoría)</li>
+-            <li>Subí el archivo completado acá</li>
+-        </ol>
+-    </div>
++<div class="card tarjeta">
++    <h2 class="seccion-titulo">Cómo se hace</h2>
++    <ol class="ayuda">
++        <li><a href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargá la plantilla</a> del {{ cuat }}° cuatrimestre (ya trae los alumnos y una columna por categoría).</li>
++        <li>Completá las notas en el Excel (de 0 a 10; podés usar coma o punto).</li>
++        <li>Subí el archivo: vas a ver una vista previa antes de guardar.</li>
++    </ol>
+ 
+-    <form method="post" enctype="multipart/form-data">
++    <form class="form form-angosto" method="post" enctype="multipart/form-data">
+         {% csrf_token %}
+-        <label for="archivo">Seleccionar archivo Excel (.xlsx)</label>
+-        <input type="file" id="archivo" name="archivo" accept=".xlsx,.xls" required>
+-        <div class="botones-form">
+-            <button type="submit" class="boton boton-verde">Subir y previsualizar</button>
++        <label for="archivo">Archivo Excel (.xlsx)</label>
++        <input type="file" id="archivo" name="archivo" accept=".xlsx" required{% if not excel_disponible %} disabled{% endif %}>
++        <div class="acciones">
++            <button type="submit" class="btn p"{% if not excel_disponible %} disabled{% endif %}>Subir y ver vista previa</button>
+         </div>
+     </form>
+-</section>
++</div>
+ {% endblock %}
+diff --git a/templates/calificaciones/cargar_notas.html b/templates/calificaciones/cargar_notas.html
+index b452475..179bcde 100644
+--- a/templates/calificaciones/cargar_notas.html
++++ b/templates/calificaciones/cargar_notas.html
+@@ -1,307 +1,256 @@
+-{% extends "base.html" %}
+-
+-{% block title %}Hoja de notas — {{ materia }} — {{ cuat_display }}{% endblock %}
+-
+-{% block extra_css %}
+-<style>
+-.planilla-wrap {
+-    overflow: auto;
+-    border: 1px solid #ddd;
+-    border-radius: 12px;
+-    background: white;
+-}
+-
+-.planilla {
+-    border-collapse: collapse;
+-    width: 100%;
+-    min-width: 720px;
+-}
+-
+-.planilla th, .planilla td {
+-    border: 1px solid #e0e0e0;
+-    padding: 0;
+-}
+-
+-.planilla thead th {
+-    background: #2563eb;
+-    color: white;
+-    font-weight: 600;
+-    font-size: 13px;
+-    padding: 12px 10px;
+-    position: sticky;
+-    top: 0;
+-    z-index: 2;
+-}
+-
+-.planilla .corner {
+-    background: #1d4ed8;
+-    min-width: 220px;
+-}
+-
+-.planilla .alumno-cell {
+-    font-weight: 600;
+-    font-size: 13px;
+-    color: #333;
+-    padding: 8px 12px;
+-    background: #f8fbff;
+-    white-space: nowrap;
+-    border-right: 2px solid #c8d6e2;
+-}
+-
+-.planilla tbody tr:hover .alumno-cell {
+-    background: #eef5ff;
+-}
+-
+-.celda-nota {
+-    width: 90px;
+-    text-align: center;
+-    height: 42px;
+-}
+-
+-.celda-nota input {
+-    width: 100%;
+-    height: 100%;
+-    border: none;
+-    outline: none;
+-    text-align: center;
+-    font-family: 'Poppins', sans-serif;
+-    font-size: 15px;
+-    color: #333;
+-    background: transparent;
+-    padding: 0 4px;
+-}
+-
+-.celda-nota input:focus {
+-    background: #fffde7;
+-    box-shadow: inset 0 0 0 2px #2563eb;
+-    border-radius: 0;
+-}
+-
+-.celda-nota input::placeholder {
+-    color: #ccc;
+-}
+-
+-/* Celdas de promedio/estado */
+-.prom-fila th.prom-cell,
+-.prom-fila td.prom-cell {
+-    background: #eef5ff;
+-    font-weight: 700;
+-    text-align: center;
+-    color: #1a3a6b;
+-    font-size: 15px;
+-    padding: 10px;
+-    border-top: 2px solid #2563eb;
+-}
+-
+-.estado-cell {
+-    font-weight: 700;
+-    font-size: 13px;
+-}
+-
+-.estado-aprobado { color: #2e7d32; background: #f1f8e9; }
+-.estado-desaprobado { color: #c62828; background: #ffebee; }
+-
+-/* Barra de herramientas */
+-.planilla-toolbar {
+-    display: flex;
+-    flex-wrap: wrap;
+-    gap: 10px;
+-    align-items: center;
+-    justify-content: space-between;
+-    margin-bottom: 14px;
+-}
+-
+-.planilla-hint {
+-    font-size: 13px;
+-    color: #777;
+-}
+-
+-.planilla-hint kbd {
+-    background: #f0f0f0;
+-    border: 1px solid #ccc;
+-    border-bottom-width: 2px;
+-    border-radius: 4px;
+-    padding: 1px 6px;
+-    font-size: 12px;
+-}
+-
+-.btn-guardar {
+-    margin-top: 16px;
+-}
+-</style>
++{% extends "calificaciones/base_cal.html" %}
++{% comment %}
++   CARGAR NOTAS (grilla con guardado automático)
++   - Cada nota, valoración e inasistencia se guarda sola al cambiarla.
++   - La calificación (celda gris) se recalcula en pantalla con el peso de
++     cada categoría, igual que en el servidor.
++   - Si la asistencia es menor al 80 %, el estado avisa que no acredita.
++   - Si el cuatrimestre está cerrado, la grilla queda de solo lectura: para
++     corregir hay que reabrirlo desde la planilla.
++{% endcomment %}
++
++{% block title %}Cargar notas — {{ materia.nombre }} — SGE{% endblock %}
++
++{% block hero %}
++<section class="hero">
++    <div class="hero-textos">
++        <p class="miga">Calificaciones › Mis materias › {{ materia.nombre }} {{ curso }}</p>
++        <h1>Cargar notas — {{ materia.nombre }} · {{ curso }}</h1>
++    </div>
++    <div class="hero-acciones">
++        <a class="btn" href="{% url 'calificaciones_menu' %}?cuat={{ cuat }}">← Volver a mis materias</a>
++        <a class="btn" href="{% url 'profesor_planilla' cuat=cuat materia_id=materia.id %}">Ver planilla</a>
++    </div>
++</section>
+ {% endblock %}
+ 
+ {% block content %}
+-<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
+-
+-<div class="bienvenida">
+-    <h2>{{ materia }} — {{ cuat_display }}</h2>
+-    <p>Hacé click en una celda para editar la nota.</p>
+-</div>
+-
+-<section>
+-    <div class="planilla-toolbar">
+-        <a class="boton" href="{% url 'profesor_categorias' cuat=cuat materia=materia %}">
+-            Gestionar categorías
+-        </a>
+-        <span class="planilla-hint">
+-            Navegá con <kbd>Tab</kbd> / <kbd>Enter</kbd> / flechas &middot;
+-            Editá directo en cada celda &middot; Notas de 0 a 10
+-        </span>
++<div class="barra">
++    <div class="segmento" role="group" aria-label="Cuatrimestre">
++        <a class="{% if cuat == 1 %}activo{% endif %}" href="{% url 'profesor_cargar_notas' cuat=1 materia_id=materia.id %}">1° cuatrimestre</a>
++        <a class="{% if cuat == 2 %}activo{% endif %}" href="{% url 'profesor_cargar_notas' cuat=2 materia_id=materia.id %}">2° cuatrimestre</a>
+     </div>
++    <div class="grupo-botones">
++        {% if fecha_cierre %}
++        <span class="chip ne">🔒 Cerrado el {{ fecha_cierre }}</span>
++        <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
++        {% else %}
++        <span class="chip ok" id="estado-guardado">✓ Guardado automático</span>
++        <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
++        <a class="btn" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=materia.id %}">Importar Excel</a>
++        {% if excel_disponible %}<a class="btn" href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargar plantilla</a>{% endif %}
++        {% endif %}
++    </div>
++</div>
+ 
+-    <form method="post" id="form-planilla">
+-        {% csrf_token %}
+-
+-        <div class="planilla-wrap">
+-        <table class="planilla" id="tabla-planilla">
+-            <thead>
+-                <tr>
+-                    <th class="corner">Alumno</th>
+-                    {% for cat in categorias %}
+-                        <th data-cat="{{ cat.id }}">{{ cat.nombre }}</th>
+-                    {% endfor %}
+-                    <th>Promedio</th>
+-                    <th>Estado</th>
+-                </tr>
+-            </thead>
+-            <tbody>
+-                {% for alumno in alumnos %}
+-                <tr data-alumno="{{ alumno.id }}">
+-                    <td class="alumno-cell">{{ alumno.apellido }}, {{ alumno.nombre }}</td>
+-                    {% for celda in alumno.celdas %}
+-                        <td class="celda-nota">
+-                            <input type="number"
+-                                   name="celda_{{ alumno.id }}_{{ celda.cat_id }}"
+-                                   data-alumno="{{ alumno.id }}"
+-                                   data-cat="{{ celda.cat_id }}"
+-                                   value="{{ celda.valor }}"
+-                                   step="0.1" min="0" max="10"
+-                                   placeholder="—">
+-                        </td>
+-                    {% endfor %}
+-                    <td class="prom-cell fila-prom">—</td>
+-                    <td class="estado-cell fila-estado">—</td>
+-                </tr>
+-                {% endfor %}
+-            </tbody>
+-        </table>
+-        </div>
++{% if fecha_cierre %}
++<div class="card tarjeta borde-oscuro">
++    <p class="ayuda"><b>El {{ cuat }}° cuatrimestre está cerrado</b>: las calificaciones quedaron fijas y no se pueden cambiar las notas. Si tenés que corregir algo, reabrilo desde la <a href="{% url 'profesor_planilla' cuat=cuat materia_id=materia.id %}">planilla</a>.</p>
++</div>
++{% endif %}
++
++<div class="card tabla-wrap">
++<table class="tabla" id="tabla-notas"
++       data-url-nota="{% url 'profesor_guardar_nota' cuat=cuat materia_id=materia.id %}"
++       data-url-valoracion="{% url 'profesor_guardar_valoracion' cuat=cuat materia_id=materia.id %}"
++       data-url-inasistencia="{% url 'profesor_guardar_inasistencia' cuat=cuat materia_id=materia.id %}"
++       data-con-pesos="{% if con_pesos %}1{% endif %}"
++       data-cerrado="{% if fecha_cierre %}1{% endif %}">
++    <thead>
++    <tr>
++        <th rowspan="2">Estudiante</th>
++        {% comment %} Encabezado de los grupos (ej. "Trabajos prácticos · 40 %"). {% endcomment %}
++        {% for g in grupos %}
++            {% if g.nombre %}<th colspan="{{ g.cats|length }}" class="c">{{ g.nombre }}{% if g.peso %} · {{ g.peso|floatformat }} %{% endif %}</th>
++            {% else %}{% for cat in g.cats %}<th rowspan="2" class="c">{{ cat.nombre }}{% if cat.peso %} · {{ cat.peso|floatformat }} %{% endif %}</th>{% endfor %}{% endif %}
++        {% endfor %}
++        <th rowspan="2" class="c">Val. preliminar</th>
++        <th rowspan="2" class="c">Calificación</th>
++        <th rowspan="2">Estado</th>
++        <th rowspan="2" class="c">Inasistencias</th>
++    </tr>
++    <tr>
++        {% for g in grupos %}{% if g.nombre %}{% for cat in g.cats %}<th class="c">{{ cat.nombre }}</th>{% endfor %}{% endif %}{% endfor %}
++    </tr>
++    </thead>
++    <tbody>
++    {% for a in filas %}
++    <tr data-alumno="{{ a.id }}" data-asistencia-ok="{% if a.asistencia_ok %}1{% endif %}">
++        <td class="fuerte">{{ a.nombre }}</td>
++        {% for celda in a.celdas %}
++        <td class="c"><input class="n nota" type="text" inputmode="decimal" value="{{ celda.valor }}"
++            data-cat="{{ celda.cat.id }}" data-grupo="{{ celda.cat.grupo_key }}"
++            data-peso="{{ celda.cat.peso_js }}" data-peso-grupo="{{ celda.cat.peso_grupo_js }}"
++            aria-label="{{ a.nombre }} — {{ celda.cat.nombre }}"{% if fecha_cierre %} readonly{% endif %}></td>
++        {% endfor %}
++        <td class="c">
++            <select class="v{% if a.valoracion == 'TED' %} ted{% endif %}" aria-label="{{ a.nombre }} — Valoración preliminar"{% if fecha_cierre %} disabled{% endif %}>
++                <option value=""{% if not a.valoracion %} selected{% endif %}>—</option>
++                <option value="TEA"{% if a.valoracion == 'TEA' %} selected{% endif %}>TEA</option>
++                <option value="TEP"{% if a.valoracion == 'TEP' %} selected{% endif %}>TEP</option>
++                <option value="TED"{% if a.valoracion == 'TED' %} selected{% endif %}>TED</option>
++            </select>
++        </td>
++        <td class="c calc calif-fila">{{ a.calificacion|default:"—" }}</td>
++        <td class="estado-fila"{% if a.asistencia_pct %} title="Asistencia: {{ a.asistencia_pct }} %"{% endif %}>{% if a.estado %}<span class="chip {% if a.aprobada %}ok{% else %}wa{% endif %}">{{ a.estado }}</span>{% else %}—{% endif %}</td>
++        <td class="c"><input class="n inasistencia" type="text" inputmode="decimal" value="{{ a.inasistencias }}" aria-label="{{ a.nombre }} — Inasistencias"{% if fecha_cierre %} readonly{% endif %}></td>
++    </tr>
++    {% empty %}
++    <tr><td class="vacia" colspan="99">Todavía no hay alumnos activos en el curso de esta materia.</td></tr>
++    {% endfor %}
++    </tbody>
++</table>
++</div>
+ 
+-        <div class="botones-form btn-guardar">
+-            <button type="submit" class="boton boton-verde" id="btn-guardar">
+-                Guardar todas las notas
+-            </button>
+-            <a class="boton" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">Cancelar</a>
+-        </div>
+-    </form>
+-</section>
++<p class="nota">La calificación (gris) se calcula sola con el peso de cada categoría. Con menos de 7 el alumno queda "A intensificar"; con menos de 80 % de asistencia, "No acredita por asistencia". Usá Enter o las flechas para moverte entre celdas.</p>
+ {% endblock %}
+ 
+ {% block extra_js %}
+ <script>
+ (function () {
+-    var tabla = document.getElementById('tabla-planilla');
++    var tabla = document.getElementById('tabla-notas');
+     if (!tabla) return;
++    var conPesos = tabla.dataset.conPesos === '1';
++    var avisoGuardado = document.getElementById('estado-guardado');
++
++    // ---------- Cálculo de la calificación (igual que en views.py) ----------
++    function numero(texto) {
++        var v = parseFloat(String(texto).replace(',', '.'));
++        return isNaN(v) ? null : v;
++    }
++
++    function calificacionFila(fila) {
++        // Solo los inputs de notas (no el de inasistencias).
++        var conNota = Array.prototype.filter.call(fila.querySelectorAll('input.nota'), function (i) {
++            return numero(i.value) !== null;
++        });
++        if (!conNota.length) return null;
++
++        if (!conPesos) {  // sin pesos: promedio simple
++            var suma = 0;
++            conNota.forEach(function (i) { suma += numero(i.value); });
++            return suma / conNota.length;
++        }
+ 
+-    // --- Recalcular promedios en vivo ---
+-    function recalcular() {
+-        var filas = tabla.querySelectorAll('tbody tr[data-alumno]');
+-        filas.forEach(function (fila) {
+-            var inputs = fila.querySelectorAll('input[type="number"]');
+-            var suma = 0, cont = 0;
+-            inputs.forEach(function (inp) {
+-                var v = parseFloat(inp.value);
+-                if (!isNaN(v)) { suma += v; cont++; }
++        // con pesos: cada grupo aporta su peso
++        var grupos = {};
++        conNota.forEach(function (i) { (grupos[i.dataset.grupo] = grupos[i.dataset.grupo] || []).push(i); });
++        var acumulado = 0, pesoTotal = 0;
++        Object.keys(grupos).forEach(function (g) {
++            var num = 0, den = 0;
++            grupos[g].forEach(function (i) {
++                var p = numero(i.dataset.peso) || 1;
++                num += numero(i.value) * p;
++                den += p;
+             });
+-            var promCelda = fila.querySelector('.fila-prom');
+-            var estadoCelda = fila.querySelector('.fila-estado');
+-            var prom = cont > 0 ? (suma / cont) : null;
+-            if (prom !== null) {
+-                prom = Math.round(prom * 10) / 10;
+-                promCelda.textContent = prom;
+-                if (prom >= 6) {
+-                    promCelda.style.color = '#2e7d32';
+-                    estadoCelda.textContent = 'Aprobado';
+-                    estadoCelda.className = 'estado-cell fila-estado estado-aprobado';
+-                } else {
+-                    promCelda.style.color = '#c62828';
+-                    estadoCelda.textContent = 'Desaprobado';
+-                    estadoCelda.className = 'estado-cell fila-estado estado-desaprobado';
+-                }
+-            } else {
+-                promCelda.textContent = '—';
+-                promCelda.style.color = '#1a3a6b';
+-                estadoCelda.textContent = '—';
+-                estadoCelda.className = 'estado-cell fila-estado';
+-            }
++            var pesoGrupo = numero(grupos[g][0].dataset.pesoGrupo) || grupos[g].length;
++            acumulado += (num / den) * pesoGrupo;
++            pesoTotal += pesoGrupo;
+         });
++        return pesoTotal ? acumulado / pesoTotal : null;
+     }
+ 
+-    // --- Navegación estilo hoja de cálculo ---
+-    function moveFocus(input, dir) {
+-        // dir: 'next', 'prev', 'up', 'down'
+-        var filas = Array.from(tabla.querySelectorAll('tbody tr[data-alumno]'));
+-        var inputs = Array.from(tabla.querySelectorAll('.celda-nota input'));
+-        var idx = inputs.indexOf(input);
+-        if (idx < 0) return;
+-
+-        var camposPorFila = filas[0].querySelectorAll('input').length;
+-        var filaIdx = Math.floor(idx / camposPorFila);
+-        var colIdx = idx % camposPorFila;
++    function redondear(valor) {
++        // Mitad hacia arriba con 1 decimal y después a entero (como el servidor).
++        return Math.round(Math.round(valor * 10) / 10);
++    }
+ 
+-        if (dir === 'next' || dir === 'prev') {
+-            var ni = dir === 'next' ? idx + 1 : idx - 1;
+-            if (ni >= 0 && ni < inputs.length) inputs[ni].focus();
+-        } else if (dir === 'down') {
+-            if (filaIdx + 1 < filas.length) {
+-                inputs[(filaIdx + 1) * camposPorFila + colIdx].focus();
+-            }
+-        } else if (dir === 'up') {
+-            if (filaIdx - 1 >= 0) {
+-                inputs[(filaIdx - 1) * camposPorFila + colIdx].focus();
+-            }
++    function actualizarFila(fila) {
++        var calif = calificacionFila(fila);
++        var celda = fila.querySelector('.calif-fila');
++        var estado = fila.querySelector('.estado-fila');
++        if (calif === null) {
++            celda.textContent = '—';
++            estado.textContent = '—';
++            return;
++        }
++        var entero = redondear(calif);
++        celda.textContent = entero;
++        if (fila.dataset.asistenciaOk !== '1') {
++            estado.innerHTML = '<span class="chip wa">No acredita por asistencia</span>';
++        } else if (entero >= 7) {
++            estado.innerHTML = '<span class="chip ok">Aprobada</span>';
++        } else {
++            estado.innerHTML = '<span class="chip wa">A intensificar</span>';
+         }
+     }
+ 
+-    tabla.addEventListener('keydown', function (e) {
+-        var t = e.target;
+-        if (t.tagName !== 'INPUT') return;
++    // ---------- Guardado automático ----------
++    function cookie(nombre) {
++        var m = document.cookie.match(new RegExp('(?:^|; )' + nombre + '=([^;]*)'));
++        return m ? decodeURIComponent(m[1]) : '';
++    }
+ 
+-        if (e.key === 'Tab') {
+-            e.preventDefault();
+-            moveFocus(t, e.shiftKey ? 'prev' : 'next');
+-        } else if (e.key === 'Enter') {
+-            e.preventDefault();
+-            moveFocus(t, 'next');
+-        } else if (e.key === 'ArrowDown') {
+-            e.preventDefault();
+-            moveFocus(t, 'down');
+-        } else if (e.key === 'ArrowUp') {
+-            e.preventDefault();
+-            moveFocus(t, 'up');
+-        } else if (e.key === 'ArrowRight') {
+-            e.preventDefault();
+-            moveFocus(t, 'next');
+-        } else if (e.key === 'ArrowLeft') {
+-            e.preventDefault();
+-            moveFocus(t, 'prev');
++    function guardar(url, datos, campo) {
++        var fd = new FormData();
++        Object.keys(datos).forEach(function (k) { fd.append(k, datos[k]); });
++        if (avisoGuardado) avisoGuardado.textContent = 'Guardando…';
++        fetch(url, {
++            method: 'POST',
++            headers: { 'X-CSRFToken': cookie('csrftoken') },
++            body: fd,
++            credentials: 'same-origin'
++        }).then(function (r) { return r.json(); }).then(function (d) {
++            campo.classList.toggle('error', !d.ok);
++            if (avisoGuardado) avisoGuardado.textContent = d.ok ? '✓ Guardado automático' : '⚠ Hay un dato sin guardar';
++            if (!d.ok) alert(d.error || 'No se pudo guardar.');
++        }).catch(function () {
++            campo.classList.add('error');
++            if (avisoGuardado) avisoGuardado.textContent = '⚠ Sin conexión';
++            alert('No se pudo guardar. Revisá la conexión.');
++        });
++    }
++
++    tabla.addEventListener('change', function (e) {
++        if (tabla.dataset.cerrado === '1') return;  // cuatrimestre cerrado: no se guarda nada
++        var campo = e.target;
++        var fila = campo.closest('tr');
++        var alumno = fila.dataset.alumno;
++        if (campo.classList.contains('nota')) {
++            guardar(tabla.dataset.urlNota, { alumno_id: alumno, cat_id: campo.dataset.cat, valor: campo.value.trim() }, campo);
++        } else if (campo.classList.contains('v')) {
++            campo.classList.toggle('ted', campo.value === 'TED');
++            guardar(tabla.dataset.urlValoracion, { alumno_id: alumno, valoracion: campo.value }, campo);
++        } else if (campo.classList.contains('inasistencia')) {
++            guardar(tabla.dataset.urlInasistencia, { alumno_id: alumno, valor: campo.value.trim() }, campo);
+         }
+     });
+ 
+-    // Seleccionar todo el contenido al enfocar (para reescribir rápido)
+-    tabla.addEventListener('focusin', function (e) {
+-        var t = e.target;
+-        if (t.tagName === 'INPUT') {
+-            setTimeout(function () { t.select(); }, 0);
++    // ---------- Moverse como en una hoja de cálculo ----------
++    tabla.addEventListener('keydown', function (e) {
++        var campo = e.target;
++        if (campo.tagName !== 'INPUT') return;
++        var fila = campo.closest('tr');
++        var enFila = Array.prototype.slice.call(fila.querySelectorAll('input.n'));
++        var col = enFila.indexOf(campo);
++        var destino = null;
++
++        if (e.key === 'Enter' || e.key === 'ArrowDown') {          // abajo
++            var abajo = fila.nextElementSibling;
++            destino = abajo && abajo.querySelectorAll('input.n')[col];
++        } else if (e.key === 'ArrowUp') {                          // arriba
++            var arriba = fila.previousElementSibling;
++            destino = arriba && arriba.querySelectorAll('input.n')[col];
++        } else if (e.key === 'ArrowRight' && campo.selectionEnd === campo.value.length) {
++            destino = enFila[col + 1];
++        } else if (e.key === 'ArrowLeft' && campo.selectionStart === 0) {
++            destino = enFila[col - 1];
++        }
++        if (destino) {
++            e.preventDefault();
++            destino.focus();
+         }
+     });
+ 
+-    // Recalcular al escribir
+-    tabla.addEventListener('input', recalcular);
++    // Al entrar a una celda se selecciona el contenido para reescribirlo rápido.
++    tabla.addEventListener('focusin', function (e) {
++        if (e.target.tagName === 'INPUT') setTimeout(function () { e.target.select(); }, 0);
++    });
+ 
+-    // Calcular al cargar
+-    recalcular();
++    // Recalcular mientras se escribe.
++    tabla.addEventListener('input', function (e) {
++        if (e.target.classList.contains('nota') && !e.target.readOnly) actualizarFila(e.target.closest('tr'));
++    });
+ })();
+ </script>
+ {% endblock %}
+diff --git a/templates/calificaciones/confirmar_excel.html b/templates/calificaciones/confirmar_excel.html
+index aaed849..96a1017 100644
+--- a/templates/calificaciones/confirmar_excel.html
++++ b/templates/calificaciones/confirmar_excel.html
+@@ -1,63 +1,50 @@
+-{% extends "base.html" %}
++{% extends "calificaciones/base_cal.html" %}
++{% comment %}
++   IMPORTAR NOTAS DESDE EXCEL — paso 2: vista previa.
++   Recién al confirmar se guardan las notas, así un archivo mal armado no
++   pisa nada. Los alumnos que no se encuentran en el curso salen en rojo.
++{% endcomment %}
+ 
+-{% block title %}Confirmar Excel — {{ materia }}{% endblock %}
++{% block title %}Vista previa del Excel — {{ materia.nombre }} — SGE{% endblock %}
++
++{% block hero %}
++<section class="hero">
++    <div class="hero-textos">
++        <p class="miga">Calificaciones › Mis materias › {{ materia.nombre }} {{ curso }} › Importar Excel</p>
++        <h1>Vista previa del Excel — {{ materia.nombre }}</h1>
++    </div>
++    <div class="hero-acciones">
++        <a class="btn" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=materia.id %}">← Elegir otro archivo</a>
++    </div>
++</section>
++{% endblock %}
+ 
+ {% block content %}
+-<a class="volver" href="{% url 'profesor_cargar_excel' cuat=cuat materia=materia %}">&larr; Volver</a>
++<div class="card tarjeta">
++    {% if columnas %}
++    <div class="tabla-wrap">
++    <table class="tabla">
++        <tr><th>Alumno</th>{% for nombre in columnas %}<th class="c">{{ nombre }}</th>{% endfor %}</tr>
++        {% for fila in vista_previa %}
++        <tr>
++            <td class="{% if fila.encontrado %}fuerte{% else %}no-acredita{% endif %}">{{ fila.nombre }}{% if not fila.encontrado %} (no está en el curso){% endif %}</td>
++            {% for valor in fila.valores %}<td class="c">{{ valor }}</td>{% endfor %}
++        </tr>
++        {% empty %}
++        <tr><td class="vacia" colspan="99">El archivo no tiene filas de alumnos.</td></tr>
++        {% endfor %}
++    </table>
++    </div>
++    {% else %}
++    <p class="ayuda">Ninguna columna del Excel coincide con las categorías de la materia. Descargá la plantilla y volvé a intentar.</p>
++    {% endif %}
+ 
+-<div class="bienvenida">
+-    <h2>Vista previa del Excel</h2>
+-    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
+-</div>
++    <p class="ayuda">Solo se guardan las notas de los alumnos encontrados. Las celdas vacías no borran notas que ya estén cargadas.</p>
+ 
+-<section>
+-    <form method="post" action="{% url 'profesor_confirmar_excel' cuat=cuat materia=materia %}">
++    <form method="post" action="{% url 'profesor_confirmar_excel' cuat=cuat materia_id=materia.id %}" class="grupo-botones">
+         {% csrf_token %}
+-
+-        <div style="overflow-x:auto;">
+-        <table>
+-            <thead>
+-                <tr>
+-                    {% for h in headers %}
+-                        <th>{{ h }}</th>
+-                    {% endfor %}
+-                </tr>
+-            </thead>
+-            <tbody>
+-                {% for fila in preview %}
+-                <tr>
+-                    <td style="{% if not fila.encontrado %}color:#c62828; font-weight:600;{% endif %}">
+-                        {{ fila.nombre }}
+-                        {% if not fila.encontrado %}
+-                            <span style="font-size:11px;">(no encontrado)</span>
+-                        {% endif %}
+-                    </td>
+-                    {% for h in headers %}
+-                        {% if forloop.counter > 1 %}
+-                            <td>
+-                                {% for cat_nombre, valor in fila.notas.items %}
+-                                    {% if cat_nombre == h %}
+-                                        {{ valor|default:"-" }}
+-                                    {% endif %}
+-                                {% endfor %}
+-                            </td>
+-                        {% endif %}
+-                    {% endfor %}
+-                </tr>
+-                {% endfor %}
+-            </tbody>
+-        </table>
+-        </div>
+-
+-        <p style="margin-top:14px; color:#555;">
+-            Los alumnos en <span style="color:#c62828; font-weight:600;">rojo</span> no fueron encontrados en la materia.
+-            Al confirmar, solo se guardan las notas de alumnos encontrados.
+-        </p>
+-
+-        <div class="botones-form">
+-            <button type="submit" class="boton boton-verde">Confirmar y guardar</button>
+-            <a class="boton boton-rojo" href="{% url 'profesor_cargar_excel' cuat=cuat materia=materia %}">Cancelar</a>
+-        </div>
++        {% if columnas and hay_para_guardar %}<button type="submit" class="btn p">Confirmar y guardar</button>{% endif %}
++        <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">Cancelar</a>
+     </form>
+-</section>
++</div>
+ {% endblock %}
+diff --git a/templates/calificaciones/gestionar_categorias.html b/templates/calificaciones/gestionar_categorias.html
+index a9ac8e3..2fb94f2 100644
+--- a/templates/calificaciones/gestionar_categorias.html
++++ b/templates/calificaciones/gestionar_categorias.html
+@@ -1,63 +1,91 @@
+-{% extends "base.html" %}
++{% extends "calificaciones/base_cal.html" %}
++{% comment %}
++   CATEGORÍAS DE EVALUACIÓN
++   - Son las columnas de la grilla de notas (TP, examen, etc.).
++   - Cada una puede tener un grupo (varias columnas que suman un peso) y un
++     peso % que define cuánto aporta a la calificación.
++   - "Volver" lleva a Cargar notas; si todavía no hay categorías, al inicio.
++{% endcomment %}
+ 
+-{% block title %}Gestionar Categorías — {{ materia }}{% endblock %}
++{% block title %}Categorías — {{ materia.nombre }} — SGE{% endblock %}
+ 
+-{% block content %}
+-<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
+-
+-<div class="bienvenida">
+-    <h2>Categorías de evaluación</h2>
+-    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
+-</div>
+-
+-<section>
+-    <h2>Categorías actuales</h2>
++{% block hero %}
++<section class="hero">
++    <div class="hero-textos">
++        <p class="miga">Calificaciones › Mis materias › {{ materia.nombre }} {{ curso }} › Categorías</p>
++        <h1>Categorías de evaluación — {{ materia.nombre }}</h1>
++    </div>
++    <div class="hero-acciones">
++        {% if categorias %}
++        <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">← Volver a {{ materia.nombre }}</a>
++        {% else %}
++        <a class="btn" href="{% url 'calificaciones_menu' %}?cuat={{ cuat }}">← Volver a mis materias</a>
++        {% endif %}
++    </div>
++</section>
++{% endblock %}
+ 
++{% block content %}
++<div class="dos-columnas">
++<div class="card tarjeta">
++    <h2 class="seccion-titulo">Categorías actuales</h2>
+     {% if categorias %}
+-        <table>
+-            <thead>
+-                <tr>
+-                    <th>Orden</th>
+-                    <th>Nombre</th>
+-                    <th>Acciones</th>
+-                </tr>
+-            </thead>
+-            <tbody>
+-                {% for cat in categorias %}
+-                <tr>
+-                    <td>{{ cat.orden }}</td>
+-                    <td>{{ cat.nombre }}</td>
+-                    <td>
+-                        <a class="boton boton-chico"
+-                           href="{% url 'profesor_editar_categoria' cuat=cuat materia=materia cat_id=cat.id %}">
+-                            Editar
+-                        </a>
+-                        <a class="boton boton-rojo boton-chico"
+-                           href="{% url 'profesor_eliminar_categoria' cuat=cuat materia=materia cat_id=cat.id %}"
+-                           onclick="return confirm('¿Eliminar la categoría {{ cat.nombre }}? Se borrarán todas las notas asociadas.')">
+-                            Eliminar
+-                        </a>
+-                    </td>
+-                </tr>
+-                {% endfor %}
+-            </tbody>
+-        </table>
++    <div class="tabla-wrap">
++    <table class="tabla">
++        <tr><th>Orden</th><th>Nombre</th><th>Grupo</th><th>Peso %</th><th></th></tr>
++        {% for cat in categorias %}
++        <tr>
++            <td>{{ cat.orden }}</td>
++            <td class="fuerte">{{ cat.nombre }}</td>
++            <td>{{ cat.grupo|default:"—" }}</td>
++            <td>{% if cat.peso %}{{ cat.peso|floatformat }}{% else %}—{% endif %}</td>
++            <td>
++                <div class="acciones-fila">
++                    <a class="btn chico" href="?editar={{ cat.id }}">Editar</a>
++                    <form method="post" action="{% url 'profesor_eliminar_categoria' cuat=cuat materia_id=materia.id cat_id=cat.id %}"
++                          onsubmit="return confirm('¿Eliminar la categoría {{ cat.nombre|escapejs }}? Se borran también sus notas.')">
++                        {% csrf_token %}
++                        <button type="submit" class="btn chico peligro">Eliminar</button>
++                    </form>
++                </div>
++            </td>
++        </tr>
++        {% endfor %}
++    </table>
++    </div>
++    {% if hay_cerrados %}<p class="nota">Las categorías con notas de un cuatrimestre cerrado no se pueden eliminar. Cambiar el peso solo afecta a los cuatrimestres abiertos.</p>{% endif %}
+     {% else %}
+-        <div class="aviso">
+-            Todavía no hay categorías creadas para esta materia. Agregá una más abajo.
+-        </div>
++    <p class="ayuda">Todavía no hay categorías en esta materia. Agregá la primera acá abajo para poder cargar notas.</p>
+     {% endif %}
+-</section>
++</div>
+ 
+-<section>
+-    <h2>Agregar categoría</h2>
+-    <form method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia=materia %}">
++<div class="card tarjeta">
++    {% if editando %}
++    <h2 class="seccion-titulo">Editar categoría</h2>
++    <form class="form" method="post" action="{% url 'profesor_editar_categoria' cuat=cuat materia_id=materia.id cat_id=editando.id %}">
++    {% else %}
++    <h2 class="seccion-titulo">Agregar categoría</h2>
++    <form class="form" method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia_id=materia.id %}">
++    {% endif %}
+         {% csrf_token %}
+         <label for="nombre">Nombre de la categoría</label>
+-        <input type="text" id="nombre" name="nombre" placeholder="Ej: Trabajo Práctico, Examen, Participación..." required>
+-        <div class="botones-form">
+-            <button type="submit" class="boton boton-verde">Agregar categoría</button>
++        <input type="text" id="nombre" name="nombre" value="{{ editando.nombre|default:'' }}" placeholder="Ej: Trabajo práctico 1, Examen, Participación" maxlength="100" required>
++
++        <label for="grupo">Grupo (opcional, junta varias columnas en la planilla)</label>
++        <input type="text" id="grupo" name="grupo" value="{{ editando.grupo|default:'' }}" placeholder="Ej: Trabajos prácticos" maxlength="100">
++
++        <label for="peso">Peso % (opcional, cuánto aporta a la calificación)</label>
++        <input type="text" id="peso" name="peso" inputmode="decimal" value="{% if editando.peso %}{{ editando.peso|floatformat }}{% endif %}" placeholder="Ej: 30">
++
++        <div class="acciones">
++            {% if editando %}
++            <button type="submit" class="btn p">Guardar cambios</button>
++            <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Cancelar</a>
++            {% else %}
++            <button type="submit" class="btn p">Agregar categoría</button>
++            {% endif %}
+         </div>
+     </form>
+-</section>
++</div>
++</div>
+ {% endblock %}
