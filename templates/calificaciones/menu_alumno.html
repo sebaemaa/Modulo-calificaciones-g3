@@ -7,14 +7,17 @@
    - El acceso al boletín aparece recién cuando secretaría lo publica.
 {% endcomment %}
 
+{# Titulo de la pestaña. #}
 {% block title %}Mis notas — SGE{% endblock %}
 
+{# Encabezado con nombre y curso del alumno. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
         <h1>Mis notas</h1>
         <p class="hero-sub">{{ nombre }} · {{ curso }} · Ciclo lectivo {{ ciclo_lectivo }}</p>
     </div>
+    {# Selector de cuatrimestre. #}
     <div class="segmento" role="group" aria-label="Cuatrimestre">
         <a class="{% if cuat == 1 %}activo{% endif %}" href="?cuat=1">1° cuatrimestre</a>
         <a class="{% if cuat == 2 %}activo{% endif %}" href="?cuat=2">2° cuatrimestre</a>
@@ -22,18 +25,25 @@
 </section>
 {% endblock %}
 
+{# Contenido. #}
 {% block content %}
 <div class="dos-columnas">
+    {# Tabla de notas. #}
     <div class="card tabla-wrap">
         <table class="tabla">
             <tr><th>Materia</th><th>Val. preliminar</th><th>Calificación</th><th>Estado</th></tr>
+            {# Una fila por materia. #}
             {% for m in materias %}
             <tr>
                 <td class="fuerte">{{ m.materia }}</td>
+                {# Valoracion (TED en rojo) o raya si no tiene. #}
                 <td>{% if m.valoracion %}<span{% if m.valoracion == 'TED' %} class="ted"{% endif %}>{{ m.valoracion }}</span>{% else %}—{% endif %}</td>
+                {# Calificacion; default pone la raya si esta vacia. #}
                 <td class="fuerte">{{ m.calificacion|default:"—" }}</td>
+                {# Estado con etiqueta verde (aprobada) o ambar. #}
                 <td>{% if m.estado %}<span class="chip {% if m.aprobada %}ok{% else %}wa{% endif %}">{{ m.estado }}</span>{% else %}—{% endif %}</td>
             </tr>
+            {# empty: lo que se muestra si la lista esta vacia. #}
             {% empty %}
             <tr><td class="vacia" colspan="4">Todavía no hay materias en tu curso.</td></tr>
             {% endfor %}
@@ -41,17 +51,23 @@
     </div>
 
     <div class="columna">
+        {# Tarjeta del boletin. #}
         <div class="card tarjeta borde-oscuro">
             <h3 class="tarjeta-titulo">Mi boletín</h3>
             <p class="ayuda">Promedio del {{ cuat }}° cuatrimestre</p>
+            {# Promedio del cuatrimestre. #}
             <p class="numero grande">{{ promedio_general|default:"—" }}</p>
+            {# Los botones del boletin aparecen solo si esta publicado. #}
             {% if boletin_publicado %}
             <a class="btn p" href="{% url 'alumno_ver_boletin' %}">Ver boletín completo</a>
+            {# ?imprimir=1 hace que el boletin abra la impresion directo. #}
             <a class="btn" href="{% url 'alumno_ver_boletin' %}?imprimir=1">Imprimir / guardar como PDF</a>
+            {# Si no esta publicado muestra un aviso. #}
             {% else %}
             <p class="ayuda">El boletín se habilita a fin de año. Mientras tanto, estas son tus notas.</p>
             {% endif %}
         </div>
+        {# Tarjeta de inasistencias. #}
         <div class="card tarjeta borde-verde">
             <h3 class="tarjeta-titulo">Inasistencias</h3>
             <p class="numero grande">{{ inasistencias|default:"—" }}</p>

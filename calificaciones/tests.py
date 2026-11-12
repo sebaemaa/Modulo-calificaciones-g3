@@ -13,17 +13,23 @@ Secciones:
 
     python manage.py test calificaciones
 """
+# json para leer las respuestas de los guardados automaticos.
 import json
 from datetime import date
 from decimal import Decimal
 
+# Usuarios de Django para poder loguearse en las pruebas.
 from django.contrib.auth.models import User
+# TestCase = clase base de las pruebas (usa una base de datos temporal). Client = navegador de mentira.
 from django.test import TestCase, Client
+# reverse arma la URL a partir del name de urls.py.
 from django.urls import reverse
 from django.utils import timezone
 
+# Tablas de otros modulos que las pruebas necesitan llenar.
 from alumnos.models import Alumno, Curso
 from asistencia.models import RegistroAsistencia
+# Tablas propias del modulo.
 from calificaciones.models import (
     BoletinConfig,
     CategoriaEvaluacion,
@@ -42,7 +48,9 @@ from docentes.models import Docente, Materia
 #  MENÚ POR ROL Y "MIS NOTAS"
 # ─────────────────────────────────────────────
 
+# GRUPO DE PRUEBAS: el menu muestra lo correcto segun el rol.
 class MenuPorRolTests(TestCase):
+    # setUp corre antes de CADA prueba y arma los datos (curso, docente, alumno, notas, usuarios).
     def setUp(self):
         self.curso = Curso.objects.create(anio=5, division="B")
         self.docente = Docente.objects.create(nombre="Ana", apellido="Prueba", dni="90000001")
@@ -103,6 +111,7 @@ class MenuPorRolTests(TestCase):
 
     # ---------------- menú del docente ----------------
 
+    # Prueba: el docente ve sus materias y el porcentaje cargado.
     def test_menu_docente(self):
         c = Client()
         c.force_login(self.u_docente)
@@ -119,6 +128,7 @@ class MenuPorRolTests(TestCase):
         self.assertContains(r, "Comunicados")
         self.assertContains(r, 'class="footer-titulo"')
 
+    # Prueba: una materia sin categorias avisa que hay que crearlas.
     def test_menu_docente_materia_sin_categorias(self):
         c = Client()
         c.force_login(self.u_docente)
@@ -126,6 +136,7 @@ class MenuPorRolTests(TestCase):
         self.assertContains(r, "Teleinformática")
         self.assertContains(r, "Creá categorías para poder cargar notas")
 
+    # Prueba: el menu del docente funciona con ?cuat=2.
     def test_menu_docente_cuat_2(self):
         c = Client()
         c.force_login(self.u_docente)
@@ -135,6 +146,7 @@ class MenuPorRolTests(TestCase):
 
     # ---------------- menú del alumno ----------------
 
+    # Prueba: el alumno ve "Mis notas" con sus calificaciones.
     def test_menu_alumno(self):
         c = Client()
         c.force_login(self.u_alumno)
@@ -151,6 +163,7 @@ class MenuPorRolTests(TestCase):
         # inasistencias: 2,5 con coma (formato es-AR)
         self.assertContains(r, "2,5")
 
+    # Prueba: la valoracion TED sale en rojo.
     def test_menu_alumno_muestra_ted_en_rojo(self):
         """TED (0-4) se muestra en rojo también en Mis notas."""
         NotaEvaluacion.objects.filter(
@@ -161,6 +174,7 @@ class MenuPorRolTests(TestCase):
         r = c.get("/calificaciones/")
         self.assertContains(r, '<span class="ted">TED</span>')
 
+    # Prueba: con menos de 80 % de asistencia la materia no queda aprobada.
     def test_asistencia_insuficiente_no_aprueba_la_materia(self):
         """Con menos del 80 % de asistencia la materia no queda aprobada."""
         for dia in (1, 2):
@@ -173,6 +187,7 @@ class MenuPorRolTests(TestCase):
         r = c.get("/calificaciones/")
         self.assertContains(r, "No acredita por asistencia")
 
+    # Prueba: el alumno no ve los botones de carga del docente.
     def test_menu_alumno_no_ve_cargas_del_docente(self):
         c = Client()
         c.force_login(self.u_alumno)
@@ -182,6 +197,7 @@ class MenuPorRolTests(TestCase):
 
     # ---------------- menú de la secretaría ----------------
 
+    # Prueba: secretaria ve el menu de gestion.
     def test_menu_administrativo_fallback(self):
         """La secretaría ve las planillas de todos los docentes y el buscador de boletines."""
         c = Client()
@@ -200,7 +216,9 @@ class MenuPorRolTests(TestCase):
 #  CARGA DE NOTAS Y CATEGORÍAS
 # ─────────────────────────────────────────────
 
+# GRUPO DE PRUEBAS: grilla de carga de notas y guardado automatico.
 class CargarNotasTests(TestCase):
+    # Arma una materia con categorias con peso, alumnos y un docente logueable.
     def setUp(self):
         self.curso = Curso.objects.create(anio=5, division="B")
         self.docente = Docente.objects.create(nombre="Ana", apellido="Prueba", dni="90000011")
@@ -234,9 +252,11 @@ class CargarNotasTests(TestCase):
         self.u_docente = User.objects.create_user("docente2", password="clave123")
         Perfil.objects.create(usuario=self.u_docente, rol=Perfil.DOCENTE, docente=self.docente)
 
+    # Helper: inicia sesion como el docente.
     def _login(self):
         self.client.force_login(self.u_docente)
 
+    # Prueba: la pantalla de cargar notas abre y muestra alumnos y columnas.
     def test_pantalla_cargar_notas(self):
         self._login()
         url = reverse("profesor_cargar_notas", kwargs={"cuat": 1, "materia_id": self.materia.id})
@@ -261,6 +281,7 @@ class CargarNotasTests(TestCase):
         self.assertContains(r, ">TEP</option>")
         self.assertContains(r, ">TED</option>")
 
+    # Prueba: si falta openpyxl aparece el aviso.
     def test_aviso_si_falta_la_libreria_de_excel(self):
         """Sin openpyxl, la pantalla de Excel avisa qué instalar en vez de fallar."""
         from calificaciones import views
@@ -275,6 +296,7 @@ class CargarNotasTests(TestCase):
         finally:
             views.EXCEL_DISPONIBLE = original
 
+    # Prueba: guardar una nota devuelve la calificacion ponderada correcta.
     def test_guardar_nota_devuelve_calificacion_ponderada(self):
         self._login()
         url = reverse("profesor_guardar_nota", kwargs={"cuat": 1, "materia_id": self.materia.id})
@@ -289,6 +311,7 @@ class CargarNotasTests(TestCase):
         self.assertEqual(data["calificacion"], "9")
         self.assertEqual(data["estado_materia"], "Aprobada")
 
+    # Prueba: acepta notas con coma (7,5).
     def test_guardar_nota_acepta_coma_decimal(self):
         """En es-AR el docente escribe 7,5 y el sistema lo guarda como 7.5."""
         self._login()
@@ -305,6 +328,7 @@ class CargarNotasTests(TestCase):
         )
         self.assertEqual(nota.valor, Decimal("7.5"))
 
+    # Prueba: guardar inasistencias no afecta el calculo de la nota.
     def test_inasistencias_no_se_mezclan_con_las_notas(self):
         """El input de inasistencias tiene otra clase: el JS no lo promedia como nota."""
         self._login()
@@ -313,6 +337,7 @@ class CargarNotasTests(TestCase):
         self.assertContains(r, 'class="n nota"', count=3)
         self.assertContains(r, 'class="n inasistencia"', count=1)
 
+    # Prueba: los botones "Volver" de categorias y Excel llevan a cargar notas.
     def test_volver_de_categorias_y_excel_lleva_a_cargar_notas(self):
         """'Volver a <materia>' vuelve a Cargar notas, no a la planilla."""
         self._login()
@@ -325,6 +350,7 @@ class CargarNotasTests(TestCase):
                 self.assertContains(r, f'href="{url_cargar}">← Volver a Laboratorio de Programación</a>')
                 self.assertNotContains(r, url_planilla)
 
+    # Prueba: una categoria no se borra por GET, solo por POST.
     def test_eliminar_categoria_solo_por_post(self):
         self._login()
         url = reverse("profesor_eliminar_categoria",
@@ -334,6 +360,7 @@ class CargarNotasTests(TestCase):
         self.client.post(url)
         self.assertFalse(CategoriaEvaluacion.objects.filter(id=self.tp.id).exists())
 
+    # Prueba: el Excel acepta notas con coma.
     def test_confirmar_excel_acepta_coma_decimal(self):
         """Las notas del Excel con coma ('6,5') se guardan bien."""
         self._login()
@@ -353,6 +380,7 @@ class CargarNotasTests(TestCase):
         nota2 = NotaEvaluacion.objects.get(alumno=self.alumno, categoria=self.tp2, cuatrimestre=1)
         self.assertEqual(nota2.valor, Decimal("9"))
 
+    # Prueba: si no hay carga manual muestra las faltas del modulo Asistencia.
     def test_cargar_notas_muestra_inasistencias_de_asistencia(self):
         """Si no hay carga manual, se usa el mismo dato que la planilla."""
         RegistroAsistencia.objects.create(
@@ -372,6 +400,7 @@ class CargarNotasTests(TestCase):
         r = self.client.get(url)
         self.assertContains(r, 'value="2,5"')
 
+    # Prueba: avisa cuando la asistencia no alcanza.
     def test_cargar_notas_avisa_asistencia_insuficiente(self):
         """Con una sola clase y una falta, la materia no se acredita."""
         RegistroAsistencia.objects.create(
@@ -383,6 +412,7 @@ class CargarNotasTests(TestCase):
         r = self.client.get(url)
         self.assertContains(r, "No acredita por asistencia")
 
+    # Prueba: guarda la valoracion TEA/TEP/TED.
     def test_guardar_valoracion(self):
         self._login()
         url = reverse("profesor_guardar_valoracion", kwargs={"cuat": 1, "materia_id": self.materia.id})
@@ -402,6 +432,7 @@ class CargarNotasTests(TestCase):
         cierre.refresh_from_db()
         self.assertEqual(cierre.valoracion_preliminar, "TEA")
 
+    # Prueba: rechaza una valoracion que no existe.
     def test_guardar_valoracion_invalida(self):
         self._login()
         url = reverse("profesor_guardar_valoracion", kwargs={"cuat": 1, "materia_id": self.materia.id})
@@ -413,9 +444,11 @@ class CargarNotasTests(TestCase):
 #  PLANILLA DEL DOCENTE
 # ─────────────────────────────────────────────
 
+# GRUPO DE PRUEBAS: planilla del docente (cierre, reapertura, intensificacion, final).
 class PlanillaDocenteTests(TestCase):
     """Planilla del docente (maqueta Main): los dos cuatrimestres + cierre."""
 
+    # Arma la materia, alumnos, notas y el docente.
     def setUp(self):
         self.curso = Curso.objects.create(anio=5, division="B")
         self.docente = Docente.objects.create(nombre="Ana", apellido="Prueba", dni="90000021")
@@ -453,10 +486,12 @@ class PlanillaDocenteTests(TestCase):
         self.u_docente = User.objects.create_user("docente3", password="clave123")
         Perfil.objects.create(usuario=self.u_docente, rol=Perfil.DOCENTE, docente=self.docente)
 
+    # Helper: URL de la planilla.
     def _url(self, cuat=1):
         return reverse("profesor_planilla",
                        kwargs={"cuat": cuat, "materia_id": self.materia.id})
 
+    # Prueba: la planilla abre y muestra los datos.
     def test_planilla_se_ve(self):
         """La planilla es la hoja imprimible de oficio vertical (maqueta planilla-docente)."""
         self.client.force_login(self.u_docente)
@@ -491,6 +526,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertContains(r, '<td class="n">8</td>')
         self.assertContains(r, '<td class="n">9</td>')
 
+    # Prueba: el cuadro de totales cuenta bien.
     def test_totales_de_la_hoja(self):
         self.client.force_login(self.u_docente)
         r = self.client.get(self._url())
@@ -498,6 +534,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertContains(r, '<th class="r">APROBADAS/OS</th><td>1</td><td>1</td>')
         self.assertContains(r, '<th class="r">SIN EVALUAR</th><td>0</td><td>0</td>')
 
+    # Prueba: guarda cursa/recursa y la nota de diciembre.
     def test_guardar_cursada_y_dic(self):
         self.client.force_login(self.u_docente)
         r = self.client.post(self._url(), {
@@ -513,6 +550,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertEqual(cierre.cursada, "R")
         self.assertEqual(cierre.nota_diciembre, Decimal("7"))
 
+    # Prueba: guarda turno y preceptor/a.
     def test_guardar_turno_y_preceptora(self):
         self.client.force_login(self.u_docente)
         r = self.client.post(self._url(), {
@@ -528,6 +566,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertContains(r, 'value="Mañana"')
         self.assertContains(r, 'value="Laura Gómez"')
 
+    # Prueba: cerrar el cuatrimestre deja fija la calificacion y la fecha.
     def test_cerrar_cuatrimestre(self):
         self.client.force_login(self.u_docente)
         r = self.client.post(self._url(), {"accion": "cerrar"})
@@ -545,6 +584,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertContains(r, "Reabrir 1° cuatrimestre")
         self.assertNotContains(r, "Cerrar 1° cuatrimestre")
 
+    # Prueba: con el cuatrimestre cerrado no se pueden cambiar notas.
     def test_cuatrimestre_cerrado_bloquea_las_notas(self):
         """Con el cuatrimestre cerrado la grilla es de solo lectura y no se guardan notas."""
         self.client.force_login(self.u_docente)
@@ -565,6 +605,7 @@ class PlanillaDocenteTests(TestCase):
                              {"alumno_id": self.alumno.id, "cat_id": self.tp2.id, "valor": "7"})
         self.assertEqual(r.status_code, 200)
 
+    # Prueba: reabrir vuelve a permitir cambios.
     def test_reabrir_libera_las_notas(self):
         self.client.force_login(self.u_docente)
         self.client.post(self._url(), {"accion": "cerrar"})
@@ -577,6 +618,7 @@ class PlanillaDocenteTests(TestCase):
                              {"alumno_id": self.alumno.id, "cat_id": self.tp.id, "valor": "2"})
         self.assertEqual(r.status_code, 200)
 
+    # Prueba: cada materia tiene su propia fecha de cierre.
     def test_cada_materia_tiene_su_fecha_de_cierre(self):
         """Cerrar una materia no marca como cerradas a las demás."""
         otra = Materia.objects.create(nombre="Sistemas digitales", curso=self.curso, docente=self.docente)
@@ -588,6 +630,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertIsNone(materias[otra.id]["fecha_cierre"])
         self.assertEqual(r.context["cerradas"], 1)
 
+    # Prueba: no se borra una categoria con notas de un cuatrimestre cerrado.
     def test_no_se_borra_una_categoria_con_notas_cerradas(self):
         self.client.force_login(self.u_docente)
         self.client.post(self._url(), {"accion": "cerrar"})
@@ -597,6 +640,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertContains(r, "tiene notas de un cuatrimestre cerrado")
         self.assertTrue(CategoriaEvaluacion.objects.filter(id=self.tp.id).exists())
 
+    # Prueba: se puede cargar la intensificacion del 1° cuatrimestre.
     def test_cargar_intensificacion(self):
         """La intensificación se guarda solo si el 1° no estaba aprobado y es 7 o más."""
         NotaEvaluacion.objects.filter(cuatrimestre=1).update(valor=Decimal("4"))
@@ -616,6 +660,7 @@ class PlanillaDocenteTests(TestCase):
         cierre1.refresh_from_db()
         self.assertFalse(cierre1.intensificacion)
 
+    # Prueba: no intensifica quien ya aprobo el 1° cuatrimestre.
     def test_no_intensifica_quien_aprobo_el_primer_cuatrimestre(self):
         self.client.force_login(self.u_docente)
         r = self.client.post(self._url(), {"accion": "guardar", f"intens_{self.alumno.id}": "8"}, follow=True)
@@ -623,6 +668,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertFalse(CierreCuatrimestre.objects.get(
             alumno=self.alumno, materia=self.materia, cuatrimestre=1).intensificacion)
 
+    # Prueba: la nota final puesta a mano se guarda.
     def test_nota_final_a_mano(self):
         """Si el docente deja la final automática no se guarda; si la cambia, queda la suya."""
         self.client.force_login(self.u_docente)
@@ -639,6 +685,7 @@ class PlanillaDocenteTests(TestCase):
         self.client.post(self._url(), {"accion": "guardar", f"final_{self.alumno.id}": ""})
         self.assertEqual(self.client.get(self._url()).context["filas"][0]["final"], "9")
 
+    # Prueba: las inasistencias pueden ser mas de 10 (no tienen el tope de las notas).
     def test_guardar_inasistencias_mayores_a_diez(self):
         """Las inasistencias no tienen el tope 10 de las notas."""
         self.client.force_login(self.u_docente)
@@ -652,6 +699,7 @@ class PlanillaDocenteTests(TestCase):
         )
         self.assertEqual(inas.cantidad, Decimal("12"))
 
+    # Prueba: la nota final automatica es el promedio de los dos cuatrimestres.
     def test_nota_final_automatica_con_los_dos_cuatrimestres(self):
         """La final aparece sola cuando ambos cuatrimestres tienen nota."""
         self.client.force_login(self.u_docente)
@@ -664,6 +712,7 @@ class PlanillaDocenteTests(TestCase):
         r = self.client.get(self._url())
         self.assertEqual(r.context["filas"][0]["final"], "")
 
+    # Prueba: con asistencia baja no aprueba ni cuenta como final aprobada.
     def test_asistencia_baja_no_aprueba_ni_muestra_final_aprobada(self):
         """Con 60 % de asistencia la materia no se acredita."""
         RegistroAsistencia.objects.create(
@@ -680,6 +729,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertContains(r, 'class="ll no-acredita"')
         self.assertContains(r, 'title="Asistencia menor al 80 %: no acredita la materia"')
 
+    # Prueba: en la planilla TED va en negro (como la hoja oficial).
     def test_planilla_muestra_ted_en_negro(self):
         """En la planilla oficial TED no va en rojo (sí en Mis notas y en el boletín)."""
         NotaEvaluacion.objects.filter(cuatrimestre=1).update(valor=Decimal("4"))
@@ -688,6 +738,7 @@ class PlanillaDocenteTests(TestCase):
         self.assertContains(r, '<td class="n">TED</td>')
         self.assertNotContains(r, 'class="ted"')
 
+    # Prueba: la URL de la planilla tiene la forma esperada.
     def test_url_de_la_planilla(self):
         """La planilla se llama planilla-calificaciones y usa el id de la materia."""
         self.assertEqual(
@@ -695,6 +746,7 @@ class PlanillaDocenteTests(TestCase):
             f"/calificaciones/profesor/1/{self.materia.id}/planilla-calificaciones/",
         )
 
+    # Prueba: la planilla tiene campos editables y renglones en blanco.
     def test_planilla_tiene_celdas_editables_y_filas_en_blanco(self):
         """El docente puede corregir n°/nombre y completar las filas vacías."""
         self.client.force_login(self.u_docente)
@@ -708,6 +760,7 @@ class PlanillaDocenteTests(TestCase):
 #  PLANILLA SEGÚN EL USUARIO
 # ─────────────────────────────────────────────
 
+# GRUPO DE PRUEBAS: quien puede ver y editar cada planilla.
 class PlanillaPorUsuarioTests(TestCase):
     """Cada docente ve solo sus materias; la secretaría ve todas.
 
@@ -716,6 +769,7 @@ class PlanillaPorUsuarioTests(TestCase):
       cada planilla figura el nombre del docente de esa materia.
     """
 
+    # Arma dos docentes con una materia cada uno y una secretaria.
     def setUp(self):
         self.curso = Curso.objects.create(anio=5, division="B")
         self.ana = Docente.objects.create(nombre="Ana", apellido="Martínez", dni="90000041")
@@ -748,9 +802,11 @@ class PlanillaPorUsuarioTests(TestCase):
         self.u_admin = User.objects.create_user("secretaria", password="clave123")
         Perfil.objects.create(usuario=self.u_admin, rol=Perfil.ADMINISTRATIVO)
 
+    # Helper: URL de la planilla de una materia.
     def _url(self, materia, cuat=1):
         return reverse("profesor_planilla", kwargs={"cuat": cuat, "materia_id": materia.id})
 
+    # Prueba: el docente ve su planilla con su nombre.
     def test_el_docente_ve_su_planilla_con_su_nombre(self):
         self.client.force_login(self.u_ana)
         r = self.client.get(self._url(self.materia_ana))
@@ -758,6 +814,7 @@ class PlanillaPorUsuarioTests(TestCase):
         self.assertContains(r, "PROFESOR/A:")
         self.assertContains(r, "Ana Martínez")
 
+    # Prueba: el docente NO ve la planilla de otro docente.
     def test_el_docente_no_ve_la_planilla_de_otro(self):
         self.client.force_login(self.u_ana)
         r = self.client.get(self._url(self.materia_carlos), follow=True)
@@ -765,6 +822,7 @@ class PlanillaPorUsuarioTests(TestCase):
         self.assertRedirects(r, reverse("calificaciones_menu"))
         self.assertContains(r, "No podés consultar esa materia.")
 
+    # Prueba: secretaria ve las planillas de todos.
     def test_la_secretaria_ve_las_planillas_de_todos(self):
         self.client.force_login(self.u_admin)
         r = self.client.get(self._url(self.materia_carlos))
@@ -773,6 +831,7 @@ class PlanillaPorUsuarioTests(TestCase):
         self.assertContains(r, "Carlos Russo")
         self.assertNotContains(r, "Ana Martínez")
 
+    # Prueba: secretaria la ve en modo lectura.
     def test_la_secretaria_ve_la_planilla_en_modo_lectura(self):
         self.client.force_login(self.u_admin)
         r = self.client.get(self._url(self.materia_ana))
@@ -780,6 +839,7 @@ class PlanillaPorUsuarioTests(TestCase):
         self.assertContains(r, "Modo lectura")
         self.assertContains(r, "readonly")
 
+    # Prueba: secretaria no puede guardar cambios.
     def test_la_secretaria_no_puede_guardar_en_la_planilla(self):
         self.client.force_login(self.u_admin)
         r = self.client.post(self._url(self.materia_ana), {
@@ -787,6 +847,7 @@ class PlanillaPorUsuarioTests(TestCase):
         }, follow=True)
         self.assertContains(r, "Solo el docente de la materia puede guardar los cambios.")
 
+    # Prueba: el menu de secretaria lista todas las materias.
     def test_el_menu_de_la_secretaria_lista_las_materias(self):
         self.client.force_login(self.u_admin)
         r = self.client.get(reverse("calificaciones_menu"))
@@ -802,9 +863,11 @@ class PlanillaPorUsuarioTests(TestCase):
 #  BOLETÍN (RITE) Y FIRMAS
 # ─────────────────────────────────────────────
 
+# GRUPO DE PRUEBAS: boletin (RITE) y firmas.
 class RiteTests(TestCase):
     """El boletín del alumno: frente + dorso, listo para imprimir."""
 
+    # Arma alumno, materias, notas, cierres y usuarios de cada rol, con el boletin publicado.
     def setUp(self):
         self.curso = Curso.objects.create(anio=5, division="B")
         self.docente = Docente.objects.create(nombre="Ana", apellido="Prueba", dni="90000031")
@@ -847,6 +910,7 @@ class RiteTests(TestCase):
         # el boletín del año está publicado (fin de año)
         PublicacionBoletin.objects.create(anio=timezone.now().year, publicado=True)
 
+    # Prueba: el boletin muestra el frente y el dorso con los datos correctos.
     def test_rite_frente_y_dorso(self):
         self.client.force_login(self.u_alumno)
         r = self.client.get(reverse("alumno_ver_boletin"))
@@ -872,18 +936,21 @@ class RiteTests(TestCase):
         self.assertNotContains(r, "Datos de ejemplo")
         self.assertNotContains(r, "[PRECEPTOR/A]")
 
+    # Prueba: muestra el preceptor cargado en la planilla.
     def test_el_boletin_muestra_el_preceptor_de_la_planilla(self):
         PlanillaDatos.objects.create(materia=self.materia, preceptor="Laura Gómez")
         self.client.force_login(self.u_alumno)
         r = self.client.get(reverse("alumno_ver_boletin"))
         self.assertContains(r, "Preceptor/a: Laura Gómez")
 
+    # Prueba: se pueden firmar los dos cuatrimestres.
     def test_el_boletin_permite_firmar_los_dos_cuatrimestres(self):
         self.client.force_login(self.u_alumno)
         r = self.client.get(reverse("alumno_ver_boletin"))
         self.assertContains(r, 'name="cuat" value="1"')
         self.assertContains(r, 'name="cuat" value="2"')
 
+    # Prueba: el alumno solo puede firmar como estudiante.
     def test_el_alumno_firma_solo_por_si_mismo(self):
         self.client.force_login(self.u_alumno)
         r = self.client.post(reverse("confirmar_rite"), {"tipo": "estudiante", "cuat": 1})
@@ -896,6 +963,7 @@ class RiteTests(TestCase):
         self.assertFalse(ConfirmacionRite.objects.filter(
             alumno=self.alumno, tipo="adulto").exists())
 
+    # Prueba: el docente registra la firma del adulto responsable.
     def test_el_docente_registra_la_firma_del_adulto(self):
         self.client.force_login(self.u_docente)
         r = self.client.post(reverse("confirmar_rite"), {
@@ -905,6 +973,7 @@ class RiteTests(TestCase):
         self.assertTrue(ConfirmacionRite.objects.filter(
             alumno=self.alumno, tipo="adulto", cuatrimestre=1).exists())
 
+    # Prueba: solo el directivo registra la firma del director.
     def test_solo_el_directivo_registra_la_firma_del_director(self):
         self.client.force_login(self.u_docente)
         r = self.client.post(reverse("confirmar_rite"),
@@ -918,6 +987,7 @@ class RiteTests(TestCase):
         self.client.post(reverse("confirmar_rite"), {"tipo": "director", "cuat": 1, "alumno_id": self.alumno.id})
         self.assertTrue(ConfirmacionRite.objects.filter(tipo="director", cuatrimestre=1).exists())
 
+    # Prueba: el docente solo ve boletines de alumnos de sus cursos.
     def test_el_docente_solo_ve_boletines_de_sus_cursos(self):
         otro_curso = Curso.objects.create(anio=3, division="C")
         ajeno = Alumno.objects.create(nombre="Zoe", apellido="Zárate", dni="90000033",
@@ -930,6 +1000,7 @@ class RiteTests(TestCase):
         self.assertContains(r, "Solo podés ver el boletín de alumnos de tus cursos.")
         self.assertIsNotNone(otro_curso)
 
+    # Prueba: la firma del 2° cuatrimestre queda guardada.
     def test_firma_del_segundo_cuatrimestre(self):
         """El boletín permite registrar la firma del 2° cuatrimestre."""
         self.client.force_login(self.u_alumno)
@@ -938,6 +1009,7 @@ class RiteTests(TestCase):
         self.assertTrue(ConfirmacionRite.objects.filter(
             alumno=self.alumno, tipo="estudiante", cuatrimestre=2).exists())
 
+    # Prueba: TED sale en rojo en el boletin.
     def test_boletin_muestra_ted_en_rojo(self):
         CierreCuatrimestre.objects.filter(
             alumno=self.alumno, materia=self.materia, cuatrimestre=1,
@@ -946,6 +1018,7 @@ class RiteTests(TestCase):
         r = self.client.get(reverse("alumno_ver_boletin"))
         self.assertContains(r, '<span class="ted">TED</span>')
 
+    # Prueba: con asistencia baja no aparece el promedio anual.
     def test_asistencia_baja_no_muestra_promedio_anual(self):
         """Con 60 % de asistencia el boletín avisa y no da por aprobada la materia."""
         RegistroAsistencia.objects.create(
@@ -963,9 +1036,11 @@ class RiteTests(TestCase):
 #  PUBLICACIÓN ANUAL DEL BOLETÍN
 # ─────────────────────────────────────────────
 
+# GRUPO DE PRUEBAS: publicacion anual del boletin.
 class PublicacionBoletinTests(TestCase):
     """Regla: el alumno nunca ve el boletín hasta que secretaría lo publica."""
 
+    # Arma un alumno, un docente, secretaria y directivo.
     def setUp(self):
         self.curso = Curso.objects.create(anio=5, division="B")
         self.docente = Docente.objects.create(nombre="Ana", apellido="Prueba", dni="90000051")
@@ -986,17 +1061,20 @@ class PublicacionBoletinTests(TestCase):
         self.u_directivo = User.objects.create_user("directivo_pub", password="clave123")
         Perfil.objects.create(usuario=self.u_directivo, rol=Perfil.DIRECTIVO)
 
+    # Helper: deja el boletin publicado u oculto.
     def _publicar(self, publicado=True):
         PublicacionBoletin.objects.update_or_create(
             anio=timezone.now().year, defaults={"publicado": publicado},
         )
 
+    # Prueba: el alumno no ve el boletin antes de que se publique.
     def test_alumno_no_ve_el_boletin_antes_de_publicar(self):
         self.client.force_login(self.u_alumno)
         r = self.client.get(reverse("alumno_ver_boletin"), follow=True)
         self.assertRedirects(r, reverse("calificaciones_menu"))
         self.assertContains(r, "El boletín se habilita a fin de año")
 
+    # Prueba: lo ve despues de publicado.
     def test_alumno_ve_el_boletin_despues_de_publicar(self):
         self._publicar()
         self.client.force_login(self.u_alumno)
@@ -1004,6 +1082,7 @@ class PublicacionBoletinTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "REGISTRO INSTITUCIONAL DE TRAYECTORIAS EDUCATIVAS")
 
+    # Prueba: el docente tampoco lo ve antes de publicar.
     def test_docente_no_ve_el_boletin_antes_de_publicar(self):
         self.client.force_login(self.u_docente)
         r = self.client.get(
@@ -1011,6 +1090,7 @@ class PublicacionBoletinTests(TestCase):
         )
         self.assertRedirects(r, reverse("calificaciones_menu"))
 
+    # Prueba: secretaria y directivo lo ven siempre.
     def test_secretaria_y_directivo_siempre_ven_el_boletin(self):
         for user in (self.u_admin, self.u_directivo):
             with self.subTest(usuario=user.username):
@@ -1020,6 +1100,7 @@ class PublicacionBoletinTests(TestCase):
                 )
                 self.assertEqual(r.status_code, 200)
 
+    # Prueba: no se puede firmar un boletin sin publicar.
     def test_confirmar_rite_bloqueado_antes_de_publicar(self):
         self.client.force_login(self.u_alumno)
         r = self.client.post(
@@ -1028,6 +1109,7 @@ class PublicacionBoletinTests(TestCase):
         self.assertRedirects(r, reverse("calificaciones_menu"))
         self.assertFalse(ConfirmacionRite.objects.filter(alumno=self.alumno).exists())
 
+    # Prueba: solo secretaria y directivo pueden publicar.
     def test_solo_secretaria_y_directivo_publican(self):
         for user in (self.u_alumno, self.u_docente):
             with self.subTest(usuario=user.username):
@@ -1037,6 +1119,7 @@ class PublicacionBoletinTests(TestCase):
                 self.assertEqual(r.url, "/")
         self.assertFalse(PublicacionBoletin.objects.filter(publicado=True).exists())
 
+    # Prueba: el interruptor publica y vuelve a ocultar.
     def test_el_interruptor_publica_y_oculta(self):
         self.client.force_login(self.u_admin)
         url = reverse("publicar_boletines")
@@ -1052,6 +1135,7 @@ class PublicacionBoletinTests(TestCase):
         self.assertFalse(pub.publicado)
         self.assertIsNone(pub.fecha_publicacion)
 
+    # Prueba: el menu de secretaria muestra el interruptor.
     def test_el_menu_de_secretaria_muestra_el_interruptor(self):
         """Secretaría/directivo ven el botón para publicar u ocultar el año."""
         self.client.force_login(self.u_admin)
@@ -1062,6 +1146,7 @@ class PublicacionBoletinTests(TestCase):
         r = self.client.get(reverse("calificaciones_menu"))
         self.assertContains(r, "Ocultar boletines del año")
 
+    # Prueba: el menu del alumno primero avisa y, al publicar, muestra el boton del boletin.
     def test_el_menu_del_alumno_avisa_y_luego_muestra_el_boton(self):
         self.client.force_login(self.u_alumno)
         r = self.client.get(reverse("calificaciones_menu"))
@@ -1077,9 +1162,11 @@ class PublicacionBoletinTests(TestCase):
 #  MATERIAS CON EL MISMO NOMBRE EN DOS CURSOS
 # ─────────────────────────────────────────────
 
+# GRUPO DE PRUEBAS: dos materias con el mismo nombre en cursos distintos.
 class MateriaRepetidaTests(TestCase):
     """Las URLs usan el id: 'Inglés' de 5° A y de 5° B no se mezclan."""
 
+    # Arma un docente con la misma materia en dos cursos.
     def setUp(self):
         self.curso_a = Curso.objects.create(anio=5, division="A")
         self.curso_b = Curso.objects.create(anio=5, division="B")
@@ -1096,12 +1183,14 @@ class MateriaRepetidaTests(TestCase):
         Perfil.objects.create(usuario=self.u_docente, rol=Perfil.DOCENTE, docente=self.docente)
         self.client.force_login(self.u_docente)
 
+    # Prueba: el menu muestra las dos por separado.
     def test_el_menu_muestra_las_dos_materias(self):
         r = self.client.get(reverse("calificaciones_menu"))
         self.assertEqual(r.context["total_materias"], 2)
         self.assertContains(r, "5° A")
         self.assertContains(r, "5° B")
 
+    # Prueba: cada una muestra solo los alumnos de su curso.
     def test_cada_materia_muestra_solo_su_curso(self):
         url = reverse("profesor_cargar_notas", kwargs={"cuat": 1, "materia_id": self.ingles_a.id})
         r = self.client.get(url)

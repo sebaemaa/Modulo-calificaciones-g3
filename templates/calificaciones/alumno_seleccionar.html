@@ -6,8 +6,10 @@
    El alumno no pasa por acá: siempre ve su propio boletín.
 {% endcomment %}
 
+{# Titulo de la pestaña. #}
 {% block title %}Consultar boletín — SGE{% endblock %}
 
+{# Encabezado. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
@@ -15,38 +17,48 @@
         <h1>Consultar boletín</h1>
     </div>
     <div class="hero-acciones">
+        {# Boton para volver al menu. #}
         <a class="btn" href="{% url 'calificaciones_menu' %}">← Volver a calificaciones</a>
     </div>
 </section>
 {% endblock %}
 
+{# Contenido. #}
 {% block content %}
+{# Solo muestra la lista si el usuario puede ver boletines. #}
 {% if puede_ver %}
 <div class="card">
     <div class="card-cabecera">
         <div>
             <h2 class="seccion-titulo">Alumnos</h2>
+            {# Cantidad de alumnos; pluralize agrega la "s" si son varios. #}
             <p class="nota">{{ alumnos|length }} alumno{{ alumnos|length|pluralize }}. Tocá "Ver boletín" para abrirlo.</p>
         </div>
+        {# Buscador (solo si hay alumnos). #}
         {% if alumnos %}<input type="search" class="buscador" id="buscar-alumno" placeholder="Buscar apellido, nombre, DNI o curso…" aria-label="Buscar alumno">{% endif %}
     </div>
     <div class="tabla-wrap">
         <table class="tabla" id="tabla-alumnos">
             <tr><th>Curso</th><th>Alumno</th><th>DNI</th><th></th></tr>
+            {# Una fila por alumno. #}
             {% for alumno in alumnos %}
             <tr>
                 <td>{{ alumno.anio }}° {{ alumno.division }}</td>
                 <td class="fuerte">{{ alumno.apellido }}, {{ alumno.nombre }}</td>
                 <td>{{ alumno.dni }}</td>
+                {# Link al boletin pasando el id del alumno en la URL. #}
                 <td class="c"><a class="btn chico" href="{% url 'alumno_ver_boletin' %}?alumno_id={{ alumno.id }}">Ver boletín</a></td>
             </tr>
+            {# Si no hay alumnos. #}
             {% empty %}
             <tr><td class="vacia" colspan="4">No hay alumnos para mostrar.</td></tr>
             {% endfor %}
+            {# Fila oculta de "sin resultados". #}
             <tr class="sin-resultados" hidden><td class="vacia" colspan="4">Ningún alumno coincide con la búsqueda.</td></tr>
         </table>
     </div>
 </div>
+{# Si el boletin no esta publicado muestra este aviso. #}
 {% else %}
 <div class="card tarjeta borde-rojo">
     <h3 class="tarjeta-titulo">El boletín todavía no está publicado</h3>
@@ -55,24 +67,32 @@
 {% endif %}
 {% endblock %}
 
+{# JavaScript del buscador (igual al del menu de gestion). #}
 {% block extra_js %}
 <script>
 // Buscador: oculta los alumnos que no contienen el texto escrito.
 (function () {
+    // Campo de busqueda.
     var buscador = document.getElementById('buscar-alumno');
     if (!buscador) return;
+    // Filas de alumnos.
     var filas = document.querySelectorAll('#tabla-alumnos tr:not(:first-child):not(.sin-resultados)');
     var vacio = document.querySelector('#tabla-alumnos .sin-resultados');
+    // Al escribir, filtra las filas.
     buscador.addEventListener('input', function () {
         var texto = buscador.value.trim().toLowerCase();
         var visibles = 0;
         filas.forEach(function (fila) {
+            // La fila coincide si contiene el texto.
             var coincide = fila.textContent.toLowerCase().indexOf(texto) !== -1;
+            // Oculta las que no coinciden.
             fila.hidden = !coincide;
             if (coincide) visibles++;
         });
+        // Muestra "sin resultados" si no quedo ninguna.
         vacio.hidden = visibles > 0;
     });
+    // Deja el cursor en el buscador al abrir la pagina.
     buscador.focus();
 })();
 </script>

@@ -9,20 +9,27 @@ las funciones de carga de notas.
 from datetime import date
 from decimal import Decimal
 
+# TestCase = clase base de las pruebas de Django.
 from django.test import TestCase
+# reverse arma URLs a partir de su name.
 from django.urls import reverse
 from django.utils import timezone
 
+# Tablas de otros modulos.
 from alumnos.models import Alumno, Curso
 from cuentas.models import Perfil
 from docentes.models import Docente, Materia
 
+# Tablas del modulo.
 from .models import BoletinConfig, CategoriaEvaluacion, NotaEvaluacion, PublicacionBoletin
+# Las rutas del modulo, para recorrerlas todas en las pruebas.
 from . import urls as calificaciones_urls
 
 
+# GRUPO DE PRUEBAS: permisos de cada rol en todas las pantallas.
 class RolesCalificacionesTests(TestCase):
     @classmethod
+    # setUpTestData corre UNA sola vez y crea cursos, alumnos, docente, materia y un usuario por rol.
     def setUpTestData(cls):
         cls.curso = Curso.objects.create(anio=1, division="A")
 
@@ -71,6 +78,7 @@ class RolesCalificacionesTests(TestCase):
         PublicacionBoletin.objects.create(anio=timezone.now().year, publicado=True)
 
     @classmethod
+    # Helper: crea un usuario con su perfil y rol.
     def _crear_usuario(cls, username, rol, alumno=None, docente=None):
         from django.contrib.auth import get_user_model
 
@@ -89,6 +97,7 @@ class RolesCalificacionesTests(TestCase):
     # ------------------------------------------------------------------
     # helpers
     # ------------------------------------------------------------------
+    # Helper: inventa los parametros (cuat, materia_id, cat_id) que necesita cada URL.
     def _kwargs_para(self, pattern):
         kwargs = {}
         for key in pattern.pattern.converters:
@@ -102,18 +111,21 @@ class RolesCalificacionesTests(TestCase):
                 raise AssertionError(f"Converter sin datos de prueba: {key}")
         return kwargs
 
+    # Helper: lista de todas las URLs del modulo.
     def _urls_del_modulo(self):
         for pattern in calificaciones_urls.urlpatterns:
             if not pattern.name:
                 continue
             yield pattern.name, reverse(pattern.name, kwargs=self._kwargs_para(pattern))
 
+    # Helper: inicia sesion con un usuario.
     def _login(self, user):
         self.client.force_login(user)
 
     # ------------------------------------------------------------------
     # a) anonimo -> login
     # ------------------------------------------------------------------
+    # Prueba: sin iniciar sesion, todas las pantallas mandan al login.
     def test_a_anonimo_redirige_a_login_en_todas_las_vistas(self):
         urls = list(self._urls_del_modulo())
         self.assertTrue(urls, "No se encontraron urls del modulo")
@@ -134,6 +146,7 @@ class RolesCalificacionesTests(TestCase):
     # ------------------------------------------------------------------
     # b) alumno no accede a vistas de profesor
     # ------------------------------------------------------------------
+    # Prueba: el alumno no entra a ninguna pantalla del docente.
     def test_b_alumno_no_accede_a_vistas_de_profesor(self):
         self._login(self.user_alumno_a)
 
@@ -176,6 +189,7 @@ class RolesCalificacionesTests(TestCase):
     # ------------------------------------------------------------------
     # c) alumno A no puede ver datos de B
     # ------------------------------------------------------------------
+    # Prueba: el alumno A no puede ver el boletin del alumno B aunque cambie el alumno_id.
     def test_c_alumno_a_ignora_alumno_id_de_b(self):
         self._login(self.user_alumno_a)
 
@@ -189,6 +203,7 @@ class RolesCalificacionesTests(TestCase):
     # ------------------------------------------------------------------
     # d) administrativo
     # ------------------------------------------------------------------
+    # Prueba: lo que puede hacer secretaria.
     def test_d_administrativo(self):
         self._login(self.user_admin)
 
@@ -207,6 +222,7 @@ class RolesCalificacionesTests(TestCase):
     # ------------------------------------------------------------------
     # e) docente
     # ------------------------------------------------------------------
+    # Prueba: lo que puede hacer el docente.
     def test_e_docente(self):
         self._login(self.user_docente)
 
@@ -221,6 +237,7 @@ class RolesCalificacionesTests(TestCase):
     # ------------------------------------------------------------------
     # f) menu segun rol
     # ------------------------------------------------------------------
+    # Prueba: cada rol ve su propio menu.
     def test_f_menu_segun_rol(self):
         url_menu = reverse("calificaciones_menu")
 
@@ -242,6 +259,7 @@ class RolesCalificacionesTests(TestCase):
     # ------------------------------------------------------------------
     # g) docente guarda una nota (criterio 7)
     # ------------------------------------------------------------------
+    # Prueba: el docente puede guardar una nota.
     def test_g_docente_guarda_nota(self):
         self._login(self.user_docente)
 

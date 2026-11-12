@@ -4,8 +4,10 @@
    La vista previa (paso 2) está en confirmar_excel.html.
 {% endcomment %}
 
+{# Titulo de la pestaña. #}
 {% block title %}Importar Excel — {{ materia.nombre }} — SGE{% endblock %}
 
+{# Encabezado. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
@@ -13,12 +15,15 @@
         <h1>Importar notas desde Excel — {{ materia.nombre }}</h1>
     </div>
     <div class="hero-acciones">
+        {# Volver a la grilla de notas. #}
         <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">← Volver a {{ materia.nombre }}</a>
     </div>
 </section>
 {% endblock %}
 
+{# Contenido. #}
 {% block content %}
+{# Aviso si falta instalar la libreria openpyxl. #}
 {% if not excel_disponible %}
 <div class="card tarjeta borde-rojo">
     <h3 class="tarjeta-titulo">Falta instalar la librería de Excel</h3>
@@ -26,19 +31,25 @@
 </div>
 {% endif %}
 
+{# Tarjeta con las instrucciones. #}
 <div class="card tarjeta">
     <h2 class="seccion-titulo">Cómo se hace</h2>
     <ol class="ayuda">
+        {# Link que descarga la plantilla (vista profesor_descargar_plantilla). #}
         <li><a href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargá la plantilla</a> del {{ cuat }}° cuatrimestre (ya trae los alumnos y una columna por categoría).</li>
         <li>Completá las notas en el Excel (de 0 a 10; podés usar coma o punto).</li>
         <li>Subí el archivo: vas a ver una vista previa antes de guardar.</li>
     </ol>
 
+    {# Formulario para subir el archivo. enctype multipart es obligatorio para enviar archivos. #}
     <form class="form form-angosto" method="post" enctype="multipart/form-data">
+        {# Token de seguridad. #}
         {% csrf_token %}
         <label for="archivo">Archivo Excel (.xlsx)</label>
+        {# Selector de archivo: solo .xlsx; deshabilitado si falta la libreria. #}
         <input type="file" id="archivo" name="archivo" accept=".xlsx" required{% if not excel_disponible %} disabled{% endif %}>
         <div class="acciones">
+            {# Boton para subir. #}
             <button type="submit" class="btn p"{% if not excel_disponible %} disabled{% endif %}>Subir y ver vista previa</button>
         </div>
     </form>
