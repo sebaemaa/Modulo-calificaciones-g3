@@ -1,0 +1,2 @@
+# Los .patch se guardan tal cual (sin convertir saltos de linea) para que git apply funcione en Windows.
+*.patch -text
