@@ -1306,3 +1306,260 @@ def profesor_descargar_plantilla(request, cuat, materia_id):
     respuesta["Content-Disposition"] = f'attachment; filename="{nombre_archivo.replace(" ", "_")}"'
     libro.save(respuesta)
     return respuesta
+
+
+# ─────────────────────────────────────────────
+#  PLANILLA DE CALIFICACIONES (hoja oficial imprimible)
+# ─────────────────────────────────────────────
+
+@rol_requerido("docente", "administrativo", "directivo")
+def profesor_planilla(request, cuat, materia_id):
+    """Planilla oficial de la materia, con los dos cuatrimestres.
+
+    El docente de la materia la completa y la guarda; secretaría y directivo
+    la ven en modo lectura para imprimirla.
+    """
+    materia = _materia_para_consulta(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "No podés consultar esa materia.")
+        return redirect("calificaciones_menu")
+
+    puede_editar = _materia_del_docente(request, materia.id) is not None
+
+    if request.method == "POST":
+        if not puede_editar:
+            messages.error(request, "Solo el docente de la materia puede guardar los cambios.")
+            return redirect("profesor_planilla", cuat=cuat, materia_id=materia.id)
+        _guardar_planilla(request, materia, cuat)
+        return redirect("profesor_planilla", cuat=cuat, materia_id=materia.id)
+
+    categorias = _categorias(materia)
+    filas = _filas_planilla(materia, categorias, cuat)
+    datos_planilla = PlanillaDatos.objects.filter(materia=materia).first()
+
+    # La hoja mide 200 mm: lo que dejan las columnas fijas se reparte entre
+    # las columnas de notas parciales (una por categoría, en cada cuatrimestre).
+    ancho_parcial = max(5.0, (200 - 143.6) / (2 * max(len(categorias), 1)))
+
+    return render(request, "calificaciones/planilla.html", {
+        "cuat": cuat,
+        "materia": materia,
+        "curso": _texto_curso(materia.curso),
+        "docente_nombre": _nombre_docente(materia),
+        "turno": datos_planilla.turno if datos_planilla else "",
+        "preceptor": datos_planilla.preceptor if datos_planilla else "",
+        "puede_editar": puede_editar,
+        "fecha_cierre": _fecha_cierre(materia, cuat),  # None = cuatrimestre abierto
+        "filas": filas,
+        "categorias": categorias,
+        "ancho_parcial": f"{ancho_parcial:.1f}",
+        # Columnas de cada cuatrimestre: parciales (mínimo 1) + las fijas.
+        "col_1c": max(len(categorias), 1) + 3,
+        "col_2c": max(len(categorias), 1) + 4,
+        "numeros_vacios": range(len(filas) + 1, 38),  # la hoja oficial tiene 37 renglones
+        "clases": {1: _clases_dadas(materia, 1), 2: _clases_dadas(materia, 2)},
+        "totales": _totales_planilla(filas),
+        "ciclo_lectivo": timezone.now().year,
+    })
+
+
+def _filas_planilla(materia, categorias, cuat):
+    """Una fila por alumno con todo lo que muestra la planilla."""
+    notas = {1: {}, 2: {}}  # {cuat: {alumno_id: {categoria_id: valor}}}
+    for n in NotaEvaluacion.objects.filter(materia=materia).order_by("id"):
+        if n.cuatrimestre in notas:
+            notas[n.cuatrimestre].setdefault(n.alumno_id, {})[n.categoria_id] = n.valor
+    cierres = {
+        (c.alumno_id, c.cuatrimestre): c
+        for c in CierreCuatrimestre.objects.filter(materia=materia)
+    }
+    inasistencias = {
+        (i.alumno_id, i.cuatrimestre): i.cantidad
+        for i in InasistenciaMateria.objects.filter(materia=materia)
+    }
+
+    filas = []
+    for nro, alumno in enumerate(_alumnos_del_curso(materia.curso), start=1):
+        cierre1 = cierres.get((alumno.id, 1))
+        cierre2 = cierres.get((alumno.id, 2))
+        d1 = _datos_cuatrimestre(notas[1].get(alumno.id, {}), categorias, cierre1)
+        d2 = _datos_cuatrimestre(notas[2].get(alumno.id, {}), categorias, cierre2)
+
+        # Regla del 80 %: sin asistencia suficiente, nada queda aprobado.
+        asistencia = _asistencia_materia(alumno.id, materia)
+        asistencia_ok = asistencia is None or asistencia["suficiente"]
+        if not asistencia_ok:
+            d1["aprobada"] = d2["aprobada"] = False
+
+        inas = {}
+        for c in (1, 2):
+            valor = inasistencias.get((alumno.id, c))
+            if valor is None:
+                valor = _inasistencias_materia_cuat(alumno.id, materia, c)
+            inas[c] = _formato_ar(valor) or ""
+
+        cierre_actual = cierres.get((alumno.id, cuat))  # el cuatrimestre que se edita
+        final = _calificacion_final(d1, d2, cierre1, cierre2)
+
+        filas.append({
+            "nro": nro,
+            "id": alumno.id,
+            "nombre": f"{alumno.apellido}, {alumno.nombre}",
+            "nombre_planilla": f"{alumno.apellido.upper()} {alumno.nombre}",
+            "cursada": cierre_actual.cursada if cierre_actual else "C",
+            "d1": d1,
+            "d2": d2,
+            "inas1": inas[1],
+            "inas2": inas[2],
+            "intensificacion": _intensificacion(cierre1),
+            "dic": _num_limpio(cierre_actual.nota_diciembre) if cierre_actual and cierre_actual.nota_diciembre is not None else "",
+            "feb": _num_limpio(cierre_actual.nota_febrero) if cierre_actual and cierre_actual.nota_febrero is not None else "",
+            "final": final,
+            "final_auto": _final_automatico(d1, d2, cierre1),  # para no guardar lo que ya es automático
+            "final_aprobada": bool(final) and Decimal(final) >= NOTA_APROBACION and asistencia_ok,
+            "no_acredita": not asistencia_ok,
+        })
+    return filas
+
+
+def _totales_planilla(filas):
+    """Cuadro de totales del pie: 1°C, 2°C, total anual, diciembre y febrero."""
+    def contar(condicion):
+        return sum(1 for f in filas if condicion(f))
+
+    def aprueba(nota_texto, fila):
+        return Decimal(nota_texto) >= NOTA_APROBACION and not fila["no_acredita"]
+
+    con_dic = [f for f in filas if f["dic"]]
+    con_feb = [f for f in filas if f["feb"]]
+    return {
+        "estudiantes": [len(filas), len(filas), len(filas), len(con_dic), len(con_feb)],
+        "aprobados": [
+            contar(lambda f: f["d1"]["aprobada"]),
+            contar(lambda f: f["d2"]["aprobada"]),
+            contar(lambda f: f["final_aprobada"]),
+            sum(1 for f in con_dic if aprueba(f["dic"], f)),
+            sum(1 for f in con_feb if aprueba(f["feb"], f)),
+        ],
+        "desaprobados": [
+            contar(lambda f: f["d1"]["tiene_calificacion"] and not f["d1"]["aprobada"]),
+            contar(lambda f: f["d2"]["tiene_calificacion"] and not f["d2"]["aprobada"]),
+            contar(lambda f: f["final"] and not f["final_aprobada"]),
+            sum(1 for f in con_dic if not aprueba(f["dic"], f)),
+            sum(1 for f in con_feb if not aprueba(f["feb"], f)),
+        ],
+        "sin_evaluar": [
+            contar(lambda f: not f["d1"]["tiene_calificacion"]),
+            contar(lambda f: not f["d2"]["tiene_calificacion"]),
+            contar(lambda f: not f["final"]),
+            0,
+            0,
+        ],
+    }
+
+
+def _guardar_planilla(request, materia, cuat):
+    """Guarda lo editable de la planilla. Según el botón, además cierra o
+    reabre el cuatrimestre."""
+    accion = request.POST.get("accion", "guardar")
+
+    if accion == "reabrir":
+        # Reabrir libera las notas: la calificación vuelve a calcularse sola.
+        CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat, cerrado=True).update(
+            cerrado=False, calificacion=None, fecha_cierre=None,
+        )
+        messages.success(request, f"El {cuat}° cuatrimestre se reabrió: ya se pueden cambiar las notas.")
+        return
+
+    cerrar = accion == "cerrar" and not _fecha_cierre(materia, cuat)
+
+    # Encabezado: turno y preceptor/a.
+    PlanillaDatos.objects.update_or_create(materia=materia, defaults={
+        "turno": request.POST.get("turno", "").strip()[:50],
+        "preceptor": request.POST.get("preceptor", "").strip()[:100],
+    })
+
+    categorias = _categorias(materia)
+    filas = {f["id"]: f for f in _filas_planilla(materia, categorias, cuat)}
+    avisos = []
+    ahora = timezone.now()
+
+    for alumno in _alumnos_del_curso(materia.curso):
+        fila = filas[alumno.id]
+        cierres = {
+            c: CierreCuatrimestre.objects.get_or_create(alumno=alumno, materia=materia, cuatrimestre=c)[0]
+            for c in (1, 2)
+        }
+        cierre = cierres[cuat]  # el cuatrimestre que se está mirando
+
+        # Cursa/recursa, diciembre y febrero van en el cuatrimestre que se mira.
+        cursada = request.POST.get(f"cursada_{alumno.id}", "C").strip().upper()
+        cierre.cursada = cursada if cursada in ("C", "R") else "C"
+        cierre.nota_diciembre = _nota_desde_texto(request.POST.get(f"dic_{alumno.id}"))
+        cierre.nota_febrero = _nota_desde_texto(request.POST.get(f"feb_{alumno.id}"))
+
+        # Intensificación del 1° cuatrimestre: solo si no lo había aprobado y
+        # al intensificar llegó a 7 o más.
+        texto = request.POST.get(f"intens_{alumno.id}")
+        if texto is not None:
+            nota = _nota_desde_texto(texto)
+            calif1 = fila["d1"]["calificacion"]
+            if texto.strip() == "":
+                cierres[1].intensificacion = False
+                cierres[1].calificacion_final = None
+            elif nota is None or nota < NOTA_APROBACION:
+                avisos.append(f"{fila['nombre']}: la intensificación tiene que ser una nota de 7 a 10.")
+            elif calif1 and Decimal(calif1) >= NOTA_APROBACION:
+                avisos.append(f"{fila['nombre']}: aprobó el 1° cuatrimestre, no necesita intensificación.")
+            else:
+                cierres[1].intensificacion = True
+                cierres[1].calificacion_final = nota
+
+        # Nota final: se guarda solo si el docente la cambió (si coincide con
+        # la automática o queda vacía, se sigue calculando sola).
+        texto = request.POST.get(f"final_{alumno.id}")
+        if texto is not None:
+            nota = _nota_desde_texto(texto)
+            automatica = _final_automatico(fila["d1"], fila["d2"], cierres[1])
+            if texto.strip() == "":
+                cierres[2].calificacion_final = None
+            elif nota is None:
+                avisos.append(f"{fila['nombre']}: la nota final tiene que ser de 0 a 10.")
+            elif automatica and nota == Decimal(automatica):
+                cierres[2].calificacion_final = None
+            else:
+                cierres[2].calificacion_final = nota
+
+        if cerrar:
+            # Al cerrar, la calificación calculada queda fija con la fecha de cierre.
+            notas = {
+                n.categoria_id: n.valor
+                for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
+            }
+            calif = _calificacion_entera(notas, categorias)
+            if calif is not None:
+                cierre.calificacion = calif
+            cierre.cerrado = True
+            cierre.fecha_cierre = ahora
+
+        cierres[1].save()
+        cierres[2].save()
+
+        # Inasistencias de los dos cuatrimestres (vacío = volver a las de Asistencia).
+        for c in (1, 2):
+            texto = request.POST.get(f"inas{c}_{alumno.id}")
+            if texto is None:
+                continue
+            filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": c}
+            cantidad = _inasistencia_desde_texto(texto)
+            if cantidad is not None:
+                InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
+            elif texto.strip() == "":
+                InasistenciaMateria.objects.filter(**filtro).delete()
+
+    for aviso in avisos:
+        messages.warning(request, aviso)
+    if cerrar:
+        messages.success(request, f"Cierre del {cuat}° cuatrimestre guardado.")
+    else:
+        messages.success(request, "Cambios guardados.")

@@ -39,4 +39,7 @@ urlpatterns = [
     path(DOCENTE + "excel/", views.profesor_cargar_excel, name="profesor_cargar_excel"),
     path(DOCENTE + "excel/confirmar/", views.profesor_confirmar_excel, name="profesor_confirmar_excel"),
     path(DOCENTE + "excel/plantilla/", views.profesor_descargar_plantilla, name="profesor_descargar_plantilla"),
+
+    # --- planilla de calificaciones (docente; secretaría y directivo la ven) ---
+    path(DOCENTE + "planilla-calificaciones/", views.profesor_planilla, name="profesor_planilla"),
 ]
