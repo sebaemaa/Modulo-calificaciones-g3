@@ -41,7 +41,6 @@ from .models import (
     CategoriaEvaluacion,
     CierreCuatrimestre,
     ConfirmacionRite,
-    InasistenciaMateria,
     NotaEvaluacion,
     PlanillaDatos,
     PublicacionBoletin,
@@ -238,11 +237,6 @@ def _decimal_desde_texto(texto, minimo=None, maximo=None):
 def _nota_desde_texto(texto):
     """Nota de 0 a 10, o None."""
     return _decimal_desde_texto(texto, minimo=Decimal("0"), maximo=Decimal("10"))
-
-
-def _inasistencia_desde_texto(texto):
-    """Cantidad de inasistencias (0 o más, sin tope), o None."""
-    return _decimal_desde_texto(texto, minimo=Decimal("0"))
 
 
 # ─────────────────────────────────────────────
