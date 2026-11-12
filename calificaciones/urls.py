@@ -27,7 +27,6 @@ urlpatterns = [
     path(DOCENTE + "cargar-notas/", views.profesor_cargar_notas, name="profesor_cargar_notas"),
     path(DOCENTE + "guardar-nota/", views.profesor_guardar_nota, name="profesor_guardar_nota"),
     path(DOCENTE + "guardar-valoracion/", views.profesor_guardar_valoracion, name="profesor_guardar_valoracion"),
-    path(DOCENTE + "guardar-inasistencia/", views.profesor_guardar_inasistencia, name="profesor_guardar_inasistencia"),
 
     # --- docente: categorías de evaluación ---
     path(DOCENTE + "categorias/", views.profesor_categorias, name="profesor_categorias"),

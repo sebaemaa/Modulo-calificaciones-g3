@@ -41,7 +41,6 @@ from .models import (
     CategoriaEvaluacion,
     CierreCuatrimestre,
     ConfirmacionRite,
-    InasistenciaMateria,
     NotaEvaluacion,
     PlanillaDatos,
     PublicacionBoletin,
@@ -238,11 +237,6 @@ def _decimal_desde_texto(texto, minimo=None, maximo=None):
 def _nota_desde_texto(texto):
     """Nota de 0 a 10, o None."""
     return _decimal_desde_texto(texto, minimo=Decimal("0"), maximo=Decimal("10"))
-
-
-def _inasistencia_desde_texto(texto):
-    """Cantidad de inasistencias (0 o más, sin tope), o None."""
-    return _decimal_desde_texto(texto, minimo=Decimal("0"))
 
 
 # ─────────────────────────────────────────────
@@ -853,10 +847,6 @@ def profesor_cargar_notas(request, cuat, materia_id):
         c.alumno_id: c
         for c in CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat)
     }
-    inasistencias = {
-        i.alumno_id: i.cantidad
-        for i in InasistenciaMateria.objects.filter(materia=materia, cuatrimestre=cuat)
-    }
 
     filas = []
     for alumno in _alumnos_del_curso(materia.curso):
@@ -870,10 +860,8 @@ def profesor_cargar_notas(request, cuat, materia_id):
         asistencia = _asistencia_materia(alumno.id, materia)
         asistencia_ok = asistencia is None or asistencia["suficiente"]
 
-        # Inasistencias: la carga del docente o, si no hay, las del módulo Asistencia.
-        inas = inasistencias.get(alumno.id)
-        if inas is None:
-            inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
+        # Inasistencias: se leen del módulo Asistencia (no se cargan acá).
+        inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
 
         filas.append({
             "id": alumno.id,
@@ -985,26 +973,6 @@ def profesor_guardar_valoracion(request, cuat, materia_id):
         defaults={"valoracion_preliminar": valoracion},
     )
     return JsonResponse({"ok": True, "valoracion": valoracion})
-
-
-@rol_requerido("docente")
-def profesor_guardar_inasistencia(request, cuat, materia_id):
-    """Guardado automático de las inasistencias del alumno en la materia."""
-    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
-    if error:
-        return error
-
-    texto = request.POST.get("valor", "").strip()
-    filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": cuat}
-    if texto == "":
-        InasistenciaMateria.objects.filter(**filtro).delete()
-        return JsonResponse({"ok": True, "borrado": True})
-
-    cantidad = _inasistencia_desde_texto(texto)
-    if cantidad is None:
-        return JsonResponse({"ok": False, "error": f"'{texto}' no es una cantidad válida"}, status=400)
-    InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
-    return JsonResponse({"ok": True, "cantidad": _formato_ar(cantidad)})
 
 
 # ─────────────────────────────────────────────
