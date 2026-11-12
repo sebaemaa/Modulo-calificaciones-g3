@@ -817,3 +817,492 @@ def confirmar_rite(request):
     )
     messages.success(request, "Firma registrada.")
     return destino
+
+
+# ─────────────────────────────────────────────
+#  DOCENTE: CARGAR NOTAS (grilla con guardado automático)
+# ─────────────────────────────────────────────
+
+@rol_requerido("docente")
+@ensure_csrf_cookie
+def profesor_cargar_notas(request, cuat, materia_id):
+    """Grilla de notas del cuatrimestre: cada celda se guarda sola al cambiarla."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "No podés cargar notas en esa materia.")
+        return redirect("calificaciones_menu")
+
+    categorias = _categorias(materia)
+    if not categorias:
+        messages.warning(request, "Primero creá al menos una categoría de evaluación para esta materia.")
+        return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
+
+    # Datos para que el JavaScript calcule igual que el servidor.
+    grupos = _grupos_de_categorias(categorias)
+    for grupo in grupos:
+        peso_grupo = grupo["peso"] if grupo["peso"] is not None else Decimal(len(grupo["cats"]))
+        for cat in grupo["cats"]:
+            cat["grupo_key"] = grupo["nombre"] or f"_cat{cat['id']}"
+            cat["peso_js"] = _num_limpio(cat["peso"] if cat["peso"] is not None else Decimal("1"))
+            cat["peso_grupo_js"] = _num_limpio(peso_grupo)
+
+    notas = {}  # {(alumno_id, categoria_id): valor}
+    for n in NotaEvaluacion.objects.filter(materia=materia, cuatrimestre=cuat).order_by("id"):
+        notas[(n.alumno_id, n.categoria_id)] = n.valor
+    cierres = {
+        c.alumno_id: c
+        for c in CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat)
+    }
+    inasistencias = {
+        i.alumno_id: i.cantidad
+        for i in InasistenciaMateria.objects.filter(materia=materia, cuatrimestre=cuat)
+    }
+
+    filas = []
+    for alumno in _alumnos_del_curso(materia.curso):
+        notas_alumno = {
+            cat["id"]: notas[(alumno.id, cat["id"])]
+            for cat in categorias if (alumno.id, cat["id"]) in notas
+        }
+        datos = _datos_cuatrimestre(notas_alumno, categorias, cierres.get(alumno.id))
+        calif = Decimal(datos["calificacion"]) if datos["calificacion"] else None
+
+        asistencia = _asistencia_materia(alumno.id, materia)
+        asistencia_ok = asistencia is None or asistencia["suficiente"]
+
+        # Inasistencias: la carga del docente o, si no hay, las del módulo Asistencia.
+        inas = inasistencias.get(alumno.id)
+        if inas is None:
+            inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
+
+        filas.append({
+            "id": alumno.id,
+            "nombre": f"{alumno.apellido}, {alumno.nombre}",
+            "celdas": [
+                {
+                    "cat": cat,
+                    "valor": _formato_ar(notas_alumno.get(cat["id"])) or "",
+                }
+                for cat in categorias
+            ],
+            "valoracion": datos["valoracion"],
+            "calificacion": datos["calificacion"],
+            "estado": _estado_materia(calif, asistencia_ok),
+            "aprobada": datos["aprobada"] and asistencia_ok,
+            "asistencia_ok": asistencia_ok,
+            "asistencia_pct": _formato_ar(asistencia["porcentaje"]) if asistencia else "",
+            "inasistencias": _formato_ar(inas) or "",
+        })
+
+    return render(request, "calificaciones/cargar_notas.html", {
+        "cuat": cuat,
+        "materia": materia,
+        "curso": _texto_curso(materia.curso),
+        "fecha_cierre": _fecha_cierre(materia, cuat),  # si está cerrado, la grilla es de solo lectura
+        "excel_disponible": EXCEL_DISPONIBLE,
+        "filas": filas,
+        "categorias": categorias,
+        "grupos": grupos,
+        "tiene_grupos": any(g["nombre"] for g in grupos),
+        "con_pesos": any(c["peso"] is not None for c in categorias),
+    })
+
+
+def _validar_ajax(request, cuat, materia_id):
+    """Chequeos comunes de los guardados automáticos.
+
+    Devuelve (materia, alumno, None) si todo está bien, o (None, None, respuesta
+    de error) si algo falla.
+    """
+    if request.method != "POST":
+        return None, None, JsonResponse({"ok": False, "error": "Método no permitido"}, status=405)
+    if cuat not in (1, 2):
+        return None, None, JsonResponse({"ok": False, "error": "Cuatrimestre inválido"}, status=400)
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None:
+        return None, None, JsonResponse({"ok": False, "error": "Esa materia no es tuya"}, status=403)
+    if _fecha_cierre(materia, cuat):
+        return None, None, JsonResponse({"ok": False, "error": _aviso_cerrado(cuat)}, status=409)
+    alumno = _alumno_de_la_materia(materia, request.POST.get("alumno_id") or 0)
+    if alumno is None:
+        return None, None, JsonResponse({"ok": False, "error": "Alumno no encontrado"}, status=404)
+    return materia, alumno, None
+
+
+@rol_requerido("docente")
+def profesor_guardar_nota(request, cuat, materia_id):
+    """Guardado automático de una celda de nota. Celda vacía = borrar la nota."""
+    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
+    if error:
+        return error
+
+    categoria = CategoriaEvaluacion.objects.filter(
+        id=request.POST.get("cat_id") or 0, materia=materia,
+    ).first()
+    if categoria is None:
+        return JsonResponse({"ok": False, "error": "Categoría no encontrada"}, status=404)
+
+    texto = request.POST.get("valor", "").strip()
+    filtro = {"alumno": alumno, "materia": materia, "categoria": categoria, "cuatrimestre": cuat}
+    if texto == "":
+        NotaEvaluacion.objects.filter(**filtro).delete()
+    else:
+        valor = _nota_desde_texto(texto)
+        if valor is None:
+            return JsonResponse({"ok": False, "error": f"'{texto}' no es una nota válida (0 a 10)"}, status=400)
+        # Si por algún motivo hubiera notas repetidas en la celda, quedan en una sola.
+        NotaEvaluacion.objects.filter(**filtro).delete()
+        NotaEvaluacion.objects.create(valor=valor, **filtro)
+
+    # Devuelve la calificación recalculada para refrescar la fila.
+    notas = {
+        n.categoria_id: n.valor
+        for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
+    }
+    calif = _calificacion_entera(notas, _categorias(materia))
+    asistencia = _asistencia_materia(alumno.id, materia)
+    asistencia_ok = asistencia is None or asistencia["suficiente"]
+    return JsonResponse({
+        "ok": True,
+        "calificacion": str(calif) if calif is not None else "",
+        "estado_materia": _estado_materia(calif, asistencia_ok),
+    })
+
+
+@rol_requerido("docente")
+def profesor_guardar_valoracion(request, cuat, materia_id):
+    """Guardado automático de la valoración preliminar (TEA / TEP / TED)."""
+    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
+    if error:
+        return error
+
+    valoracion = request.POST.get("valoracion", "").strip().upper()
+    if valoracion not in ("TEA", "TEP", "TED", ""):
+        return JsonResponse({"ok": False, "error": "Valoración inválida"}, status=400)
+
+    CierreCuatrimestre.objects.update_or_create(
+        alumno=alumno, materia=materia, cuatrimestre=cuat,
+        defaults={"valoracion_preliminar": valoracion},
+    )
+    return JsonResponse({"ok": True, "valoracion": valoracion})
+
+
+@rol_requerido("docente")
+def profesor_guardar_inasistencia(request, cuat, materia_id):
+    """Guardado automático de las inasistencias del alumno en la materia."""
+    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
+    if error:
+        return error
+
+    texto = request.POST.get("valor", "").strip()
+    filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": cuat}
+    if texto == "":
+        InasistenciaMateria.objects.filter(**filtro).delete()
+        return JsonResponse({"ok": True, "borrado": True})
+
+    cantidad = _inasistencia_desde_texto(texto)
+    if cantidad is None:
+        return JsonResponse({"ok": False, "error": f"'{texto}' no es una cantidad válida"}, status=400)
+    InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
+    return JsonResponse({"ok": True, "cantidad": _formato_ar(cantidad)})
+
+
+# ─────────────────────────────────────────────
+#  DOCENTE: CATEGORÍAS DE EVALUACIÓN
+# ─────────────────────────────────────────────
+
+def _peso_desde_texto(texto):
+    """Peso % de una categoría (mayor a 0 y hasta 100), o None si está vacío.
+
+    Lanza ValueError con el motivo si el texto no sirve.
+    """
+    if not (texto or "").strip():
+        return None
+    peso = _decimal_desde_texto(texto)
+    if peso is None:
+        raise ValueError("no es un número")
+    if peso <= 0 or peso > 100:
+        raise ValueError("tiene que estar entre 0 y 100")
+    return peso
+
+
+def _datos_categoria(request):
+    """Lee nombre, grupo y peso del formulario. Devuelve (datos, error)."""
+    nombre = request.POST.get("nombre", "").strip()
+    if not nombre:
+        return None, "El nombre no puede estar vacío."
+    try:
+        peso = _peso_desde_texto(request.POST.get("peso", ""))
+    except ValueError as motivo:
+        return None, f"El peso '{request.POST.get('peso')}' {motivo}."
+    return {"nombre": nombre, "grupo": request.POST.get("grupo", "").strip(), "peso": peso}, None
+
+
+@rol_requerido("docente")
+def profesor_categorias(request, cuat, materia_id):
+    """Lista de categorías con el formulario para agregar o editar."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "Esa materia no es tuya.")
+        return redirect("calificaciones_menu")
+
+    categorias = _categorias(materia)
+    edit_id = request.GET.get("editar")
+    editando = next((c for c in categorias if str(c["id"]) == edit_id), None)
+    return render(request, "calificaciones/gestionar_categorias.html", {
+        "hay_cerrados": any(_fecha_cierre(materia, c) for c in (1, 2)),
+        "cuat": cuat,
+        "materia": materia,
+        "curso": _texto_curso(materia.curso),
+        "categorias": categorias,
+        "editando": editando,
+    })
+
+
+@rol_requerido("docente")
+@require_POST
+def profesor_agregar_categoria(request, cuat, materia_id):
+    """Crea una categoría nueva al final de la grilla."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "Esa materia no es tuya.")
+        return redirect("calificaciones_menu")
+
+    datos, error = _datos_categoria(request)
+    if error:
+        messages.error(request, error)
+    else:
+        ultimo = CategoriaEvaluacion.objects.filter(materia=materia).order_by("-orden").first()
+        orden = (ultimo.orden if ultimo else 0) + 1
+        CategoriaEvaluacion.objects.create(materia=materia, orden=orden, **datos)
+        messages.success(request, f"Categoría '{datos['nombre']}' creada.")
+    return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
+
+
+@rol_requerido("docente")
+@require_POST
+def profesor_editar_categoria(request, cuat, materia_id, cat_id):
+    """Cambia nombre, grupo y peso de una categoría."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "Esa materia no es tuya.")
+        return redirect("calificaciones_menu")
+
+    categoria = get_object_or_404(CategoriaEvaluacion, id=cat_id, materia=materia)
+    datos, error = _datos_categoria(request)
+    if error:
+        messages.error(request, error)
+    else:
+        for campo, valor in datos.items():
+            setattr(categoria, campo, valor)
+        categoria.save()
+        messages.success(request, "Categoría actualizada.")
+    return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
+
+
+@rol_requerido("docente")
+@require_POST
+def profesor_eliminar_categoria(request, cuat, materia_id, cat_id):
+    """Borra una categoría y sus notas (solo por POST, con confirmación)."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "Esa materia no es tuya.")
+        return redirect("calificaciones_menu")
+
+    categoria = get_object_or_404(CategoriaEvaluacion, id=cat_id, materia=materia)
+
+    # Si la categoría tiene notas de un cuatrimestre cerrado, borrarla cambiaría
+    # notas que ya quedaron fijas: no se permite.
+    cerrados = [c for c in (1, 2) if _fecha_cierre(materia, c)]
+    if NotaEvaluacion.objects.filter(categoria=categoria, cuatrimestre__in=cerrados).exists():
+        messages.error(request, f"No se puede eliminar '{categoria.nombre}': tiene notas de un cuatrimestre cerrado.")
+        return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
+
+    categoria.delete()
+    messages.success(request, f"Categoría '{categoria.nombre}' eliminada.")
+    return redirect("profesor_categorias", cuat=cuat, materia_id=materia.id)
+
+
+# ─────────────────────────────────────────────
+#  DOCENTE: IMPORTAR NOTAS DESDE EXCEL
+# ─────────────────────────────────────────────
+
+def _clave_excel(cuat, materia):
+    """Clave de sesión donde se guarda el Excel leído hasta que se confirma."""
+    return f"excel_{cuat}_{materia.id}"
+
+
+def _buscar_alumno_por_nombre(materia, texto):
+    """Alumno del curso por 'Apellido, Nombre', o por apellido/nombre solo."""
+    alumnos = _alumnos_del_curso(materia.curso)
+    if ", " in texto:
+        apellido, _, nombre = texto.partition(", ")
+        alumno = alumnos.filter(apellido__iexact=apellido.strip(), nombre__iexact=nombre.strip()).first()
+        if alumno:
+            return alumno
+    return alumnos.filter(Q(nombre__iexact=texto) | Q(apellido__iexact=texto)).first()
+
+
+@rol_requerido("docente")
+def profesor_cargar_excel(request, cuat, materia_id):
+    """Paso 1: subir el Excel y mostrar la vista previa."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "Esa materia no es tuya.")
+        return redirect("calificaciones_menu")
+
+    if _fecha_cierre(materia, cuat):
+        messages.error(request, _aviso_cerrado(cuat))
+        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
+
+    contexto = {
+        "cuat": cuat,
+        "materia": materia,
+        "curso": _texto_curso(materia.curso),
+        "excel_disponible": EXCEL_DISPONIBLE,
+    }
+    if request.method != "POST":
+        return render(request, "calificaciones/cargar_excel.html", contexto)
+
+    archivo = request.FILES.get("archivo")
+    if archivo is None:
+        messages.error(request, "Elegí un archivo Excel para subir.")
+        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
+
+    try:
+        import openpyxl
+    except ImportError:
+        messages.error(request, "Falta instalar la librería openpyxl (pip install openpyxl).")
+        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
+
+    try:
+        hoja = openpyxl.load_workbook(archivo, read_only=True, data_only=True).active
+        filas_excel = list(hoja.iter_rows(values_only=True))
+    except Exception:
+        messages.error(request, "No se pudo leer el archivo. Tiene que ser un Excel (.xlsx).")
+        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
+
+    if not filas_excel:
+        messages.error(request, "El archivo está vacío.")
+        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
+
+    encabezados = [str(h).strip() if h is not None else "" for h in filas_excel[0]]
+    categorias = {c["nombre"]: c for c in _categorias(materia)}
+    # Columnas del Excel que coinciden con una categoría: {índice: categoría}.
+    columnas = {i: categorias[h] for i, h in enumerate(encabezados) if i > 0 and h in categorias}
+
+    vista_previa = []
+    para_guardar = []
+    for fila in filas_excel[1:]:
+        if not fila or not fila[0]:
+            continue
+        nombre = str(fila[0]).strip()
+        alumno = _buscar_alumno_por_nombre(materia, nombre)
+        notas = {}
+        for i, cat in columnas.items():
+            valor = fila[i] if i < len(fila) else None
+            notas[cat["id"]] = "" if valor is None else str(valor).strip()
+        vista_previa.append({
+            "nombre": nombre,
+            "encontrado": alumno is not None,
+            "valores": [notas.get(cat["id"]) or "—" for cat in columnas.values()],
+        })
+        if alumno is not None:
+            para_guardar.append({"alumno_id": alumno.id, "notas": {str(k): v for k, v in notas.items()}})
+
+    request.session[_clave_excel(cuat, materia)] = para_guardar
+    contexto.update({
+        "columnas": [cat["nombre"] for cat in columnas.values()],
+        "vista_previa": vista_previa,
+        "hay_para_guardar": bool(para_guardar),
+    })
+    return render(request, "calificaciones/confirmar_excel.html", contexto)
+
+
+@rol_requerido("docente")
+@require_POST
+def profesor_confirmar_excel(request, cuat, materia_id):
+    """Paso 2: guardar las notas de la vista previa confirmada."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "Esa materia no es tuya.")
+        return redirect("calificaciones_menu")
+
+    if _fecha_cierre(materia, cuat):
+        messages.error(request, _aviso_cerrado(cuat))
+        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
+
+    filas = request.session.pop(_clave_excel(cuat, materia), None)
+    if not filas:
+        messages.error(request, "No se encontraron datos del Excel. Volvé a subir el archivo.")
+        return redirect("profesor_cargar_excel", cuat=cuat, materia_id=materia.id)
+
+    categorias = {str(c["id"]): c["id"] for c in _categorias(materia)}
+    guardadas = 0
+    omitidas = 0
+    for fila in filas:
+        alumno = _alumno_de_la_materia(materia, fila["alumno_id"])
+        if alumno is None:
+            continue
+        for cat_id, texto in fila["notas"].items():
+            if cat_id not in categorias or texto == "":
+                continue
+            valor = _nota_desde_texto(texto)
+            if valor is None:
+                omitidas += 1
+                continue
+            filtro = {"alumno": alumno, "materia": materia,
+                      "categoria_id": categorias[cat_id], "cuatrimestre": cuat}
+            NotaEvaluacion.objects.filter(**filtro).delete()
+            NotaEvaluacion.objects.create(valor=valor, **filtro)
+            guardadas += 1
+
+    messages.success(request, f"Se cargaron {guardadas} notas desde Excel.")
+    if omitidas:
+        messages.warning(request, f"Se omitieron {omitidas} valores que no eran notas de 0 a 10.")
+    return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
+
+
+@rol_requerido("docente")
+def profesor_descargar_plantilla(request, cuat, materia_id):
+    """Descarga un Excel con los alumnos y una columna por categoría."""
+    materia = _materia_del_docente(request, materia_id)
+    if materia is None or cuat not in (1, 2):
+        messages.error(request, "Esa materia no es tuya.")
+        return redirect("calificaciones_menu")
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        messages.error(request, "Falta instalar la librería openpyxl (pip install openpyxl).")
+        return redirect("profesor_cargar_notas", cuat=cuat, materia_id=materia.id)
+
+    categorias = _categorias(materia)
+    libro = openpyxl.Workbook()
+    hoja = libro.active
+    hoja.title = f"{cuat}° cuatrimestre"
+
+    borde = Border(*(Side(style="thin"),) * 4)
+    encabezado = ["Alumno"] + [c["nombre"] for c in categorias]
+    for col, texto in enumerate(encabezado, start=1):
+        celda = hoja.cell(row=1, column=col, value=texto)
+        celda.font = Font(bold=True, color="FFFFFF")
+        celda.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+        celda.alignment = Alignment(horizontal="center")
+        celda.border = borde
+        hoja.column_dimensions[get_column_letter(col)].width = 30 if col == 1 else 18
+
+    for fila, alumno in enumerate(_alumnos_del_curso(materia.curso), start=2):
+        hoja.cell(row=fila, column=1, value=f"{alumno.apellido}, {alumno.nombre}")
+        for col in range(1, len(encabezado) + 1):
+            hoja.cell(row=fila, column=col).border = borde
+
+    respuesta = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    nombre_archivo = f"plantilla_{materia.nombre}_{_texto_curso(materia.curso)}_{cuat}cuat.xlsx"
+    respuesta["Content-Disposition"] = f'attachment; filename="{nombre_archivo.replace(" ", "_")}"'
+    libro.save(respuesta)
+    return respuesta

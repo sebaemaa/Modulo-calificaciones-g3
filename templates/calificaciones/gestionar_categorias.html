@@ -1,63 +1,91 @@
-{% extends "base.html" %}
+{% extends "calificaciones/base_cal.html" %}
+{% comment %}
+   CATEGORÍAS DE EVALUACIÓN
+   - Son las columnas de la grilla de notas (TP, examen, etc.).
+   - Cada una puede tener un grupo (varias columnas que suman un peso) y un
+     peso % que define cuánto aporta a la calificación.
+   - "Volver" lleva a Cargar notas; si todavía no hay categorías, al inicio.
+{% endcomment %}
 
-{% block title %}Gestionar Categorías — {{ materia }}{% endblock %}
+{% block title %}Categorías — {{ materia.nombre }} — SGE{% endblock %}
+
+{% block hero %}
+<section class="hero">
+    <div class="hero-textos">
+        <p class="miga">Calificaciones › Mis materias › {{ materia.nombre }} {{ curso }} › Categorías</p>
+        <h1>Categorías de evaluación — {{ materia.nombre }}</h1>
+    </div>
+    <div class="hero-acciones">
+        {% if categorias %}
+        <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">← Volver a {{ materia.nombre }}</a>
+        {% else %}
+        <a class="btn" href="{% url 'calificaciones_menu' %}?cuat={{ cuat }}">← Volver a mis materias</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
 
 {% block content %}
-<a class="volver" href="{% url 'profesor_ver_alumnos' cuat=cuat materia=materia %}">&larr; Volver a {{ materia }}</a>
-
-<div class="bienvenida">
-    <h2>Categorías de evaluación</h2>
-    <p>{{ materia }} — {{ cuat }}° Cuatrimestre</p>
+<div class="dos-columnas">
+<div class="card tarjeta">
+    <h2 class="seccion-titulo">Categorías actuales</h2>
+    {% if categorias %}
+    <div class="tabla-wrap">
+    <table class="tabla">
+        <tr><th>Orden</th><th>Nombre</th><th>Grupo</th><th>Peso %</th><th></th></tr>
+        {% for cat in categorias %}
+        <tr>
+            <td>{{ cat.orden }}</td>
+            <td class="fuerte">{{ cat.nombre }}</td>
+            <td>{{ cat.grupo|default:"—" }}</td>
+            <td>{% if cat.peso %}{{ cat.peso|floatformat }}{% else %}—{% endif %}</td>
+            <td>
+                <div class="acciones-fila">
+                    <a class="btn chico" href="?editar={{ cat.id }}">Editar</a>
+                    <form method="post" action="{% url 'profesor_eliminar_categoria' cuat=cuat materia_id=materia.id cat_id=cat.id %}"
+                          onsubmit="return confirm('¿Eliminar la categoría {{ cat.nombre|escapejs }}? Se borran también sus notas.')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn chico peligro">Eliminar</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    {% if hay_cerrados %}<p class="nota">Las categorías con notas de un cuatrimestre cerrado no se pueden eliminar. Cambiar el peso solo afecta a los cuatrimestres abiertos.</p>{% endif %}
+    {% else %}
+    <p class="ayuda">Todavía no hay categorías en esta materia. Agregá la primera acá abajo para poder cargar notas.</p>
+    {% endif %}
 </div>
 
-<section>
-    <h2>Categorías actuales</h2>
-
-    {% if categorias %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Orden</th>
-                    <th>Nombre</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cat in categorias %}
-                <tr>
-                    <td>{{ cat.orden }}</td>
-                    <td>{{ cat.nombre }}</td>
-                    <td>
-                        <a class="boton boton-chico"
-                           href="{% url 'profesor_editar_categoria' cuat=cuat materia=materia cat_id=cat.id %}">
-                            Editar
-                        </a>
-                        <a class="boton boton-rojo boton-chico"
-                           href="{% url 'profesor_eliminar_categoria' cuat=cuat materia=materia cat_id=cat.id %}"
-                           onclick="return confirm('¿Eliminar la categoría {{ cat.nombre }}? Se borrarán todas las notas asociadas.')">
-                            Eliminar
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="card tarjeta">
+    {% if editando %}
+    <h2 class="seccion-titulo">Editar categoría</h2>
+    <form class="form" method="post" action="{% url 'profesor_editar_categoria' cuat=cuat materia_id=materia.id cat_id=editando.id %}">
     {% else %}
-        <div class="aviso">
-            Todavía no hay categorías creadas para esta materia. Agregá una más abajo.
-        </div>
+    <h2 class="seccion-titulo">Agregar categoría</h2>
+    <form class="form" method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia_id=materia.id %}">
     {% endif %}
-</section>
-
-<section>
-    <h2>Agregar categoría</h2>
-    <form method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia=materia %}">
         {% csrf_token %}
         <label for="nombre">Nombre de la categoría</label>
-        <input type="text" id="nombre" name="nombre" placeholder="Ej: Trabajo Práctico, Examen, Participación..." required>
-        <div class="botones-form">
-            <button type="submit" class="boton boton-verde">Agregar categoría</button>
+        <input type="text" id="nombre" name="nombre" value="{{ editando.nombre|default:'' }}" placeholder="Ej: Trabajo práctico 1, Examen, Participación" maxlength="100" required>
+
+        <label for="grupo">Grupo (opcional, junta varias columnas en la planilla)</label>
+        <input type="text" id="grupo" name="grupo" value="{{ editando.grupo|default:'' }}" placeholder="Ej: Trabajos prácticos" maxlength="100">
+
+        <label for="peso">Peso % (opcional, cuánto aporta a la calificación)</label>
+        <input type="text" id="peso" name="peso" inputmode="decimal" value="{% if editando.peso %}{{ editando.peso|floatformat }}{% endif %}" placeholder="Ej: 30">
+
+        <div class="acciones">
+            {% if editando %}
+            <button type="submit" class="btn p">Guardar cambios</button>
+            <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Cancelar</a>
+            {% else %}
+            <button type="submit" class="btn p">Agregar categoría</button>
+            {% endif %}
         </div>
     </form>
-</section>
+</div>
+</div>
 {% endblock %}
