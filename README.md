@@ -1,12 +1,14 @@
 # Módulo 3 (Calificaciones): cómo sube cada uno su parte
 
-El módulo está terminado y dividido en **4 partes**, una por integrante. Cada
-parte ya está en su rama del **repo del grupo**:
+El módulo está terminado y dividido en **4 features**, una por integrante.
+Cada parte ya está en su rama del **repo del grupo**:
 `https://github.com/sebaemaa/Modulo-calificaciones-g3`
 
 Cada uno la lleva **desde su máquina** al **repo del profe**
 (`https://github.com/eest3-hurlingham/sge-modulo3`), a su rama, y abre un Pull
-Request hacia `dev`. Así el commit queda **a tu nombre**.
+Request hacia `dev`. El commit queda **a tu nombre**. Después **el profe
+mergea los 4 PR en orden** (está explicado en `calificaciones/ORDEN_DE_MERGE.md`,
+que viene en la parte de Seba).
 
 | Orden | Quién | Rama | Qué trae |
 |---|---|---|---|
@@ -19,13 +21,15 @@ Las partes solo tocan archivos del módulo (`calificaciones/`,
 `templates/calificaciones/` y `static/css/calificaciones.css`). No modifican
 nada de los otros grupos.
 
-> ## ⚠ El orden importa
-> Cada parte usa código de la anterior. **No subas la tuya hasta que el PR
-> del anterior esté mergeado en `dev`** del repo del profe:
+> ## ⚠ Cómo funciona el orden
+> Cada parte usa código de la anterior, así que **cada uno arma su rama encima
+> de la rama del compañero anterior** en el repo del profe. No hace falta
+> esperar a que el profe mergee: **solo que el anterior ya haya hecho su push**.
 >
 > **Seba → Lautaro → Axel → Kenai**
 >
-> Cuando te mergeen, avisale al siguiente por el grupo.
+> Cuando hagas tu push, avisale al siguiente por el grupo. Pueden hacerlo los
+> cuatro el mismo día, uno detrás del otro.
 
 ---
 
@@ -48,95 +52,89 @@ git remote add grupo https://github.com/sebaemaa/Modulo-calificaciones-g3.git
 
 ---
 
-## Los pasos (iguales para todos, cambia solo el nombre de la rama)
+## Qué hace cada uno
 
-Reemplazá `<rama>` por la tuya: `seba`, `lautaro`, `lerafer` o `kenai`.
+Todos arrancan trayendo lo último de los dos repos:
 
 ```bash
-# 1. Traer lo último de los dos repos
 git fetch origin
 git fetch grupo
-
-# 2. Partir del dev del profe (que ya tiene las partes anteriores)
-git checkout dev
-git pull origin dev
-
-# 3. Rehacer tu rama desde ahí (la rama ya existe con código viejo)
-git checkout -B <rama>
-
-# 4. Traer SOLO tu parte desde el repo del grupo
-git cherry-pick --no-commit grupo/<rama>
-
-# 5. Commit con tu usuario
-git commit -m "<tu mensaje, ver abajo>"
-
-# 6. Subir a tu rama del repo del profe
-git push --force origin <rama>
 ```
-
-**7.** En GitHub, en el repo del profe, abrí un **Pull Request** de `<rama>`
-hacia **`dev`** y avisá en el grupo.
-
----
-
-## Qué hace cada uno
 
 ### 1. Seba (`seba`), empieza primero
 ```bash
-git checkout -B seba
+git checkout -B seba origin/dev
 git cherry-pick --no-commit grupo/seba
 git commit -m "feat(calificaciones): base del modulo, menu por rol y boletin RITE"
 git push --force origin seba
 ```
-PR `seba` → `dev`. Cuando lo mergeen, le avisa a Lautaro.
+Abrir PR `seba` → `dev` en el repo del profe. Avisarle a Lautaro.
 
-### 2. Lautaro (`lautaro`), cuando esté mergeada la de Seba
+### 2. Lautaro (`lautaro`), cuando Seba ya hizo su push
 ```bash
-git checkout -B lautaro
+git checkout -B lautaro origin/seba
 git cherry-pick --no-commit grupo/lautaro
 git commit -m "feat(calificaciones): carga de notas, categorias e importacion de Excel"
 git push --force origin lautaro
 ```
-PR `lautaro` → `dev`. Cuando lo mergeen, le avisa a Axel.
+Abrir PR `lautaro` → `dev`. Avisarle a Axel.
 
-### 3. Axel (`lerafer`), cuando esté mergeada la de Lautaro
+### 3. Axel (`lerafer`), cuando Lautaro ya hizo su push
 ```bash
-git checkout -B lerafer
+git checkout -B lerafer origin/lautaro
 git cherry-pick --no-commit grupo/lerafer
 git commit -m "feat(calificaciones): planilla de calificaciones, cierre e intensificacion"
 git push --force origin lerafer
 ```
-PR `lerafer` → `dev`. Cuando lo mergeen, le avisa a Kenai.
+Abrir PR `lerafer` → `dev`. Avisarle a Kenai.
 
-### 4. Kenai (`kenai`), cuando esté mergeada la de Axel
+### 4. Kenai (`kenai`), cuando Axel ya hizo su push
 ```bash
-git checkout -B kenai
+git checkout -B kenai origin/lerafer
 git cherry-pick --no-commit grupo/kenai
 git commit -m "feat(calificaciones): tests y datos de demostracion"
 git push --force origin kenai
 ```
-PR `kenai` → `dev`. Con esta el módulo queda completo.
+Abrir PR `kenai` → `dev`. Con esto están las 4 partes subidas.
 
-> Antes de cada `git checkout -B` acordate de hacer los pasos 1 y 2
-> (`fetch` y `git checkout dev && git pull origin dev`).
+> Fijate que en `git checkout -B` **cada uno parte de la rama del anterior**
+> (`origin/seba`, `origin/lautaro`, `origin/lerafer`), no de `dev`. Si el
+> anterior todavía no hizo su push, esa rama no existe o tiene código viejo:
+> esperá su aviso.
+
+**Para que el PR se vea prolijo:** hasta que el profe mergee los anteriores,
+tu PR va a mostrar también los cambios de los compañeros previos. Es normal:
+cuando se mergea el anterior, GitHub actualiza tu PR y muestra solo lo tuyo.
+En la descripción del PR podés poner: *"Va después del PR de `<rama anterior>`.
+Orden de merge en `calificaciones/ORDEN_DE_MERGE.md`."*
+
+---
+
+## Para el profe (lo explica también ORDEN_DE_MERGE.md)
+
+- Mergear en orden: `seba` → `lautaro` → `lerafer` → `kenai`.
+- Usar **"Create a merge commit"**. **No** "Squash and merge" ni "Rebase and
+  merge": como cada rama trae las anteriores, al aplastar commits el PR
+  siguiente da conflicto.
 
 ---
 
 ## Si algo sale mal
 
-- **El cherry-pick da conflicto:** casi siempre es porque `dev` todavía no
-  tiene la parte anterior. Cancelá con `git cherry-pick --abort`, fijate que el
-  PR anterior esté mergeado y repetí desde el paso 1.
+- **El cherry-pick da conflicto:** casi siempre es porque partiste de la rama
+  equivocada o el anterior todavía no hizo su push. Cancelá con
+  `git cherry-pick --abort`, hacé `git fetch origin` y repetí desde
+  `git checkout -B ...`.
 - **`git push` pide permiso o falla:** tenés que ser colaborador del repo del
   profe; pedíselo.
 - **Plan B:** en la carpeta `patches/` de esta rama están los mismos cambios
-  como archivos `.patch`. En vez del paso 4 se puede hacer
+  como archivos `.patch`. En vez del `cherry-pick` se puede hacer
   `git apply parte-N-<nombre>.patch` (con el archivo copiado en la carpeta del
   repo) y después `git add -A`.
 
 ---
 
-## Probar que anda (después de la parte 4)
+## Probar que anda (con las 4 partes)
 
 ```bash
 pip install -r requirements.txt
