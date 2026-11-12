@@ -29,7 +29,6 @@ from calificaciones.models import (
     CategoriaEvaluacion,
     CierreCuatrimestre,
     ConfirmacionRite,
-    InasistenciaMateria,
     NotaEvaluacion,
     PlanillaDatos,
     PublicacionBoletin,
@@ -305,13 +304,14 @@ class CargarNotasTests(TestCase):
         )
         self.assertEqual(nota.valor, Decimal("7.5"))
 
-    def test_inasistencias_no_se_mezclan_con_las_notas(self):
-        """El input de inasistencias tiene otra clase: el JS no lo promedia como nota."""
+    def test_las_inasistencias_no_se_editan_en_cargar_notas(self):
+        """Las inasistencias salen del módulo Asistencia: la grilla solo las muestra."""
         self._login()
         url = reverse("profesor_cargar_notas", kwargs={"cuat": 1, "materia_id": self.materia.id})
         r = self.client.get(url)
         self.assertContains(r, 'class="n nota"', count=3)
-        self.assertContains(r, 'class="n inasistencia"', count=1)
+        self.assertNotContains(r, 'class="n inasistencia"')
+        self.assertNotContains(r, "guardar-inasistencia")
 
     def test_volver_de_categorias_y_excel_lleva_a_cargar_notas(self):
         """'Volver a <materia>' vuelve a Cargar notas, no a la planilla."""
@@ -354,7 +354,7 @@ class CargarNotasTests(TestCase):
         self.assertEqual(nota2.valor, Decimal("9"))
 
     def test_cargar_notas_muestra_inasistencias_de_asistencia(self):
-        """Si no hay carga manual, se usa el mismo dato que la planilla."""
+        """Las inasistencias se leen del módulo Asistencia (ausente 1, tardanza 0,5)."""
         RegistroAsistencia.objects.create(
             alumno=self.alumno, materia=self.materia,
             fecha=date(2026, 4, 10), estado="A",
@@ -370,7 +370,7 @@ class CargarNotasTests(TestCase):
         self._login()
         url = reverse("profesor_cargar_notas", kwargs={"cuat": 1, "materia_id": self.materia.id})
         r = self.client.get(url)
-        self.assertContains(r, 'value="2,5"')
+        self.assertContains(r, '<td class="c">2,5</td>')
 
     def test_cargar_notas_avisa_asistencia_insuficiente(self):
         """Con una sola clase y una falta, la materia no se acredita."""
@@ -639,18 +639,18 @@ class PlanillaDocenteTests(TestCase):
         self.client.post(self._url(), {"accion": "guardar", f"final_{self.alumno.id}": ""})
         self.assertEqual(self.client.get(self._url()).context["filas"][0]["final"], "9")
 
-    def test_guardar_inasistencias_mayores_a_diez(self):
-        """Las inasistencias no tienen el tope 10 de las notas."""
-        self.client.force_login(self.u_docente)
-        r = self.client.post(self._url(), {
-            "accion": "guardar",
-            f"inas1_{self.alumno.id}": "12",
-        })
-        self.assertEqual(r.status_code, 302)
-        inas = InasistenciaMateria.objects.get(
-            alumno=self.alumno, materia=self.materia, cuatrimestre=1
+    def test_la_planilla_muestra_las_inasistencias_de_asistencia(self):
+        """Las inasistencias se leen del módulo Asistencia y no se editan en la planilla."""
+        # El setUp ya cargó 1 ausente en abril; se suma una tardanza (media falta).
+        RegistroAsistencia.objects.create(
+            alumno=self.alumno, materia=self.materia,
+            fecha=date(2026, 5, 8), estado="T",
         )
-        self.assertEqual(inas.cantidad, Decimal("12"))
+        self.client.force_login(self.u_docente)
+        r = self.client.get(self._url())
+        fila = next(f for f in r.context["filas"] if f["id"] == self.alumno.id)
+        self.assertEqual(fila["inas1"], "1,5")
+        self.assertNotContains(r, f'name="inas1_{self.alumno.id}"')
 
     def test_nota_final_automatica_con_los_dos_cuatrimestres(self):
         """La final aparece sola cuando ambos cuatrimestres tienen nota."""
