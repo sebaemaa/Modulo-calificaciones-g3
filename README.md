@@ -147,5 +147,5 @@ python manage.py runserver
 ```
 
 Usuarios de prueba (clave `prueba1234`): `profesor1` y `profesor2` (docentes),
-`preceptora` (secretaría) y `acosta.lucia` (alumna). Para importar o descargar
+`preceptora` (secretaría) y `sebaema` (alumna). Para importar o descargar
 Excel hace falta `pip install openpyxl`.
