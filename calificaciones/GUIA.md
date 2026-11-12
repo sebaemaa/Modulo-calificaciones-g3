@@ -170,9 +170,9 @@ Alumnos lee `Alumno` (con `anio` y `division`) y `Curso`; de Docentes,
 
 | Parte | Integrante | Rama | Qué hizo |
 |---|---|---|---|
-| 1 | Seba | `seba` | Modelos y migraciones, diseño (base y CSS), menú por rol y publicación anual del boletín |
+| 1 | Seba | `seba` | Modelos y migraciones, diseño (base y CSS), menú por rol y boletín completo: publicación anual, RITE de frente y dorso, firmas y quién puede ver cada boletín |
 | 2 | Lautaro | `lautaro` | Cargar notas con guardado automático, categorías e importación de Excel |
-| 3 | Axel | `lerafer` | Planilla oficial (cierre, intensificación, final) y boletín RITE con firmas |
+| 3 | Axel | `lerafer` | Planilla oficial: guardado, cierre y reapertura del cuatrimestre, intensificación y nota final |
 | 4 | Kenai | `kenai` | Tests, datos de demostración y documentación |
 
 ---

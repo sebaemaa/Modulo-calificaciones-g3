@@ -610,6 +610,216 @@ def _datos_menu_alumno(alumno, cuat):
 
 
 # ─────────────────────────────────────────────
+#  BOLETÍN (RITE)
+# ─────────────────────────────────────────────
+
+@rol_requerido("docente", "administrativo", "directivo")
+def alumno_seleccionar(request):
+    """Buscador de alumno para abrir su boletín (el docente ve solo sus cursos)."""
+    alumnos = _alumnos_que_puede_ver(request).order_by("anio", "division", "apellido", "nombre")
+    return render(request, "calificaciones/alumno_seleccionar.html", {
+        "alumnos": alumnos,
+        "boletin_publicado": _boletin_publicado(),
+        "puede_ver": _puede_ver_boletin(request),
+    })
+
+
+def _alumnos_que_puede_ver(request):
+    """Alumnos cuyo boletín puede abrir el usuario.
+
+    Secretaría y directivo: todos. Docente: solo los de los cursos donde da
+    alguna materia.
+    """
+    alumnos = Alumno.objects.filter(activo=True)
+    if _rol(request) != "docente":
+        return alumnos
+    docente = _docente_logueado(request)
+    cursos = Materia.objects.filter(docente=docente).values_list("curso__anio", "curso__division").distinct()
+    filtro = Q(pk__in=[])  # arranca sin ningún alumno
+    for anio, division in cursos:
+        filtro |= Q(anio=anio, division=division)
+    return alumnos.filter(filtro)
+
+
+def _alumno_a_mostrar(request):
+    """El alumno ve SIEMPRE su propio boletín; los demás roles eligen con alumno_id."""
+    perfil = getattr(request.user, "perfil", None)
+    if perfil is not None and perfil.rol == "alumno":
+        return perfil.alumno
+    alumno_id = request.POST.get("alumno_id") or request.GET.get("alumno_id")
+    if not alumno_id or not str(alumno_id).isdigit():
+        return None
+    alumno = _alumnos_que_puede_ver(request).filter(id=alumno_id).first()
+    if alumno is None:
+        messages.error(request, "Solo podés ver el boletín de alumnos de tus cursos.")
+    return alumno
+
+
+def _puede_firmar(request, tipo):
+    """Quién registra cada firma del boletín.
+
+    - Estudiante: el propio alumno.
+    - Adulta/o responsable: el docente del curso, secretaría o directivo.
+    - Director/a: solo el equipo directivo.
+    """
+    rol = _rol(request)
+    if tipo == "estudiante":
+        return rol == "alumno"
+    if tipo == "director":
+        return rol == "directivo" or request.user.is_superuser
+    return rol in ("docente", "administrativo", "directivo")
+
+
+def _datos_rite(alumno, request):
+    """Datos del boletín: frente (calificaciones) y dorso (intensificación,
+    asistencia y firmas)."""
+    notas = {}  # {(materia_id, cuat): {categoria_id: valor}}
+    for n in NotaEvaluacion.objects.filter(alumno=alumno).order_by("id"):
+        notas.setdefault((n.materia_id, n.cuatrimestre), {})[n.categoria_id] = n.valor
+    cierres = {
+        (c.materia_id, c.cuatrimestre): c
+        for c in CierreCuatrimestre.objects.filter(alumno=alumno)
+    }
+
+    materias = list(_materias_del_alumno(alumno))
+    filas = []
+    intensifican = []
+    for m in materias:
+        categorias = _categorias(m)
+        cierre1 = cierres.get((m.id, 1))
+        cierre2 = cierres.get((m.id, 2))
+        d1 = _datos_cuatrimestre(notas.get((m.id, 1), {}), categorias, cierre1)
+        d2 = _datos_cuatrimestre(notas.get((m.id, 2), {}), categorias, cierre2)
+
+        asistencia = _asistencia_materia(alumno.id, m)
+        asistencia_ok = asistencia is None or asistencia["suficiente"]
+
+        # Promedio anual: solo si los dos cuatrimestres están aprobados y la
+        # asistencia alcanza.
+        promedio_anual = ""
+        if asistencia_ok and d1["aprobada"] and d2["aprobada"]:
+            suma = Decimal(d1["calificacion"]) + Decimal(d2["calificacion"])
+            promedio_anual = _formato_ar(_redondear(suma / 2, 1))
+
+        filas.append({
+            "materia": m.nombre,
+            "anio": f"{m.curso.anio}°",
+            "cursada": cierre1.cursada if cierre1 else "C",
+            "val1": d1["valoracion"],
+            "calif1": d1["calificacion"],
+            "val2": d2["valoracion"],
+            "calif2": d2["calificacion"],
+            "promedio_anual": promedio_anual,
+            "intensificacion": _intensificacion(cierre1),
+            "dic": _num_limpio(cierre2.nota_diciembre) if cierre2 and cierre2.nota_diciembre is not None else "",
+            "feb": _num_limpio(cierre2.nota_febrero) if cierre2 and cierre2.nota_febrero is not None else "",
+            "no_acredita": not asistencia_ok,
+        })
+
+        if cierre1 is not None and cierre1.intensificacion and asistencia_ok:
+            intensifican.append({
+                "materia": m.nombre,
+                "anio": f"{m.curso.anio}°",
+                "calif_final": _num_limpio(cierre1.calificacion_final) or "",
+            })
+
+    # El dorso oficial tiene 9 renglones de intensificación.
+    while len(intensifican) < 9:
+        intensifican.append({"materia": "", "anio": "", "calif_final": ""})
+
+    # Asistencia del dorso: días con registro e inasistencias de cada cuatrimestre.
+    dias = {}
+    inas = {}
+    for c in (1, 2):
+        dias[c] = RegistroAsistencia.objects.filter(
+            alumno=alumno, fecha__month__in=MESES_CUATRIMESTRE[c],
+        ).values("fecha").distinct().count()
+        inas[c] = _inasistencias_alumno_cuat(alumno, c)
+
+    # Firmas: quién tomó conocimiento en cada cuatrimestre.
+    firmadas = set(ConfirmacionRite.objects.filter(alumno=alumno).values_list("cuatrimestre", "tipo"))
+    firmas = []
+    for tipo, nombre in ConfirmacionRite.TIPO_CHOICES:
+        firmas.append({
+            "tipo": tipo,
+            "nombre": nombre,
+            "c1": (1, tipo) in firmadas,
+            "c2": (2, tipo) in firmadas,
+            # [(1, firmada?), (2, firmada?)] para dibujar una celda por cuatrimestre.
+            "estados": [(c, (c, tipo) in firmadas) for c in (1, 2)],
+            "puede_firmar": _puede_firmar(request, tipo),
+        })
+
+    # Preceptor/a: el que figura en alguna planilla del curso del alumno.
+    preceptor = (
+        PlanillaDatos.objects.filter(materia__in=materias)
+        .exclude(preceptor="").values_list("preceptor", flat=True).first()
+    )
+
+    return {
+        "alumno": alumno,
+        "nombre": f"{alumno.apellido}, {alumno.nombre}",
+        "dni": alumno.dni,
+        "anio": alumno.anio,
+        "division": alumno.division,
+        "preceptor": preceptor or "—",
+        "filas": filas,
+        "intensifican": intensifican,
+        "dias": dias,
+        "dias_total": dias[1] + dias[2],
+        "inasistencias": {c: _formato_ar(inas[c]) for c in (1, 2)},
+        "total_inasistencias": _formato_ar(inas[1] + inas[2]),
+        "firmas": firmas,
+        "es_alumno": _rol(request) == "alumno",
+        "ciclo_lectivo": timezone.now().year,
+    }
+
+
+@rol_requerido("alumno", "docente", "administrativo", "directivo")
+def alumno_ver_boletin(request):
+    """Boletín (RITE) de un alumno. Bloqueado hasta que se publique el año."""
+    if not _puede_ver_boletin(request):
+        messages.warning(request, "El boletín se habilita a fin de año. Mientras tanto podés consultar las notas en el inicio del módulo.")
+        return redirect("calificaciones_menu")
+
+    alumno = _alumno_a_mostrar(request)
+    if alumno is None:
+        return redirect("alumno_seleccionar")
+    return render(request, "calificaciones/boletin.html", _datos_rite(alumno, request))
+
+
+@rol_requerido("alumno", "docente", "administrativo", "directivo")
+@require_POST
+def confirmar_rite(request):
+    """Registra que alguien tomó conocimiento del boletín (quién y cuándo)."""
+    if not _puede_ver_boletin(request):
+        messages.warning(request, "El boletín se habilita a fin de año. Todavía no se pueden registrar firmas.")
+        return redirect("calificaciones_menu")
+
+    alumno = _alumno_a_mostrar(request)
+    if alumno is None:
+        return redirect("alumno_seleccionar")
+
+    destino = redirect(f"{reverse('alumno_ver_boletin')}?alumno_id={alumno.id}")
+    tipo = request.POST.get("tipo", "").strip()
+    cuat = request.POST.get("cuat", "")
+    if tipo not in dict(ConfirmacionRite.TIPO_CHOICES) or cuat not in ("1", "2"):
+        return destino
+
+    if not _puede_firmar(request, tipo):
+        nombre = dict(ConfirmacionRite.TIPO_CHOICES)[tipo]
+        messages.error(request, f"Tu usuario no puede registrar la firma de {nombre}.")
+        return destino
+
+    ConfirmacionRite.objects.update_or_create(
+        alumno=alumno, cuatrimestre=int(cuat), tipo=tipo,
+        defaults={"usuario": request.user.get_username()},
+    )
+    messages.success(request, "Firma registrada.")
+    return destino
+
+
+# ─────────────────────────────────────────────
 #  DOCENTE: CARGAR NOTAS (grilla con guardado automático)
 # ─────────────────────────────────────────────
 
@@ -1353,213 +1563,3 @@ def _guardar_planilla(request, materia, cuat):
         messages.success(request, f"Cierre del {cuat}° cuatrimestre guardado.")
     else:
         messages.success(request, "Cambios guardados.")
-
-
-# ─────────────────────────────────────────────
-#  BOLETÍN (RITE)
-# ─────────────────────────────────────────────
-
-@rol_requerido("docente", "administrativo", "directivo")
-def alumno_seleccionar(request):
-    """Buscador de alumno para abrir su boletín (el docente ve solo sus cursos)."""
-    alumnos = _alumnos_que_puede_ver(request).order_by("anio", "division", "apellido", "nombre")
-    return render(request, "calificaciones/alumno_seleccionar.html", {
-        "alumnos": alumnos,
-        "boletin_publicado": _boletin_publicado(),
-        "puede_ver": _puede_ver_boletin(request),
-    })
-
-
-def _alumnos_que_puede_ver(request):
-    """Alumnos cuyo boletín puede abrir el usuario.
-
-    Secretaría y directivo: todos. Docente: solo los de los cursos donde da
-    alguna materia.
-    """
-    alumnos = Alumno.objects.filter(activo=True)
-    if _rol(request) != "docente":
-        return alumnos
-    docente = _docente_logueado(request)
-    cursos = Materia.objects.filter(docente=docente).values_list("curso__anio", "curso__division").distinct()
-    filtro = Q(pk__in=[])  # arranca sin ningún alumno
-    for anio, division in cursos:
-        filtro |= Q(anio=anio, division=division)
-    return alumnos.filter(filtro)
-
-
-def _alumno_a_mostrar(request):
-    """El alumno ve SIEMPRE su propio boletín; los demás roles eligen con alumno_id."""
-    perfil = getattr(request.user, "perfil", None)
-    if perfil is not None and perfil.rol == "alumno":
-        return perfil.alumno
-    alumno_id = request.POST.get("alumno_id") or request.GET.get("alumno_id")
-    if not alumno_id or not str(alumno_id).isdigit():
-        return None
-    alumno = _alumnos_que_puede_ver(request).filter(id=alumno_id).first()
-    if alumno is None:
-        messages.error(request, "Solo podés ver el boletín de alumnos de tus cursos.")
-    return alumno
-
-
-def _puede_firmar(request, tipo):
-    """Quién registra cada firma del boletín.
-
-    - Estudiante: el propio alumno.
-    - Adulta/o responsable: el docente del curso, secretaría o directivo.
-    - Director/a: solo el equipo directivo.
-    """
-    rol = _rol(request)
-    if tipo == "estudiante":
-        return rol == "alumno"
-    if tipo == "director":
-        return rol == "directivo" or request.user.is_superuser
-    return rol in ("docente", "administrativo", "directivo")
-
-
-def _datos_rite(alumno, request):
-    """Datos del boletín: frente (calificaciones) y dorso (intensificación,
-    asistencia y firmas)."""
-    notas = {}  # {(materia_id, cuat): {categoria_id: valor}}
-    for n in NotaEvaluacion.objects.filter(alumno=alumno).order_by("id"):
-        notas.setdefault((n.materia_id, n.cuatrimestre), {})[n.categoria_id] = n.valor
-    cierres = {
-        (c.materia_id, c.cuatrimestre): c
-        for c in CierreCuatrimestre.objects.filter(alumno=alumno)
-    }
-
-    materias = list(_materias_del_alumno(alumno))
-    filas = []
-    intensifican = []
-    for m in materias:
-        categorias = _categorias(m)
-        cierre1 = cierres.get((m.id, 1))
-        cierre2 = cierres.get((m.id, 2))
-        d1 = _datos_cuatrimestre(notas.get((m.id, 1), {}), categorias, cierre1)
-        d2 = _datos_cuatrimestre(notas.get((m.id, 2), {}), categorias, cierre2)
-
-        asistencia = _asistencia_materia(alumno.id, m)
-        asistencia_ok = asistencia is None or asistencia["suficiente"]
-
-        # Promedio anual: solo si los dos cuatrimestres están aprobados y la
-        # asistencia alcanza.
-        promedio_anual = ""
-        if asistencia_ok and d1["aprobada"] and d2["aprobada"]:
-            suma = Decimal(d1["calificacion"]) + Decimal(d2["calificacion"])
-            promedio_anual = _formato_ar(_redondear(suma / 2, 1))
-
-        filas.append({
-            "materia": m.nombre,
-            "anio": f"{m.curso.anio}°",
-            "cursada": cierre1.cursada if cierre1 else "C",
-            "val1": d1["valoracion"],
-            "calif1": d1["calificacion"],
-            "val2": d2["valoracion"],
-            "calif2": d2["calificacion"],
-            "promedio_anual": promedio_anual,
-            "intensificacion": _intensificacion(cierre1),
-            "dic": _num_limpio(cierre2.nota_diciembre) if cierre2 and cierre2.nota_diciembre is not None else "",
-            "feb": _num_limpio(cierre2.nota_febrero) if cierre2 and cierre2.nota_febrero is not None else "",
-            "no_acredita": not asistencia_ok,
-        })
-
-        if cierre1 is not None and cierre1.intensificacion and asistencia_ok:
-            intensifican.append({
-                "materia": m.nombre,
-                "anio": f"{m.curso.anio}°",
-                "calif_final": _num_limpio(cierre1.calificacion_final) or "",
-            })
-
-    # El dorso oficial tiene 9 renglones de intensificación.
-    while len(intensifican) < 9:
-        intensifican.append({"materia": "", "anio": "", "calif_final": ""})
-
-    # Asistencia del dorso: días con registro e inasistencias de cada cuatrimestre.
-    dias = {}
-    inas = {}
-    for c in (1, 2):
-        dias[c] = RegistroAsistencia.objects.filter(
-            alumno=alumno, fecha__month__in=MESES_CUATRIMESTRE[c],
-        ).values("fecha").distinct().count()
-        inas[c] = _inasistencias_alumno_cuat(alumno, c)
-
-    # Firmas: quién tomó conocimiento en cada cuatrimestre.
-    firmadas = set(ConfirmacionRite.objects.filter(alumno=alumno).values_list("cuatrimestre", "tipo"))
-    firmas = []
-    for tipo, nombre in ConfirmacionRite.TIPO_CHOICES:
-        firmas.append({
-            "tipo": tipo,
-            "nombre": nombre,
-            "c1": (1, tipo) in firmadas,
-            "c2": (2, tipo) in firmadas,
-            # [(1, firmada?), (2, firmada?)] para dibujar una celda por cuatrimestre.
-            "estados": [(c, (c, tipo) in firmadas) for c in (1, 2)],
-            "puede_firmar": _puede_firmar(request, tipo),
-        })
-
-    # Preceptor/a: el que figura en alguna planilla del curso del alumno.
-    preceptor = (
-        PlanillaDatos.objects.filter(materia__in=materias)
-        .exclude(preceptor="").values_list("preceptor", flat=True).first()
-    )
-
-    return {
-        "alumno": alumno,
-        "nombre": f"{alumno.apellido}, {alumno.nombre}",
-        "dni": alumno.dni,
-        "anio": alumno.anio,
-        "division": alumno.division,
-        "preceptor": preceptor or "—",
-        "filas": filas,
-        "intensifican": intensifican,
-        "dias": dias,
-        "dias_total": dias[1] + dias[2],
-        "inasistencias": {c: _formato_ar(inas[c]) for c in (1, 2)},
-        "total_inasistencias": _formato_ar(inas[1] + inas[2]),
-        "firmas": firmas,
-        "es_alumno": _rol(request) == "alumno",
-        "ciclo_lectivo": timezone.now().year,
-    }
-
-
-@rol_requerido("alumno", "docente", "administrativo", "directivo")
-def alumno_ver_boletin(request):
-    """Boletín (RITE) de un alumno. Bloqueado hasta que se publique el año."""
-    if not _puede_ver_boletin(request):
-        messages.warning(request, "El boletín se habilita a fin de año. Mientras tanto podés consultar las notas en el inicio del módulo.")
-        return redirect("calificaciones_menu")
-
-    alumno = _alumno_a_mostrar(request)
-    if alumno is None:
-        return redirect("alumno_seleccionar")
-    return render(request, "calificaciones/boletin.html", _datos_rite(alumno, request))
-
-
-@rol_requerido("alumno", "docente", "administrativo", "directivo")
-@require_POST
-def confirmar_rite(request):
-    """Registra que alguien tomó conocimiento del boletín (quién y cuándo)."""
-    if not _puede_ver_boletin(request):
-        messages.warning(request, "El boletín se habilita a fin de año. Todavía no se pueden registrar firmas.")
-        return redirect("calificaciones_menu")
-
-    alumno = _alumno_a_mostrar(request)
-    if alumno is None:
-        return redirect("alumno_seleccionar")
-
-    destino = redirect(f"{reverse('alumno_ver_boletin')}?alumno_id={alumno.id}")
-    tipo = request.POST.get("tipo", "").strip()
-    cuat = request.POST.get("cuat", "")
-    if tipo not in dict(ConfirmacionRite.TIPO_CHOICES) or cuat not in ("1", "2"):
-        return destino
-
-    if not _puede_firmar(request, tipo):
-        nombre = dict(ConfirmacionRite.TIPO_CHOICES)[tipo]
-        messages.error(request, f"Tu usuario no puede registrar la firma de {nombre}.")
-        return destino
-
-    ConfirmacionRite.objects.update_or_create(
-        alumno=alumno, cuatrimestre=int(cuat), tipo=tipo,
-        defaults={"usuario": request.user.get_username()},
-    )
-    messages.success(request, "Firma registrada.")
-    return destino

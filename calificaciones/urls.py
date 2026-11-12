@@ -18,6 +18,11 @@ urlpatterns = [
     path("", views.menu, name="calificaciones_menu"),
     path("publicar-boletines/", views.publicar_boletines, name="publicar_boletines"),
 
+    # --- boletín (RITE) ---
+    path("alumno/seleccionar/", views.alumno_seleccionar, name="alumno_seleccionar"),
+    path("boletin/", views.alumno_ver_boletin, name="alumno_ver_boletin"),
+    path("boletin/confirmar/", views.confirmar_rite, name="confirmar_rite"),
+
     # --- docente: carga de notas (guardado automático) ---
     path(DOCENTE + "cargar-notas/", views.profesor_cargar_notas, name="profesor_cargar_notas"),
     path(DOCENTE + "guardar-nota/", views.profesor_guardar_nota, name="profesor_guardar_nota"),
@@ -37,9 +42,4 @@ urlpatterns = [
 
     # --- planilla de calificaciones (docente; secretaría y directivo la ven) ---
     path(DOCENTE + "planilla-calificaciones/", views.profesor_planilla, name="profesor_planilla"),
-
-    # --- boletín (RITE) ---
-    path("alumno/seleccionar/", views.alumno_seleccionar, name="alumno_seleccionar"),
-    path("boletin/", views.alumno_ver_boletin, name="alumno_ver_boletin"),
-    path("boletin/confirmar/", views.confirmar_rite, name="confirmar_rite"),
 ]
