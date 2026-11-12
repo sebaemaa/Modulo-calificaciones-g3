@@ -15,9 +15,9 @@
         <h1>Mis notas</h1>
         <p class="hero-sub">{{ nombre }} · {{ curso }} · Ciclo lectivo {{ ciclo_lectivo }}</p>
     </div>
-    <div class="hero-acciones">
-        <a class="btn {% if cuat == 1 %}p{% endif %}" href="?cuat=1">1° cuatrimestre</a>
-        <a class="btn {% if cuat == 2 %}p{% endif %}" href="?cuat=2">2° cuatrimestre</a>
+    <div class="segmento" role="group" aria-label="Cuatrimestre">
+        <a class="{% if cuat == 1 %}activo{% endif %}" href="?cuat=1">1° cuatrimestre</a>
+        <a class="{% if cuat == 2 %}activo{% endif %}" href="?cuat=2">2° cuatrimestre</a>
     </div>
 </section>
 {% endblock %}

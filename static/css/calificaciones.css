@@ -11,7 +11,8 @@
    5. Tablas y celdas de carga
    6. Formularios
    7. Estados (TED, no acredita)
-   8. Pantallas chicas
+   8. Navegación y listados (selector de cuatrimestre, buscador)
+   9. Pantallas chicas
    ================================================================ */
 
 /* Colores del módulo (se usan con var(--nombre)) */
@@ -50,7 +51,7 @@ nav ul li .nav-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc262
 nav.nav-open .hamburger span:nth-child(1){transform:translateY(8px) rotate(45deg)}
 nav.nav-open .hamburger span:nth-child(2){opacity:0}
 nav.nav-open .hamburger span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
-.messages-container{width:90%;max-width:1100px;margin:20px auto 0}
+.messages-container{width:min(1200px,calc(100% - 80px));margin:20px auto 0}  /* mismo ancho que el contenido */
 .alert{padding:14px 18px;border-radius:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-weight:500}
 .alert-success{background:#e8f5e9;color:#2e7d32;border-left:5px solid #2e7d32}
 .alert-error,.alert-danger{background:#ffebee;color:#c62828;border-left:5px solid #c62828}
@@ -67,11 +68,13 @@ footer p{margin:5px 0}
 /* Contenido de cada pantalla del módulo */
 .cal-main{flex:1;width:100%;max-width:1280px;margin:0 auto;padding:28px 40px;display:flex;flex-direction:column;gap:22px}
 .cal-main.ancho{max-width:none;padding:24px}  /* planilla: usa todo el ancho */
+.cal-main.ancho > form > .card{width:100%;max-width:1200px;margin:0 auto 18px}  /* barra de la planilla alineada con el resto */
 
 /* ================================================================
    2. ENCABEZADO DE CADA PANTALLA (título, miga de pan y acciones)
    ================================================================ */
-.hero{background:var(--celeste);border-top:4px solid var(--azul-titulo);padding:22px 40px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+/* El padding lateral alinea el encabezado con el contenido (1200 px de ancho útil). */
+.hero{background:var(--celeste);border-top:4px solid var(--azul-titulo);padding:22px max(40px,calc((100% - 1200px) / 2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .hero-textos{display:flex;flex-direction:column;gap:4px}
 .hero h1{font-size:26px;font-weight:500;color:var(--azul-titulo)}
 .miga,.hero-sub{font-size:13px;color:var(--gris-texto)}
@@ -88,7 +91,7 @@ footer p{margin:5px 0}
 .btn.peligro{border-color:#e57373;color:var(--rojo)}
 .btn.peligro:hover{background:#fdecea}
 .btn-link{background:none;border:none;padding:0;color:var(--azul-oscuro);font:inherit;text-decoration:underline;cursor:pointer}
-.chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;white-space:nowrap}
 .ok{background:#e3f1e4;color:#1b5e20}
 .wa{background:#fdecc8;color:#7a4b00}
 .ne{background:#e8eef6;color:var(--azul-oscuro)}
@@ -111,7 +114,9 @@ footer p{margin:5px 0}
 .tarjeta-cabecera{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .grid-tarjetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}
-.stat{padding:18px 22px;display:flex;flex-direction:column;gap:2px}
+.stat{padding:18px 22px;display:flex;flex-direction:column;gap:2px;border-left:5px solid var(--azul)}
+.stat.ambar{border-left-color:#f9a825}
+.stat.verde{border-left-color:#43a047}
 .numero{font-size:28px;font-weight:600;color:var(--azul-titulo)}
 .numero.grande{font-size:36px}
 .progreso{height:8px;border-radius:4px;background:#e1e6ec}
@@ -158,10 +163,31 @@ select.v{height:36px;border:1.5px solid #b8c4d4;border-radius:6px;font:500 14px 
 .no-acredita{color:var(--rojo);font-weight:700}
 
 /* ================================================================
-   8. PANTALLAS CHICAS
+   8. NAVEGACIÓN Y LISTADOS
+   ================================================================ */
+/* Selector de cuatrimestre (botones pegados, el elegido en azul) */
+.segmento{display:inline-flex;gap:3px;padding:3px;background:#fff;border:1.5px solid var(--azul);border-radius:10px}
+.segmento a{padding:8px 16px;border-radius:7px;font-weight:600;font-size:14px;color:var(--azul-oscuro);text-decoration:none;white-space:nowrap}
+.segmento a:hover{background:#eef4ff}
+.segmento a.activo{background:var(--azul);color:#fff}
+/* Pie de una tarjeta con accesos secundarios */
+.tarjeta-pie{display:flex;gap:18px;flex-wrap:wrap;margin-top:auto;padding-top:12px;border-top:1px solid var(--borde)}
+.link-sec{font-size:13px;font-weight:600;color:var(--azul);text-decoration:none}
+.link-sec:hover{text-decoration:underline}
+/* Tarjeta con encabezado (título + contador + buscador) */
+.card-cabecera{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--borde)}
+.buscador{min-width:330px;padding:9px 14px;border:1px solid #d0d0d0;border-radius:10px;font:400 14px Poppins,Arial,sans-serif}
+.buscador:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+.datos-fila{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:14px;color:var(--gris-texto)}
+.datos-fila b{color:var(--azul-oscuro)}
+
+/* ================================================================
+   9. PANTALLAS CHICAS
    ================================================================ */
 @media (max-width:900px){
   .dos-columnas{grid-template-columns:1fr}
+  .buscador{min-width:0;width:100%}
 }
 @media (max-width:768px){
   nav{padding:12px 16px;flex-wrap:nowrap;align-items:center}

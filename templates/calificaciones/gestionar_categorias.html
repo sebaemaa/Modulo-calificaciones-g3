@@ -26,6 +26,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="dos-columnas">
 <div class="card tarjeta">
     <h2 class="seccion-titulo">Categorías actuales</h2>
     {% if categorias %}
@@ -61,10 +62,10 @@
 <div class="card tarjeta">
     {% if editando %}
     <h2 class="seccion-titulo">Editar categoría</h2>
-    <form class="form form-angosto" method="post" action="{% url 'profesor_editar_categoria' cuat=cuat materia_id=materia.id cat_id=editando.id %}">
+    <form class="form" method="post" action="{% url 'profesor_editar_categoria' cuat=cuat materia_id=materia.id cat_id=editando.id %}">
     {% else %}
     <h2 class="seccion-titulo">Agregar categoría</h2>
-    <form class="form form-angosto" method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia_id=materia.id %}">
+    <form class="form" method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia_id=materia.id %}">
     {% endif %}
         {% csrf_token %}
         <label for="nombre">Nombre de la categoría</label>
@@ -85,5 +86,6 @@
             {% endif %}
         </div>
     </form>
+</div>
 </div>
 {% endblock %}

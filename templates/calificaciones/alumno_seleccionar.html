@@ -1,8 +1,9 @@
 {% extends "calificaciones/base_cal.html" %}
 {% comment %}
    ELEGIR ALUMNO PARA VER SU BOLETÍN
-   Lo usan docentes, secretaría y directivo. El alumno no pasa por acá:
-   siempre ve su propio boletín.
+   Lo usan docentes (solo ven alumnos de sus cursos), secretaría y
+   directivo. Tabla con buscador por apellido, nombre, DNI o curso.
+   El alumno no pasa por acá: siempre ve su propio boletín.
 {% endcomment %}
 
 {% block title %}Consultar boletín — SGE{% endblock %}
@@ -21,24 +22,58 @@
 
 {% block content %}
 {% if puede_ver %}
-<div class="card tarjeta form-angosto">
-    <form class="form" method="get" action="{% url 'alumno_ver_boletin' %}">
-        <label for="alumno">Alumno</label>
-        <select id="alumno" name="alumno_id" required>
-            <option value="">Elegí un alumno...</option>
-            {% for alumno in alumnos %}
-            <option value="{{ alumno.id }}">{{ alumno.anio }}° {{ alumno.division }} — {{ alumno.apellido }}, {{ alumno.nombre }}</option>
-            {% endfor %}
-        </select>
-        <div class="acciones">
-            <button type="submit" class="btn p">Ver boletín</button>
+<div class="card">
+    <div class="card-cabecera">
+        <div>
+            <h2 class="seccion-titulo">Alumnos</h2>
+            <p class="nota">{{ alumnos|length }} alumno{{ alumnos|length|pluralize }}. Tocá "Ver boletín" para abrirlo.</p>
         </div>
-    </form>
+        {% if alumnos %}<input type="search" class="buscador" id="buscar-alumno" placeholder="Buscar apellido, nombre, DNI o curso…" aria-label="Buscar alumno">{% endif %}
+    </div>
+    <div class="tabla-wrap">
+        <table class="tabla" id="tabla-alumnos">
+            <tr><th>Curso</th><th>Alumno</th><th>DNI</th><th></th></tr>
+            {% for alumno in alumnos %}
+            <tr>
+                <td>{{ alumno.anio }}° {{ alumno.division }}</td>
+                <td class="fuerte">{{ alumno.apellido }}, {{ alumno.nombre }}</td>
+                <td>{{ alumno.dni }}</td>
+                <td class="c"><a class="btn chico" href="{% url 'alumno_ver_boletin' %}?alumno_id={{ alumno.id }}">Ver boletín</a></td>
+            </tr>
+            {% empty %}
+            <tr><td class="vacia" colspan="4">No hay alumnos para mostrar.</td></tr>
+            {% endfor %}
+            <tr class="sin-resultados" hidden><td class="vacia" colspan="4">Ningún alumno coincide con la búsqueda.</td></tr>
+        </table>
+    </div>
 </div>
 {% else %}
-<div class="card tarjeta borde-rojo form-angosto">
+<div class="card tarjeta borde-rojo">
     <h3 class="tarjeta-titulo">El boletín todavía no está publicado</h3>
     <p class="ayuda">Secretaría lo habilita a fin de año. Hasta entonces, las notas se consultan en la planilla de cada materia.</p>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Buscador: oculta los alumnos que no contienen el texto escrito.
+(function () {
+    var buscador = document.getElementById('buscar-alumno');
+    if (!buscador) return;
+    var filas = document.querySelectorAll('#tabla-alumnos tr:not(:first-child):not(.sin-resultados)');
+    var vacio = document.querySelector('#tabla-alumnos .sin-resultados');
+    buscador.addEventListener('input', function () {
+        var texto = buscador.value.trim().toLowerCase();
+        var visibles = 0;
+        filas.forEach(function (fila) {
+            var coincide = fila.textContent.toLowerCase().indexOf(texto) !== -1;
+            fila.hidden = !coincide;
+            if (coincide) visibles++;
+        });
+        vacio.hidden = visibles > 0;
+    });
+    buscador.focus();
+})();
+</script>
 {% endblock %}

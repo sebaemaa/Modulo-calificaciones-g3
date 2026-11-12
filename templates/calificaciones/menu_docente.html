@@ -16,9 +16,9 @@
         <h1>Calificaciones</h1>
         <p class="hero-sub">Ciclo lectivo {{ ciclo_lectivo }} · Tus materias y planillas</p>
     </div>
-    <div class="hero-acciones">
-        <a class="btn {% if cuat == 1 %}p{% endif %}" href="?cuat=1">1° cuatrimestre</a>
-        <a class="btn {% if cuat == 2 %}p{% endif %}" href="?cuat=2">2° cuatrimestre</a>
+    <div class="segmento" role="group" aria-label="Cuatrimestre">
+        <a class="{% if cuat == 1 %}activo{% endif %}" href="?cuat=1">1° cuatrimestre</a>
+        <a class="{% if cuat == 2 %}activo{% endif %}" href="?cuat=2">2° cuatrimestre</a>
     </div>
 </section>
 {% endblock %}
@@ -26,8 +26,8 @@
 {% block content %}
 <div class="stats">
     <div class="card stat"><span class="numero">{{ total_materias }}</span><span class="ayuda">Materias a cargo</span></div>
-    <div class="card stat"><span class="numero">{{ sin_cargar }}</span><span class="ayuda">Materias con notas sin cargar</span></div>
-    <div class="card stat"><span class="numero">{{ cerradas }} de {{ total_materias }}</span><span class="ayuda">Materias con el {{ cuat }}° cuatrimestre cerrado</span></div>
+    <div class="card stat ambar"><span class="numero">{{ sin_cargar }}</span><span class="ayuda">Materias con notas sin cargar</span></div>
+    <div class="card stat verde"><span class="numero">{{ cerradas }} de {{ total_materias }}</span><span class="ayuda">Materias con el {{ cuat }}° cuatrimestre cerrado</span></div>
 </div>
 
 <h2 class="seccion-titulo">Mis materias</h2>
@@ -49,10 +49,10 @@
             <a class="btn p" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=m.id %}">Cargar notas</a>
             <a class="btn" href="{% url 'profesor_planilla' cuat=cuat materia_id=m.id %}">Ver planilla</a>
         </div>
-        <p class="ayuda grupo-botones">
-            <a href="{% url 'profesor_categorias' cuat=cuat materia_id=m.id %}">Categorías</a>
-            {% if not m.fecha_cierre %}<a href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=m.id %}">Importar Excel</a>{% endif %}
-        </p>
+        <div class="tarjeta-pie">
+            <a class="link-sec" href="{% url 'profesor_categorias' cuat=cuat materia_id=m.id %}">Categorías</a>
+            {% if not m.fecha_cierre %}<a class="link-sec" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=m.id %}">Importar Excel</a>{% endif %}
+        </div>
     </div>
     {% endfor %}
 </div>

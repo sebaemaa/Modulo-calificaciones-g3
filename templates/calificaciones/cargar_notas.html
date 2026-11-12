@@ -26,9 +26,9 @@
 
 {% block content %}
 <div class="barra">
-    <div class="grupo-botones">
-        <a class="btn {% if cuat == 1 %}p{% endif %}" href="{% url 'profesor_cargar_notas' cuat=1 materia_id=materia.id %}">1° cuatrimestre</a>
-        <a class="btn {% if cuat == 2 %}p{% endif %}" href="{% url 'profesor_cargar_notas' cuat=2 materia_id=materia.id %}">2° cuatrimestre</a>
+    <div class="segmento" role="group" aria-label="Cuatrimestre">
+        <a class="{% if cuat == 1 %}activo{% endif %}" href="{% url 'profesor_cargar_notas' cuat=1 materia_id=materia.id %}">1° cuatrimestre</a>
+        <a class="{% if cuat == 2 %}activo{% endif %}" href="{% url 'profesor_cargar_notas' cuat=2 materia_id=materia.id %}">2° cuatrimestre</a>
     </div>
     <div class="grupo-botones">
         {% if fecha_cierre %}
