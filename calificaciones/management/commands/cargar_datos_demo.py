@@ -14,7 +14,7 @@ Reproduce los datos de ejemplo de las maquetas de diseño:
 - Asistencias del ciclo: Lucía tiene 4 faltas en LabProg (84 %, aprueba) y
   3 en Inglés (70 %, no acredita por la regla del 80 %).
 - Usuarios: profesor1 y profesor2 (docentes), preceptora (secretaría) y
-  acosta.lucia (alumno), clave prueba1234.
+  sebaema (alumna Acosta, Lucía), clave prueba1234.
 - Boletín anual oculto por defecto: la preceptora lo publica desde el menú
   con el botón "Publicar boletines del año".
 
@@ -49,7 +49,8 @@ CLAVE = "prueba1234"
 # lo que tenga estos DNI, así nunca se tocan datos cargados por otros módulos.
 DNI_DOCENTES_DEMO = ["91000001", "91000009"]
 DNI_ALUMNOS_DEMO = [f"910000{n:02d}" for n in range(1, 11)]
-USUARIOS_DEMO = ["profesor1", "profesor2", "preceptora", "acosta.lucia"]
+# "acosta.lucia" era el usuario viejo de la alumna: se borra por si quedó de antes.
+USUARIOS_DEMO = ["profesor1", "profesor2", "preceptora", "sebaema", "acosta.lucia"]
 
 
 class Command(BaseCommand):
@@ -213,7 +214,7 @@ class Command(BaseCommand):
             alumno=lucia, cuatrimestre=CUAT, tipo="adulto", usuario="seed",
         )
         ConfirmacionRite.objects.create(
-            alumno=lucia, cuatrimestre=CUAT, tipo="estudiante", usuario="acosta.lucia",
+            alumno=lucia, cuatrimestre=CUAT, tipo="estudiante", usuario="sebaema",
         )
 
         # ---- Asistencias del ciclo ----
@@ -277,7 +278,7 @@ class Command(BaseCommand):
         u_preceptora.save()
         Perfil.objects.create(usuario=u_preceptora, rol=Perfil.ADMINISTRATIVO)
 
-        u_alum = User.objects.create_user("acosta.lucia", password=CLAVE)
+        u_alum = User.objects.create_user("sebaema", password=CLAVE)
         u_alum.first_name = "Lucía"
         u_alum.save()
         Perfil.objects.create(usuario=u_alum, rol=Perfil.ALUMNO, alumno=lucia)
@@ -286,7 +287,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  profesor1 / {CLAVE} -> Ana Martínez (3 materias)")
         self.stdout.write(f"  profesor2 / {CLAVE} -> Carlos Russo (4 materias)")
         self.stdout.write(f"  preceptora / {CLAVE} -> Paula Sosa (secretaría: ve todas las planillas)")
-        self.stdout.write(f"  acosta.lucia / {CLAVE} -> Acosta, Lucía (5° B)")
+        self.stdout.write(f"  sebaema / {CLAVE} -> Acosta, Lucía (5° B)")
         self.stdout.write("  Materias Ana: LabProg 5B (100%), SistDig 5B (33%), LabAplic 5A (75%)")
         self.stdout.write("  Materias Carlos: Historia, Inglés, Análisis y Teleinformática (5° B)")
         self.stdout.write("  Lucía: LabProg 8 TEA, SistDig 9, Historia 7, Inglés 8, Análisis 6, Teleinfo 5")
