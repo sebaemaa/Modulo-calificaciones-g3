@@ -1,8 +1,8 @@
 diff --git a/calificaciones/urls.py b/calificaciones/urls.py
-index 5411565..8445b17 100644
+index 13f2526..b844344 100644
 --- a/calificaciones/urls.py
 +++ b/calificaciones/urls.py
-@@ -39,4 +39,7 @@ urlpatterns = [
+@@ -38,4 +38,7 @@ urlpatterns = [
      path(DOCENTE + "excel/", views.profesor_cargar_excel, name="profesor_cargar_excel"),
      path(DOCENTE + "excel/confirmar/", views.profesor_confirmar_excel, name="profesor_confirmar_excel"),
      path(DOCENTE + "excel/plantilla/", views.profesor_descargar_plantilla, name="profesor_descargar_plantilla"),
@@ -11,10 +11,10 @@ index 5411565..8445b17 100644
 +    path(DOCENTE + "planilla-calificaciones/", views.profesor_planilla, name="profesor_planilla"),
  ]
 diff --git a/calificaciones/views.py b/calificaciones/views.py
-index 773e869..5d73df0 100644
+index f5bca17..8884f62 100644
 --- a/calificaciones/views.py
 +++ b/calificaciones/views.py
-@@ -1306,3 +1306,260 @@ def profesor_descargar_plantilla(request, cuat, materia_id):
+@@ -1274,3 +1274,243 @@ def profesor_descargar_plantilla(request, cuat, materia_id):
      respuesta["Content-Disposition"] = f'attachment; filename="{nombre_archivo.replace(" ", "_")}"'
      libro.save(respuesta)
      return respuesta
@@ -85,10 +85,6 @@ index 773e869..5d73df0 100644
 +        (c.alumno_id, c.cuatrimestre): c
 +        for c in CierreCuatrimestre.objects.filter(materia=materia)
 +    }
-+    inasistencias = {
-+        (i.alumno_id, i.cuatrimestre): i.cantidad
-+        for i in InasistenciaMateria.objects.filter(materia=materia)
-+    }
 +
 +    filas = []
 +    for nro, alumno in enumerate(_alumnos_del_curso(materia.curso), start=1):
@@ -103,12 +99,11 @@ index 773e869..5d73df0 100644
 +        if not asistencia_ok:
 +            d1["aprobada"] = d2["aprobada"] = False
 +
-+        inas = {}
-+        for c in (1, 2):
-+            valor = inasistencias.get((alumno.id, c))
-+            if valor is None:
-+                valor = _inasistencias_materia_cuat(alumno.id, materia, c)
-+            inas[c] = _formato_ar(valor) or ""
++        # Inasistencias: se leen del módulo Asistencia (no se cargan acá).
++        inas = {
++            c: _formato_ar(_inasistencias_materia_cuat(alumno.id, materia, c)) or ""
++            for c in (1, 2)
++        }
 +
 +        cierre_actual = cierres.get((alumno.id, cuat))  # el cuatrimestre que se edita
 +        final = _calificacion_final(d1, d2, cierre1, cierre2)
@@ -257,18 +252,6 @@ index 773e869..5d73df0 100644
 +        cierres[1].save()
 +        cierres[2].save()
 +
-+        # Inasistencias de los dos cuatrimestres (vacío = volver a las de Asistencia).
-+        for c in (1, 2):
-+            texto = request.POST.get(f"inas{c}_{alumno.id}")
-+            if texto is None:
-+                continue
-+            filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": c}
-+            cantidad = _inasistencia_desde_texto(texto)
-+            if cantidad is not None:
-+                InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
-+            elif texto.strip() == "":
-+                InasistenciaMateria.objects.filter(**filtro).delete()
-+
 +    for aviso in avisos:
 +        messages.warning(request, aviso)
 +    if cerrar:
@@ -277,17 +260,18 @@ index 773e869..5d73df0 100644
 +        messages.success(request, "Cambios guardados.")
 diff --git a/templates/calificaciones/planilla.html b/templates/calificaciones/planilla.html
 new file mode 100644
-index 0000000..a50e5a2
+index 0000000..aa7b930
 --- /dev/null
 +++ b/templates/calificaciones/planilla.html
-@@ -0,0 +1,223 @@
+@@ -0,0 +1,224 @@
 +{% extends "calificaciones/base_cal.html" %}
 +{% comment %}
 +   PLANILLA DE CALIFICACIONES (hoja oficio vertical, igual a la oficial)
 +   - Las columnas calculadas (notas parciales, valoración, calificaciones,
 +     intensificación, final y totales) NO se editan: salen de la carga de notas.
++   - Las inasistencias tampoco se editan: se leen del módulo Asistencia.
 +   - El docente de la materia edita y guarda: turno, preceptor/a,
-+     cursa/recursa, inasistencias, intensificación del 1° cuatrimestre,
++     cursa/recursa, intensificación del 1° cuatrimestre,
 +     diciembre, febrero y la calificación final (si la deja como está, se
 +     sigue calculando sola). N° de orden, nombre y renglones en blanco se
 +     pueden completar antes de imprimir (no se guardan).
@@ -385,7 +369,7 @@ index 0000000..a50e5a2
 +        <button type="button" class="btn" onclick="window.print()">Imprimir (oficio vertical)</button>
 +    </div>
 +</div>
-+<p class="nota" style="padding:12px 20px">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. La intensificación va solo si el 1° no estaba aprobado (nota de 7 a 10). La calificación final se calcula sola; si la cambiás, queda la tuya. Las notas parciales y calificaciones salen de "Cargar notas".{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
++<p class="nota" style="padding:12px 20px">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. La intensificación va solo si el 1° no estaba aprobado (nota de 7 a 10). La calificación final se calcula sola; si la cambiás, queda la tuya. Las notas parciales y calificaciones salen de "Cargar notas"; las inasistencias, del módulo Asistencia.{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
 +</div>
 +
 +<div class="planilla-scroll">
@@ -440,12 +424,12 @@ index 0000000..a50e5a2
 +            {% for v in f.d1.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
 +            <td class="n">{{ f.d1.valoracion }}</td>
 +            <td class="n"><b>{{ f.d1.calificacion }}</b></td>
-+            <td class="n"><input class="ll" type="text" inputmode="decimal" name="inas1_{{ f.id }}" value="{{ f.inas1 }}" aria-label="{{ f.nombre }} — inasistencias 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
++            <td class="n">{{ f.inas1 }}</td>
 +            {% for v in f.d2.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
 +            <td class="n">{{ f.d2.valoracion }}</td>
 +            <td class="n"><b>{{ f.d2.calificacion }}</b></td>
 +            <td class="n"><input class="ll" type="text" inputmode="decimal" name="intens_{{ f.id }}" value="{{ f.intensificacion }}" aria-label="{{ f.nombre }} — intensificación 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
-+            <td class="n"><input class="ll" type="text" inputmode="decimal" name="inas2_{{ f.id }}" value="{{ f.inas2 }}" aria-label="{{ f.nombre }} — inasistencias 2° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
++            <td class="n">{{ f.inas2 }}</td>
 +            <td class="n"><input class="ll" type="text" inputmode="decimal" name="dic_{{ f.id }}" value="{{ f.dic }}" aria-label="{{ f.nombre }} — diciembre"{% if not puede_editar %} readonly{% endif %}></td>
 +            <td class="n"><input class="ll" type="text" inputmode="decimal" name="feb_{{ f.id }}" value="{{ f.feb }}" aria-label="{{ f.nombre }} — febrero"{% if not puede_editar %} readonly{% endif %}></td>
 +            <td class="n"><input class="ll{% if f.no_acredita %} no-acredita{% endif %}" type="text" inputmode="decimal" name="final_{{ f.id }}" value="{{ f.final }}" aria-label="{{ f.nombre }} — calificación final"{% if f.no_acredita %} title="Asistencia menor al 80 %: no acredita la materia"{% endif %}{% if not puede_editar %} readonly{% endif %}></td>

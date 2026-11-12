@@ -1,8 +1,8 @@
 diff --git a/calificaciones/urls.py b/calificaciones/urls.py
-index 9481472..5411565 100644
+index 9481472..13f2526 100644
 --- a/calificaciones/urls.py
 +++ b/calificaciones/urls.py
-@@ -22,4 +22,21 @@ urlpatterns = [
+@@ -22,4 +22,20 @@ urlpatterns = [
      path("alumno/seleccionar/", views.alumno_seleccionar, name="alumno_seleccionar"),
      path("boletin/", views.alumno_ver_boletin, name="alumno_ver_boletin"),
      path("boletin/confirmar/", views.confirmar_rite, name="confirmar_rite"),
@@ -11,7 +11,6 @@ index 9481472..5411565 100644
 +    path(DOCENTE + "cargar-notas/", views.profesor_cargar_notas, name="profesor_cargar_notas"),
 +    path(DOCENTE + "guardar-nota/", views.profesor_guardar_nota, name="profesor_guardar_nota"),
 +    path(DOCENTE + "guardar-valoracion/", views.profesor_guardar_valoracion, name="profesor_guardar_valoracion"),
-+    path(DOCENTE + "guardar-inasistencia/", views.profesor_guardar_inasistencia, name="profesor_guardar_inasistencia"),
 +
 +    # --- docente: categorías de evaluación ---
 +    path(DOCENTE + "categorias/", views.profesor_categorias, name="profesor_categorias"),
@@ -25,10 +24,10 @@ index 9481472..5411565 100644
 +    path(DOCENTE + "excel/plantilla/", views.profesor_descargar_plantilla, name="profesor_descargar_plantilla"),
  ]
 diff --git a/calificaciones/views.py b/calificaciones/views.py
-index 04fc59f..773e869 100644
+index cd5cb65..f5bca17 100644
 --- a/calificaciones/views.py
 +++ b/calificaciones/views.py
-@@ -817,3 +817,492 @@ def confirmar_rite(request):
+@@ -811,3 +811,466 @@ def confirmar_rite(request):
      )
      messages.success(request, "Firma registrada.")
      return destino
@@ -68,10 +67,6 @@ index 04fc59f..773e869 100644
 +        c.alumno_id: c
 +        for c in CierreCuatrimestre.objects.filter(materia=materia, cuatrimestre=cuat)
 +    }
-+    inasistencias = {
-+        i.alumno_id: i.cantidad
-+        for i in InasistenciaMateria.objects.filter(materia=materia, cuatrimestre=cuat)
-+    }
 +
 +    filas = []
 +    for alumno in _alumnos_del_curso(materia.curso):
@@ -85,10 +80,8 @@ index 04fc59f..773e869 100644
 +        asistencia = _asistencia_materia(alumno.id, materia)
 +        asistencia_ok = asistencia is None or asistencia["suficiente"]
 +
-+        # Inasistencias: la carga del docente o, si no hay, las del módulo Asistencia.
-+        inas = inasistencias.get(alumno.id)
-+        if inas is None:
-+            inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
++        # Inasistencias: se leen del módulo Asistencia (no se cargan acá).
++        inas = _inasistencias_materia_cuat(alumno.id, materia, cuat)
 +
 +        filas.append({
 +            "id": alumno.id,
@@ -200,26 +193,6 @@ index 04fc59f..773e869 100644
 +        defaults={"valoracion_preliminar": valoracion},
 +    )
 +    return JsonResponse({"ok": True, "valoracion": valoracion})
-+
-+
-+@rol_requerido("docente")
-+def profesor_guardar_inasistencia(request, cuat, materia_id):
-+    """Guardado automático de las inasistencias del alumno en la materia."""
-+    materia, alumno, error = _validar_ajax(request, cuat, materia_id)
-+    if error:
-+        return error
-+
-+    texto = request.POST.get("valor", "").strip()
-+    filtro = {"alumno": alumno, "materia": materia, "cuatrimestre": cuat}
-+    if texto == "":
-+        InasistenciaMateria.objects.filter(**filtro).delete()
-+        return JsonResponse({"ok": True, "borrado": True})
-+
-+    cantidad = _inasistencia_desde_texto(texto)
-+    if cantidad is None:
-+        return JsonResponse({"ok": False, "error": f"'{texto}' no es una cantidad válida"}, status=400)
-+    InasistenciaMateria.objects.update_or_create(**filtro, defaults={"cantidad": cantidad})
-+    return JsonResponse({"ok": True, "cantidad": _formato_ar(cantidad)})
 +
 +
 +# ─────────────────────────────────────────────
@@ -595,10 +568,10 @@ index aa520ca..bd3e4a7 100644
 +</div>
  {% endblock %}
 diff --git a/templates/calificaciones/cargar_notas.html b/templates/calificaciones/cargar_notas.html
-index b452475..179bcde 100644
+index b452475..037afed 100644
 --- a/templates/calificaciones/cargar_notas.html
 +++ b/templates/calificaciones/cargar_notas.html
-@@ -1,307 +1,256 @@
+@@ -1,307 +1,254 @@
 -{% extends "base.html" %}
 -
 -{% block title %}Hoja de notas — {{ materia }} — {{ cuat_display }}{% endblock %}
@@ -733,7 +706,9 @@ index b452475..179bcde 100644
 +{% extends "calificaciones/base_cal.html" %}
 +{% comment %}
 +   CARGAR NOTAS (grilla con guardado automático)
-+   - Cada nota, valoración e inasistencia se guarda sola al cambiarla.
++   - Cada nota y cada valoración se guarda sola al cambiarla.
++   - Las inasistencias se muestran pero no se editan: salen del módulo
++     Asistencia.
 +   - La calificación (celda gris) se recalcula en pantalla con el peso de
 +     cada categoría, igual que en el servidor.
 +   - Si la asistencia es menor al 80 %, el estado avisa que no acredita.
@@ -838,7 +813,6 @@ index b452475..179bcde 100644
 +<table class="tabla" id="tabla-notas"
 +       data-url-nota="{% url 'profesor_guardar_nota' cuat=cuat materia_id=materia.id %}"
 +       data-url-valoracion="{% url 'profesor_guardar_valoracion' cuat=cuat materia_id=materia.id %}"
-+       data-url-inasistencia="{% url 'profesor_guardar_inasistencia' cuat=cuat materia_id=materia.id %}"
 +       data-con-pesos="{% if con_pesos %}1{% endif %}"
 +       data-cerrado="{% if fecha_cierre %}1{% endif %}">
 +    <thead>
@@ -878,7 +852,7 @@ index b452475..179bcde 100644
 +        </td>
 +        <td class="c calc calif-fila">{{ a.calificacion|default:"—" }}</td>
 +        <td class="estado-fila"{% if a.asistencia_pct %} title="Asistencia: {{ a.asistencia_pct }} %"{% endif %}>{% if a.estado %}<span class="chip {% if a.aprobada %}ok{% else %}wa{% endif %}">{{ a.estado }}</span>{% else %}—{% endif %}</td>
-+        <td class="c"><input class="n inasistencia" type="text" inputmode="decimal" value="{{ a.inasistencias }}" aria-label="{{ a.nombre }} — Inasistencias"{% if fecha_cierre %} readonly{% endif %}></td>
++        <td class="c">{{ a.inasistencias|default:"—" }}</td>
 +    </tr>
 +    {% empty %}
 +    <tr><td class="vacia" colspan="99">Todavía no hay alumnos activos en el curso de esta materia.</td></tr>
@@ -914,7 +888,6 @@ index b452475..179bcde 100644
 +    }
 +
 +    function calificacionFila(fila) {
-+        // Solo los inputs de notas (no el de inasistencias).
 +        var conNota = Array.prototype.filter.call(fila.querySelectorAll('input.nota'), function (i) {
 +            return numero(i.value) !== null;
 +        });
@@ -1078,8 +1051,6 @@ index b452475..179bcde 100644
 +        } else if (campo.classList.contains('v')) {
 +            campo.classList.toggle('ted', campo.value === 'TED');
 +            guardar(tabla.dataset.urlValoracion, { alumno_id: alumno, valoracion: campo.value }, campo);
-+        } else if (campo.classList.contains('inasistencia')) {
-+            guardar(tabla.dataset.urlInasistencia, { alumno_id: alumno, valor: campo.value.trim() }, campo);
          }
      });
  

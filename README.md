@@ -6,9 +6,26 @@ Cada parte ya está en su rama del **repo del grupo**:
 
 Cada uno la lleva **desde su máquina** al **repo del profe**
 (`https://github.com/eest3-hurlingham/sge-modulo3`), a su rama, y abre un Pull
-Request hacia `dev`. El commit queda **a tu nombre**. Después **el profe
-mergea los 4 PR en orden** (está explicado en `calificaciones/ORDEN_DE_MERGE.md`,
-que viene en la parte de Seba).
+Request hacia `dev`. El commit queda **a tu nombre**. Después los 4 PR se
+mergean **en orden** (está explicado en `calificaciones/ORDEN_DE_MERGE.md`, que
+viene en la parte de Seba). **Nadie mergea su propio PR**: lo revisa y lo
+mergea otro integrante (regla 9).
+
+> ## 🔄 Actualización del 12/11 (leer primero)
+> El profe revisó el PR de Seba y pidió **un cambio**: sacar la tabla
+> `InasistenciaMateria`, porque duplicaba datos del módulo Asistencia. Ahora
+> las inasistencias **solo se muestran** (salen de Asistencia) y ya no se
+> cargan a mano ni en "Cargar notas" ni en la planilla.
+>
+> - **Seba:** ya subió el cambio a `seba` (migración nueva `0010`).
+> - **Lautaro:** ya habías subido tu parte, así que tenés que **actualizarla**
+>   (pasos en "2. Lautaro" más abajo). Después abrí tu PR si todavía no lo
+>   hiciste, y revisá y mergeá el PR de Seba.
+> - **Axel y Kenai:** todavía no subieron; sigan sus pasos de abajo, que ya
+>   traen el cambio. Esperen a que Lautaro avise que actualizó.
+>
+> Las ramas del repo del grupo ya tienen todo corregido. Los comandos cambiaron
+> un poco respecto de la versión anterior de este instructivo: usen estos.
 
 | Orden | Quién | Rama | Qué trae |
 |---|---|---|---|
@@ -24,7 +41,7 @@ nada de los otros grupos.
 > ## ⚠ Cómo funciona el orden
 > Cada parte usa código de la anterior, así que **cada uno arma su rama encima
 > de la rama del compañero anterior** en el repo del profe. No hace falta
-> esperar a que el profe mergee: **solo que el anterior ya haya hecho su push**.
+> esperar a que se mergee el anterior: **solo que el anterior ya haya hecho su push**.
 >
 > **Seba → Lautaro → Axel → Kenai**
 >
@@ -61,28 +78,27 @@ git fetch origin
 git fetch grupo
 ```
 
-### 1. Seba (`seba`), empieza primero
-```bash
-git checkout -B seba origin/dev
-git cherry-pick --no-commit grupo/seba
-git commit -m "feat(calificaciones): base del modulo, menu por rol y boletin RITE"
-git push --force origin seba
-```
-Abrir PR `seba` → `dev` en el repo del profe. Avisarle a Lautaro.
+### 1. Seba (`seba`) — ya está hecho
+La parte 1 y el cambio que pidió el profe ya están en `seba` del repo del profe
+(PR #4). No hay que hacer nada.
 
-### 2. Lautaro (`lautaro`), cuando Seba ya hizo su push
+### 2. Lautaro (`lautaro`) — actualizar lo que ya subiste
 ```bash
-git checkout -B lautaro origin/seba
-git cherry-pick --no-commit grupo/lautaro
-git commit -m "feat(calificaciones): carga de notas, categorias e importacion de Excel"
-git push --force origin lautaro
+git checkout lautaro
+git pull origin lautaro
+git merge --no-commit origin/seba
+git checkout grupo/lautaro -- calificaciones templates static/css/calificaciones.css
+git commit -m "fix(calificaciones): las inasistencias se leen del modulo Asistencia"
+git push origin lautaro
 ```
-Abrir PR `lautaro` → `dev`. Avisarle a Axel.
+Este push va **sin** `--force`. Si `git merge` dice "Already up to date", igual
+seguí con los pasos siguientes. Abrir PR `lautaro` → `dev` (si no lo abriste) y
+avisarle a Axel.
 
-### 3. Axel (`lerafer`), cuando Lautaro ya hizo su push
+### 3. Axel (`lerafer`), cuando Lautaro ya actualizó
 ```bash
 git checkout -B lerafer origin/lautaro
-git cherry-pick --no-commit grupo/lerafer
+git checkout grupo/lerafer -- calificaciones templates static/css/calificaciones.css
 git commit -m "feat(calificaciones): planilla de calificaciones, cierre e intensificacion"
 git push --force origin lerafer
 ```
@@ -91,18 +107,21 @@ Abrir PR `lerafer` → `dev`. Avisarle a Kenai.
 ### 4. Kenai (`kenai`), cuando Axel ya hizo su push
 ```bash
 git checkout -B kenai origin/lerafer
-git cherry-pick --no-commit grupo/kenai
+git checkout grupo/kenai -- calificaciones templates static/css/calificaciones.css
 git commit -m "feat(calificaciones): tests y datos de demostracion"
 git push --force origin kenai
 ```
 Abrir PR `kenai` → `dev`. Con esto están las 4 partes subidas.
+
+El `--force` de Axel y Kenai es porque sus ramas en el repo del profe tienen
+código viejo que hay que reemplazar. Lautaro no lo necesita.
 
 > Fijate que en `git checkout -B` **cada uno parte de la rama del anterior**
 > (`origin/seba`, `origin/lautaro`, `origin/lerafer`), no de `dev`. Si el
 > anterior todavía no hizo su push, esa rama no existe o tiene código viejo:
 > esperá su aviso.
 
-**Para que el PR se vea prolijo:** hasta que el profe mergee los anteriores,
+**Para que el PR se vea prolijo:** hasta que se mergeen los anteriores,
 tu PR va a mostrar también los cambios de los compañeros previos. Es normal:
 cuando se mergea el anterior, GitHub actualiza tu PR y muestra solo lo tuyo.
 En la descripción del PR podés poner: *"Va después del PR de `<rama anterior>`.
@@ -110,7 +129,7 @@ Orden de merge en `calificaciones/ORDEN_DE_MERGE.md`."*
 
 ---
 
-## Para el profe (lo explica también ORDEN_DE_MERGE.md)
+## Para quien mergea (lo explica también ORDEN_DE_MERGE.md)
 
 - Mergear en orden: `seba` → `lautaro` → `lerafer` → `kenai`.
 - Usar **"Create a merge commit"**. **No** "Squash and merge" ni "Rebase and
@@ -121,14 +140,14 @@ Orden de merge en `calificaciones/ORDEN_DE_MERGE.md`."*
 
 ## Si algo sale mal
 
-- **El cherry-pick da conflicto:** casi siempre es porque partiste de la rama
-  equivocada o el anterior todavía no hizo su push. Cancelá con
-  `git cherry-pick --abort`, hacé `git fetch origin` y repetí desde
-  `git checkout -B ...`.
+- **Te quedó algo raro a mitad de camino:** casi siempre es porque partiste de
+  la rama equivocada o el anterior todavía no hizo su push. Hacé
+  `git fetch origin` y `git fetch grupo` y repetí desde `git checkout -B ...`
+  (Lautaro: `git merge --abort` y repetir desde el principio).
 - **`git push` pide permiso o falla:** tenés que ser colaborador del repo del
   profe; pedíselo.
 - **Plan B:** en la carpeta `patches/` de esta rama están los mismos cambios
-  como archivos `.patch`. En vez del `cherry-pick` se puede hacer
+  como archivos `.patch`. En vez del `git checkout grupo/... -- ...` se puede hacer
   `git apply parte-N-<nombre>.patch` (con el archivo copiado en la carpeta del
   repo) y después `git add -A`.
 
