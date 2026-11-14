@@ -11,10 +11,8 @@
      corregir hay que reabrirlo desde la planilla.
 {% endcomment %}
 
-{# Titulo de la pestaña. #}
 {% block title %}Cargar notas — {{ materia.nombre }} — SGE{% endblock %}
 
-{# Encabezado. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
@@ -22,63 +20,49 @@
         <h1>Cargar notas — {{ materia.nombre }} · {{ curso }}</h1>
     </div>
     <div class="hero-acciones">
-        {# Volver al menu conservando el cuatrimestre. #}
         <a class="btn" href="{% url 'calificaciones_menu' %}?cuat={{ cuat }}">← Volver a mis materias</a>
-        {# Link a la planilla. #}
         <a class="btn" href="{% url 'profesor_planilla' cuat=cuat materia_id=materia.id %}">Ver planilla</a>
     </div>
 </section>
 {% endblock %}
 
-{# Contenido. #}
 {% block content %}
 <div class="barra">
-    {# Selector de cuatrimestre (cada link va a la grilla del otro cuatrimestre). #}
     <div class="segmento" role="group" aria-label="Cuatrimestre">
         <a class="{% if cuat == 1 %}activo{% endif %}" href="{% url 'profesor_cargar_notas' cuat=1 materia_id=materia.id %}">1° cuatrimestre</a>
         <a class="{% if cuat == 2 %}activo{% endif %}" href="{% url 'profesor_cargar_notas' cuat=2 materia_id=materia.id %}">2° cuatrimestre</a>
     </div>
     <div class="grupo-botones">
-        {# Si el cuatrimestre esta cerrado muestra el candado y menos botones. #}
         {% if fecha_cierre %}
         <span class="chip ne">🔒 Cerrado el {{ fecha_cierre }}</span>
         <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
-        {# Si esta abierto muestra el aviso de guardado y todos los botones. #}
         {% else %}
         <span class="chip ok" id="estado-guardado">✓ Guardado automático</span>
         <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
         <a class="btn" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=materia.id %}">Importar Excel</a>
-        {# Descargar plantilla solo si esta instalada la libreria de Excel. #}
         {% if excel_disponible %}<a class="btn" href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargar plantilla</a>{% endif %}
         {% endif %}
     </div>
 </div>
 
-{# Aviso grande si esta cerrado. #}
 {% if fecha_cierre %}
 <div class="card tarjeta borde-oscuro">
     <p class="ayuda"><b>El {{ cuat }}° cuatrimestre está cerrado</b>: las calificaciones quedaron fijas y no se pueden cambiar las notas. Si tenés que corregir algo, reabrilo desde la <a href="{% url 'profesor_planilla' cuat=cuat materia_id=materia.id %}">planilla</a>.</p>
 </div>
 {% endif %}
 
-{# Tabla de notas. #}
 <div class="card tabla-wrap">
-{# Los data-... guardan las URLs de guardado para que las use el JavaScript. #}
 <table class="tabla" id="tabla-notas"
        data-url-nota="{% url 'profesor_guardar_nota' cuat=cuat materia_id=materia.id %}"
        data-url-valoracion="{% url 'profesor_guardar_valoracion' cuat=cuat materia_id=materia.id %}"
        data-con-pesos="{% if con_pesos %}1{% endif %}"
        data-cerrado="{% if fecha_cierre %}1{% endif %}">
     <thead>
-    {# Primera fila de titulos. #}
     <tr>
         <th rowspan="2">Estudiante</th>
         {% comment %} Encabezado de los grupos (ej. "Trabajos prácticos · 40 %"). {% endcomment %}
-        {# Por cada grupo de columnas: #}
         {% for g in grupos %}
-            {# si tiene nombre, un titulo que abarca todas sus columnas (con su peso); #}
             {% if g.nombre %}<th colspan="{{ g.cats|length }}" class="c">{{ g.nombre }}{% if g.peso %} · {{ g.peso|floatformat }} %{% endif %}</th>
-            {# si no, el titulo de la categoria sola. #}
             {% else %}{% for cat in g.cats %}<th rowspan="2" class="c">{{ cat.nombre }}{% if cat.peso %} · {{ cat.peso|floatformat }} %{% endif %}</th>{% endfor %}{% endif %}
         {% endfor %}
         <th rowspan="2" class="c">Val. preliminar</th>
@@ -86,44 +70,32 @@
         <th rowspan="2">Estado</th>
         <th rowspan="2" class="c">Inasistencias</th>
     </tr>
-    {# Segunda fila de titulos: nombres de las categorias que estan dentro de un grupo. #}
     <tr>
         {% for g in grupos %}{% if g.nombre %}{% for cat in g.cats %}<th class="c">{{ cat.nombre }}</th>{% endfor %}{% endif %}{% endfor %}
     </tr>
     </thead>
     <tbody>
-    {# Una fila por alumno. #}
     {% for a in filas %}
-    {# data-alumno guarda el id para el JavaScript. #}
     <tr data-alumno="{{ a.id }}" data-asistencia-ok="{% if a.asistencia_ok %}1{% endif %}">
         <td class="fuerte">{{ a.nombre }}</td>
-        {# Una celda por categoria. #}
         {% for celda in a.celdas %}
-        {# Campo de la nota, con los datos (categoria, grupo, pesos) que usa el JavaScript. readonly si esta cerrado. #}
         <td class="c"><input class="n nota" type="text" inputmode="decimal" value="{{ celda.valor }}"
             data-cat="{{ celda.cat.id }}" data-grupo="{{ celda.cat.grupo_key }}"
             data-peso="{{ celda.cat.peso_js }}" data-peso-grupo="{{ celda.cat.peso_grupo_js }}"
             aria-label="{{ a.nombre }} — {{ celda.cat.nombre }}"{% if fecha_cierre %} readonly{% endif %}></td>
         {% endfor %}
-        {# Celda de la valoracion. #}
         <td class="c">
-            {# Desplegable TEA/TEP/TED (deshabilitado si esta cerrado). #}
             <select class="v{% if a.valoracion == 'TED' %} ted{% endif %}" aria-label="{{ a.nombre }} — Valoración preliminar"{% if fecha_cierre %} disabled{% endif %}>
-                {# selected marca la opcion guardada. #}
                 <option value=""{% if not a.valoracion %} selected{% endif %}>—</option>
                 <option value="TEA"{% if a.valoracion == 'TEA' %} selected{% endif %}>TEA</option>
                 <option value="TEP"{% if a.valoracion == 'TEP' %} selected{% endif %}>TEP</option>
                 <option value="TED"{% if a.valoracion == 'TED' %} selected{% endif %}>TED</option>
             </select>
         </td>
-        {# Calificacion calculada (celda gris). #}
         <td class="c calc calif-fila">{{ a.calificacion|default:"—" }}</td>
-        {# Estado del alumno con etiqueta de color. #}
         <td class="estado-fila"{% if a.asistencia_pct %} title="Asistencia: {{ a.asistencia_pct }} %"{% endif %}>{% if a.estado %}<span class="chip {% if a.aprobada %}ok{% else %}wa{% endif %}">{{ a.estado }}</span>{% else %}—{% endif %}</td>
-        {# Inasistencias: solo se muestran (salen del modulo Asistencia, no se editan). #}
         <td class="c">{{ a.inasistencias|default:"—" }}</td>
     </tr>
-    {# Si no hay alumnos. #}
     {% empty %}
     <tr><td class="vacia" colspan="99">Todavía no hay alumnos activos en el curso de esta materia.</td></tr>
     {% endfor %}
@@ -134,7 +106,6 @@
 <p class="nota">La calificación (gris) se calcula sola con el peso de cada categoría. Con menos de 7 el alumno queda "A intensificar"; con menos de 80 % de asistencia, "No acredita por asistencia". Usá Enter o las flechas para moverte entre celdas.</p>
 {% endblock %}
 
-{# JavaScript de la grilla. #}
 {% block extra_js %}
 <script>
 (function () {

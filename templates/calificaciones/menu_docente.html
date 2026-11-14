@@ -8,17 +8,14 @@
    - Una tarjeta por materia (y por curso) con sus accesos.
 {% endcomment %}
 
-{# Titulo de la pestaña. #}
 {% block title %}Calificaciones — SGE{% endblock %}
 
-{# Encabezado celeste. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
         <h1>Calificaciones</h1>
         <p class="hero-sub">Ciclo lectivo {{ ciclo_lectivo }} · Tus materias y planillas</p>
     </div>
-    {# Selector de cuatrimestre. #}
     <div class="segmento" role="group" aria-label="Cuatrimestre">
         <a class="{% if cuat == 1 %}activo{% endif %}" href="?cuat=1">1° cuatrimestre</a>
         <a class="{% if cuat == 2 %}activo{% endif %}" href="?cuat=2">2° cuatrimestre</a>
@@ -26,55 +23,39 @@
 </section>
 {% endblock %}
 
-{# Contenido. #}
 {% block content %}
 <div class="stats">
-    {# Total de materias del docente. #}
     <div class="card stat"><span class="numero">{{ total_materias }}</span><span class="ayuda">Materias a cargo</span></div>
-    {# Materias con notas sin cargar. #}
     <div class="card stat ambar"><span class="numero">{{ sin_cargar }}</span><span class="ayuda">Materias con notas sin cargar</span></div>
-    {# Materias con el cuatrimestre cerrado. #}
     <div class="card stat verde"><span class="numero">{{ cerradas }} de {{ total_materias }}</span><span class="ayuda">Materias con el {{ cuat }}° cuatrimestre cerrado</span></div>
 </div>
 
 <h2 class="seccion-titulo">Mis materias</h2>
 
-{# Si tiene materias... #}
 {% if materias %}
 <div class="grid-tarjetas">
-    {# ...una tarjeta por materia. #}
     {% for m in materias %}
-    {# Borde verde si esta cerrada o completa; azul si falta cargar. #}
     <div class="card tarjeta {% if m.fecha_cierre or m.completo %}borde-verde{% else %}borde-azul{% endif %}">
         <div class="tarjeta-cabecera">
             <h3 class="tarjeta-titulo">{{ m.nombre }}</h3>
-            {# Etiqueta: cerrado (con fecha), completo o abierto. #}
             {% if m.fecha_cierre %}<span class="chip ne">{{ cuat }}° cuat. cerrado el {{ m.fecha_cierre }}</span>
             {% elif m.completo %}<span class="chip ok">{{ cuat }}° cuat. completo</span>
             {% else %}<span class="chip wa">{{ cuat }}° cuat. abierto</span>{% endif %}
         </div>
-        {# Curso y cantidad de estudiantes. #}
         <p class="ayuda">{{ m.curso }} · {{ m.estudiantes }} estudiantes</p>
-        {# Porcentaje de notas cargadas (o aviso si no hay categorias). #}
         <p class="nota">{% if m.pct is None %}Creá categorías para poder cargar notas{% else %}Notas cargadas: {{ m.pct }}%{% endif %}</p>
-        {# Barra de progreso: su ancho es el porcentaje (default 0 si no hay). #}
         <div class="progreso"><div style="width: {{ m.pct|default:0 }}%"></div></div>
         <div class="grupo-botones">
-            {# Boton a la grilla de carga de notas. #}
             <a class="btn p" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=m.id %}">Cargar notas</a>
-            {# Boton a la planilla. #}
             <a class="btn" href="{% url 'profesor_planilla' cuat=cuat materia_id=m.id %}">Ver planilla</a>
         </div>
         <div class="tarjeta-pie">
-            {# Link a las categorias. #}
             <a class="link-sec" href="{% url 'profesor_categorias' cuat=cuat materia_id=m.id %}">Categorías</a>
-            {# Importar Excel solo si el cuatrimestre esta abierto. #}
             {% if not m.fecha_cierre %}<a class="link-sec" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=m.id %}">Importar Excel</a>{% endif %}
         </div>
     </div>
     {% endfor %}
 </div>
-{# Si no tiene materias muestra un aviso. #}
 {% else %}
 <div class="card tarjeta borde-azul">
     <h3 class="tarjeta-titulo">Todavía no tenés materias asignadas</h3>

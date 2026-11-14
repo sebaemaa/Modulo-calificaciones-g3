@@ -12,30 +12,22 @@
    - content:    contenido de la pantalla.
    - extra_css / extra_js: estilos o scripts propios de la pantalla.
 {% endcomment %}
-{# Empieza la pagina HTML. Todo lo que esta entre llaves con % son ordenes de Django. #}
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-{# block = hueco que cada pantalla puede rellenar. Aca va el titulo de la pestaña. #}
 <title>{% block title %}Calificaciones — SGE{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-{# Carga la tipografia Poppins de Google. #}
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-{# Carga el CSS del modulo. static arma la ruta; ?v= obliga al navegador a bajar la version nueva. #}
 <link rel="stylesheet" href="{% static 'css/calificaciones.css' %}?v=20261111-2">
-{# Hueco para estilos propios de cada pantalla. #}
 {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-{# Barra de navegacion de arriba (igual a la del resto del sistema). #}
 <nav>
-    {# Boton de 3 rayitas para celulares. #}
     <button class="hamburger" type="button" aria-label="Menú"><span></span><span></span><span></span></button>
     <a href="/" class="logo"><img src="https://tecnica3hurlingham.com/logot3.png" alt="Logo"> SGE</a>
-    {# Links a los otros modulos. #}
     <ul>
         <li><a href="/">Inicio</a></li>
         <li><a href="/alumnos/">Alumnos</a></li>
@@ -43,27 +35,20 @@
         <li><a href="/calificaciones/">Calificaciones</a></li>
         <li><a href="/docentes/">Docentes</a></li>
         <li><a href="/comunicados/">Comunicados</a></li>
-        {# Lo que sigue solo se muestra si hay un usuario logueado. #}
         {% if user.is_authenticated %}
         {% comment %} El link al perfil aparece solo si el proyecto tiene la ruta 'perfil'. {% endcomment %}
-        {# Busca la URL 'perfil' y la guarda en url_perfil (queda vacia si no existe, sin romper). #}
         {% url 'perfil' as url_perfil %}
         <li>
-            {# Si existe el perfil el nombre es un link; si no, solo texto. #}
             {% if url_perfil %}<a href="{{ url_perfil }}" class="nav-chip" title="Mi perfil">{% else %}<span class="nav-chip">{% endif %}
-                {# Nombre de usuario en mayusculas y su rol. #}
                 {{ user.username|upper }}{% if perfil %} · {{ perfil.get_rol_display }}{% endif %}
             {% if url_perfil %}</a>{% else %}</span>{% endif %}
         </li>
         <li>
-            {# Formulario para cerrar sesion (por POST, como pide Django). #}
             <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
-                {# Token de seguridad obligatorio en todo formulario POST. #}
                 {% csrf_token %}
                 {% comment %} Al salir vuelve al inicio de sesión (sin esto Django muestra la página del admin). {% endcomment %}
                 <input type="hidden" name="next" value="{% url 'login' %}">
 
-                {# Boton de salir con un icono dibujado en SVG. #}
                 <button type="submit" class="nav-logout" title="Cerrar sesión" aria-label="Cerrar sesión">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -77,31 +62,23 @@
     </ul>
 </nav>
 
-{# Si hay carteles (messages de las vistas)... #}
 {% if messages %}
 <div class="messages-container">
-    {# ...los recorre... #}
     {% for message in messages %}
-    {# ...y muestra cada uno con el color de su tipo (success, error, warning). #}
     <div class="alert alert-{{ message.tags }}">
         <span>{{ message }}</span>
-        {# La X borra el cartel. #}
         <button class="alert-close" type="button" aria-label="Cerrar" onclick="this.parentElement.remove()">&times;</button>
     </div>
     {% endfor %}
 </div>
 {% endif %}
 
-{# Hueco para el encabezado celeste de cada pantalla. #}
 {% block hero %}{% endblock %}
 
-{# Contenedor principal; main_class permite agrandarlo. #}
 <main class="cal-main {% block main_class %}{% endblock %}">
-{# Hueco donde cada pantalla pone su contenido. #}
 {% block content %}{% endblock %}
 </main>
 
-{# Pie de pagina. #}
 <footer>
     <p class="footer-titulo">E.E.S.T N°3 Víctor Mercante</p>
     <p class="footer-sub">Sistema de Gestión Escolar — 2026</p>
@@ -122,7 +99,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-{# Hueco para el JavaScript propio de cada pantalla. #}
 {% block extra_js %}{% endblock %}
 </body>
 </html>

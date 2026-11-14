@@ -7,10 +7,8 @@
    - "Volver" lleva a Cargar notas; si todavía no hay categorías, al inicio.
 {% endcomment %}
 
-{# Titulo de la pestaña. #}
 {% block title %}Categorías — {{ materia.nombre }} — SGE{% endblock %}
 
-{# Encabezado. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
@@ -18,7 +16,6 @@
         <h1>Categorías de evaluación — {{ materia.nombre }}</h1>
     </div>
     <div class="hero-acciones">
-        {# Si ya hay categorias vuelve a la grilla de notas; si no, al menu. #}
         {% if categorias %}
         <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">← Volver a {{ materia.nombre }}</a>
         {% else %}
@@ -28,33 +25,25 @@
 </section>
 {% endblock %}
 
-{# Contenido: dos tarjetas (lista y formulario). #}
 {% block content %}
 <div class="dos-columnas">
 <div class="card tarjeta">
     <h2 class="seccion-titulo">Categorías actuales</h2>
-    {# Si hay categorias muestra la tabla. #}
     {% if categorias %}
     <div class="tabla-wrap">
     <table class="tabla">
         <tr><th>Orden</th><th>Nombre</th><th>Grupo</th><th>Peso %</th><th></th></tr>
-        {# Una fila por categoria. #}
         {% for cat in categorias %}
         <tr>
             <td>{{ cat.orden }}</td>
             <td class="fuerte">{{ cat.nombre }}</td>
-            {# Grupo (raya si no tiene). #}
             <td>{{ cat.grupo|default:"—" }}</td>
-            {# Peso; floatformat saca los decimales que sobran. #}
             <td>{% if cat.peso %}{{ cat.peso|floatformat }}{% else %}—{% endif %}</td>
             <td>
                 <div class="acciones-fila">
-                    {# Editar: recarga la pagina con ?editar=ID para llenar el formulario de al lado. #}
                     <a class="btn chico" href="?editar={{ cat.id }}">Editar</a>
-                    {# Formulario para borrar (POST). onsubmit pide confirmacion antes de enviar; escapejs evita que el nombre rompa el JavaScript. #}
                     <form method="post" action="{% url 'profesor_eliminar_categoria' cuat=cuat materia_id=materia.id cat_id=cat.id %}"
                           onsubmit="return confirm('¿Eliminar la categoría {{ cat.nombre|escapejs }}? Se borran también sus notas.')">
-                        {# Token de seguridad. #}
                         {% csrf_token %}
                         <button type="submit" class="btn chico peligro">Eliminar</button>
                     </form>
@@ -64,41 +53,31 @@
         {% endfor %}
     </table>
     </div>
-    {# Aviso si hay cuatrimestres cerrados. #}
     {% if hay_cerrados %}<p class="nota">Las categorías con notas de un cuatrimestre cerrado no se pueden eliminar. Cambiar el peso solo afecta a los cuatrimestres abiertos.</p>{% endif %}
-    {# Si no hay categorias. #}
     {% else %}
     <p class="ayuda">Todavía no hay categorías en esta materia. Agregá la primera acá abajo para poder cargar notas.</p>
     {% endif %}
 </div>
 
 <div class="card tarjeta">
-    {# El mismo formulario sirve para editar o para agregar: cambia el titulo y a que vista envia. #}
     {% if editando %}
     <h2 class="seccion-titulo">Editar categoría</h2>
-    {# Editando: envia a profesor_editar_categoria. #}
     <form class="form" method="post" action="{% url 'profesor_editar_categoria' cuat=cuat materia_id=materia.id cat_id=editando.id %}">
     {% else %}
     <h2 class="seccion-titulo">Agregar categoría</h2>
-    {# Agregando: envia a profesor_agregar_categoria. #}
     <form class="form" method="post" action="{% url 'profesor_agregar_categoria' cuat=cuat materia_id=materia.id %}">
     {% endif %}
-        {# Token de seguridad. #}
         {% csrf_token %}
         <label for="nombre">Nombre de la categoría</label>
-        {# Campo nombre (obligatorio). Si se esta editando viene con el valor actual. #}
         <input type="text" id="nombre" name="nombre" value="{{ editando.nombre|default:'' }}" placeholder="Ej: Trabajo práctico 1, Examen, Participación" maxlength="100" required>
 
         <label for="grupo">Grupo (opcional, junta varias columnas en la planilla)</label>
-        {# Campo grupo (opcional). #}
         <input type="text" id="grupo" name="grupo" value="{{ editando.grupo|default:'' }}" placeholder="Ej: Trabajos prácticos" maxlength="100">
 
         <label for="peso">Peso % (opcional, cuánto aporta a la calificación)</label>
-        {# Campo peso (opcional). #}
         <input type="text" id="peso" name="peso" inputmode="decimal" value="{% if editando.peso %}{{ editando.peso|floatformat }}{% endif %}" placeholder="Ej: 30">
 
         <div class="acciones">
-            {# Botones segun el modo. #}
             {% if editando %}
             <button type="submit" class="btn p">Guardar cambios</button>
             <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Cancelar</a>

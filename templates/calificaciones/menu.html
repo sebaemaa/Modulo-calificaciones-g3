@@ -7,109 +7,84 @@
    - Acceso al boletín de cualquier alumno.
 {% endcomment %}
 
-{# extends (linea 1) = esta pantalla usa base_cal.html y solo rellena sus huecos. #}
 {% block title %}Calificaciones — SGE{% endblock %}
 
-{# Encabezado celeste. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
         <h1>Calificaciones</h1>
-        {# ciclo_lectivo viene del contexto de la vista menu(). #}
         <p class="hero-sub">Ciclo lectivo {{ ciclo_lectivo }} · Planillas de los docentes y boletines de los alumnos</p>
     </div>
-    {# Selector de cuatrimestre: son links que recargan la pagina con ?cuat=. #}
     <div class="segmento" role="group" aria-label="Cuatrimestre">
-        {# Marca como activo el cuatrimestre elegido. #}
         <a class="{% if cuat == 1 %}activo{% endif %}" href="?cuat=1">1° cuatrimestre</a>
         <a class="{% if cuat == 2 %}activo{% endif %}" href="?cuat=2">2° cuatrimestre</a>
     </div>
 </section>
 {% endblock %}
 
-{# Contenido de la pantalla. #}
 {% block content %}
 <div class="stats">
-    {# Tarjeta con la cantidad de planillas (el filtro length cuenta). #}
     <div class="card stat"><span class="numero">{{ materias_todas|length }}</span><span class="ayuda">Planillas de calificaciones</span></div>
-    {# Tarjeta verde o ambar segun si el boletin esta publicado. #}
     <div class="card stat {% if boletin_publicado %}verde{% else %}ambar{% endif %}"><span class="numero">{% if boletin_publicado %}Publicado{% else %}Oculto{% endif %}</span><span class="ayuda">Boletín {{ ciclo_lectivo }}</span></div>
 </div>
 
-{# Tarjeta con la lista de planillas. #}
 <div class="card">
     <div class="card-cabecera">
         <div>
             <h2 class="seccion-titulo">Planillas de calificaciones</h2>
             <p class="nota">Se abren en modo lectura. Para imprimir, usá el botón "Imprimir" de cada planilla.</p>
         </div>
-        {# El buscador solo aparece si hay materias. #}
         {% if materias_todas %}<input type="search" class="buscador" id="buscar-planilla" placeholder="Buscar docente, materia o curso…" aria-label="Buscar planilla">{% endif %}
     </div>
-    {# Si hay materias muestra la tabla. #}
     {% if materias_todas %}
     <div class="tabla-wrap">
         <table class="tabla" id="tabla-planillas">
             <tr><th>Docente</th><th>Materia</th><th>Curso</th><th></th></tr>
-            {# Una fila por materia. #}
             {% for m in materias_todas %}
             <tr>
                 <td class="fuerte">{{ m.docente }}</td>
                 <td>{{ m.nombre }}</td>
                 <td>{{ m.curso }}</td>
-                {# Link a la planilla; url arma la direccion con el cuatrimestre y el id de la materia. #}
                 <td class="c"><a class="btn chico" href="{% url 'profesor_planilla' cuat=cuat materia_id=m.id %}">Ver planilla</a></td>
             </tr>
             {% endfor %}
-            {# Fila oculta que aparece cuando la busqueda no encuentra nada. #}
             <tr class="sin-resultados" hidden><td class="vacia" colspan="4">No hay planillas que coincidan con la búsqueda.</td></tr>
         </table>
     </div>
-    {# Si no hay materias muestra un aviso. #}
     {% else %}
     <div class="tarjeta"><p class="ayuda">Todavía no hay materias cargadas. Cuando el módulo Docentes asigne materias, van a aparecer acá.</p></div>
     {% endif %}
 </div>
 
 <div class="grid-2">
-    {# La tarjeta de publicar solo la ve secretaria/directivo. #}
     {% if puede_publicar_boletin %}
-    {# Borde verde si esta publicado, rojo si no. #}
     <div class="card tarjeta {% if boletin_publicado %}borde-verde{% else %}borde-rojo{% endif %}">
         <div class="tarjeta-cabecera">
             <h3 class="tarjeta-titulo">Publicación del boletín {{ ciclo_lectivo }}</h3>
-            {# Etiqueta de estado. #}
             {% if boletin_publicado %}<span class="chip ok">Publicado</span>{% else %}<span class="chip wa">Oculto</span>{% endif %}
         </div>
-        {# Texto de ayuda segun el estado. #}
         {% if boletin_publicado %}
         <p class="ayuda">Alumnos y docentes pueden ver el boletín y registrar las firmas.</p>
         {% else %}
         <p class="ayuda">Los alumnos ven solo "Mis notas" y los docentes no pueden abrir boletines. Se publica a fin de año.</p>
         {% endif %}
-        {# Formulario que llama a la vista publicar_boletines. #}
         <form method="post" action="{% url 'publicar_boletines' %}" class="tarjeta-pie">
-            {# Token de seguridad. #}
             {% csrf_token %}
-            {# El texto del boton cambia: publicar u ocultar. #}
             <button type="submit" class="btn {% if not boletin_publicado %}p{% endif %}">{% if boletin_publicado %}Ocultar boletines del año{% else %}Publicar boletines del año{% endif %}</button>
         </form>
     </div>
     {% endif %}
 
-    {# Tarjeta para ir al buscador de alumnos. #}
     <div class="card tarjeta borde-oscuro">
         <h3 class="tarjeta-titulo">Boletín de un alumno</h3>
         <p class="ayuda">Buscá un alumno para ver su boletín: calificaciones por cuatrimestre, intensificación, asistencia y firmas.</p>
         <div class="tarjeta-pie">
-            {# Link a alumno_seleccionar. #}
             <a class="btn p" href="{% url 'alumno_seleccionar' %}">Consultar boletines</a>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{# JavaScript de esta pantalla. #}
 {% block extra_js %}
 <script>
 // Buscador: oculta las filas que no contienen el texto escrito.

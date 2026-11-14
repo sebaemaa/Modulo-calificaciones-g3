@@ -16,10 +16,8 @@
      alumno que no llega al 80 % de asistencia se marca en rojo.
 {% endcomment %}
 
-{# Titulo de la pestaña. #}
 {% block title %}Planilla de calificaciones — {{ materia.nombre }} — SGE{% endblock %}
 
-{# Estilos de la hoja (medidas en milimetros para que imprima igual a la oficial). #}
 {% block extra_css %}
 <style>
 /* Hoja oficio vertical (216 x 340 mm) con medidas en milímetros. */
@@ -78,109 +76,80 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
 </style>
 {% endblock %}
 
-{# Encabezado celeste (no se imprime). #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
-        {# "Mis materias" aparece solo para el docente. #}
         <p class="miga">Calificaciones › {% if puede_editar %}Mis materias › {% endif %}{{ materia.nombre }} {{ curso }} › Planilla</p>
         <h1>Planilla de calificaciones — {{ materia.nombre }} · {{ curso }}</h1>
     </div>
     <div class="hero-acciones">
-        {# Boton volver. #}
         <a class="btn" href="{% url 'calificaciones_menu' %}?cuat={{ cuat }}">← Volver a {% if puede_editar %}mis materias{% else %}calificaciones{% endif %}</a>
-        {# Cargar notas solo para el docente. #}
         {% if puede_editar %}<a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">Cargar notas</a>{% endif %}
     </div>
 </section>
 {% endblock %}
 
-{# Esta pantalla usa todo el ancho. #}
 {% block main_class %}ancho{% endblock %}
 
-{# Contenido: toda la planilla es un unico formulario. #}
 {% block content %}
 <form method="post">
-{# Token de seguridad. #}
 {% csrf_token %}
 {% comment %} La hoja ya muestra los dos cuatrimestres: no hace falta elegir uno. Cerrar/Reabrir aplica al cuatrimestre con el que se entró desde el inicio. {% endcomment %}
-{# Barra de arriba con datos y botones (no-print: no sale impresa). #}
 <div class="card no-print">
 <div class="card-cabecera">
     <div class="datos-fila">
         <span>Docente: <b>{{ docente_nombre }}</b></span>
         <span>Curso: <b>{{ curso }}</b></span>
-        {# Etiqueta: cerrado, abierto o solo lectura. #}
         {% if fecha_cierre %}<span class="chip ne">🔒 {{ cuat }}° cuatrimestre cerrado el {{ fecha_cierre }}</span>
         {% elif puede_editar %}<span class="chip wa">{{ cuat }}° cuatrimestre abierto</span>
         {% else %}<span class="chip ne">Solo lectura</span>{% endif %}
     </div>
     <div class="grupo-botones">
-        {# Los botones de guardar/cerrar/reabrir son solo para el docente. #}
         {% if puede_editar %}
-        {# Guardar: envia accion=guardar. #}
         <button type="submit" class="btn p" name="accion" value="guardar">Guardar cambios</button>
-        {# Si esta cerrado muestra Reabrir; si esta abierto, Cerrar. Los dos piden confirmacion. #}
         {% if fecha_cierre %}
         <button type="submit" class="btn" name="accion" value="reabrir" onclick="return confirm('¿Reabrir el {{ cuat }}° cuatrimestre? Las calificaciones se vuelven a calcular con las notas.')">Reabrir {{ cuat }}° cuatrimestre</button>
         {% else %}
         <button type="submit" class="btn" name="accion" value="cerrar" onclick="return confirm('¿Cerrar el {{ cuat }}° cuatrimestre? Las calificaciones quedan fijas.')">Cerrar {{ cuat }}° cuatrimestre</button>
         {% endif %}
         {% endif %}
-        {# Imprimir. #}
         <button type="button" class="btn" onclick="window.print()">Imprimir (oficio vertical)</button>
     </div>
 </div>
-{# Texto de ayuda distinto para el docente y para lectura. #}
 <p class="nota" style="padding:12px 20px">{% if puede_editar %}Cursa/recursa, diciembre y febrero se guardan en el {{ cuat }}° cuatrimestre. La intensificación va solo si el 1° no estaba aprobado (nota de 7 a 10). La calificación final se calcula sola; si la cambiás, queda la tuya. Las notas parciales y calificaciones salen de "Cargar notas"; las inasistencias, del módulo Asistencia.{% else %}Modo lectura: solo el docente de la materia puede modificar la planilla.{% endif %}</p>
 </div>
 
-{# La hoja. #}
 <div class="planilla-scroll">
 <div class="sheet">
-    {# Encabezado de la hoja. #}
     <div class="ln"><span>ESCUELA DE EDUCACIÓN SECUNDARIA:</span><span class="f">EEST N°3 "Víctor Mercante"</span></div>
     <h1>PLANILLA DE CALIFICACIONES {{ ciclo_lectivo }}</h1>
-    {# Materia y docente. #}
     <div class="ln"><span>MATERIA:</span><span class="f">{{ materia.nombre }}</span><span>PROFESOR/A:</span><span class="f">{{ docente_nombre }}</span></div>
     <div class="ln">
-        {# Año y seccion del curso. #}
         <span>AÑO:</span><span class="f" style="flex:.4">{{ materia.curso.anio }}°</span>
         <span>SECCIÓN:</span><span class="f" style="flex:.4">{{ materia.curso.division }}</span>
-        {# Turno: campo editable que se guarda (readonly si no puede editar). #}
         <span>TURNO:</span><input class="lh" type="text" name="turno" value="{{ turno }}" maxlength="50" style="flex:.5" aria-label="Turno"{% if not puede_editar %} readonly{% endif %}>
-        {# Preceptor/a: campo editable que se guarda. #}
         <span>PRECEPTOR/A:</span><input class="lh" type="text" name="preceptor" value="{{ preceptor }}" maxlength="100" aria-label="Preceptor/a"{% if not puede_editar %} readonly{% endif %}>
     </div>
 
-    {# Tabla principal. #}
     <table class="p">
-        {# colgroup define el ancho de cada columna. #}
         <colgroup>
             <col style="width:4.9mm"><col style="width:46mm"><col style="width:10.1mm">
-            {# Una columna por categoria (1° cuatrimestre); empty deja una sola si no hay categorias. #}
             {% for c in categorias %}<col style="width:{{ ancho_parcial }}mm">{% empty %}<col style="width:{{ ancho_parcial }}mm">{% endfor %}
             <col style="width:7.4mm"><col style="width:8.9mm"><col style="width:8.6mm">
-            {# Lo mismo para el 2° cuatrimestre. #}
             {% for c in categorias %}<col style="width:{{ ancho_parcial }}mm">{% empty %}<col style="width:{{ ancho_parcial }}mm">{% endfor %}
             <col style="width:7.8mm"><col style="width:8mm"><col style="width:7.7mm"><col style="width:8mm">
             <col style="width:7.8mm"><col style="width:8mm"><col style="width:10.7mm">
         </colgroup>
-        {# Primera fila de titulos. #}
         <tr>
             <th rowspan="2" class="v"><span>N° DE ORDEN</span></th>
             <th rowspan="2">APELLIDO/S Y NOMBRE/S<br>DEL/LA ESTUDIANTE</th>
             <th rowspan="2" style="font-size:5pt">CURSA<br>O<br>RECURSA<br>(C/R)</th>
-            {# Titulo del 1° cuatrimestre: abarca col_1c columnas. #}
             <th colspan="{{ col_1c }}" class="g">1° CUATRIMESTRE</th>
-            {# Titulo del 2° cuatrimestre. #}
             <th colspan="{{ col_2c }}" class="g">2° CUATRIMESTRE</th>
             <th colspan="2" class="g" style="font-size:4.4pt">INTENSIFICACIÓN</th>
             <th class="v" rowspan="2"><span>CALIFICACIÓN FINAL</span></th>
         </tr>
-        {# Segunda fila de titulos (los verticales). #}
         <tr>
-            {# Titulo de las notas parciales: abarca tantas columnas como categorias. #}
             <th colspan="{{ categorias|length|default:1 }}">CALIFICACIONES/<br>VALORACIONES<br>PARCIALES</th>
             <th class="v"><span>1° VALORACIÓN PRELIMINAR</span></th>
             <th class="v"><span>CALIFICACIÓN 1° CUATRIMESTRE</span></th>
@@ -194,44 +163,27 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
             <th class="v"><span>FEBRERO</span></th>
         </tr>
 
-        {# Una fila por alumno. #}
         {% for f in filas %}
         <tr>
-            {# Numero de orden (editable solo para imprimir, no se guarda porque no tiene name). #}
             <td class="n"><input class="ll" type="text" value="{{ f.nro }}" aria-label="{{ f.nombre }} — número de orden"{% if not puede_editar %} readonly{% endif %}></td>
-            {# Apellido y nombre (tampoco se guarda). #}
             <td><input class="ll nm" type="text" value="{{ f.nombre_planilla }}" aria-label="{{ f.nombre }} — apellido y nombre"{% if not puede_editar %} readonly{% endif %}></td>
-            {# Cursa/recursa: name="cursada_ID" es como lo lee _guardar_planilla. #}
             <td class="n"><input class="ll" type="text" maxlength="1" name="cursada_{{ f.id }}" value="{{ f.cursada }}" aria-label="{{ f.nombre }} — cursa (C) o recursa (R)"{% if not puede_editar %} readonly{% endif %}></td>
-            {# Notas parciales del 1° cuatrimestre (no editables). #}
             {% for v in f.d1.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
-            {# Valoracion del 1° cuatrimestre. #}
             <td class="n">{{ f.d1.valoracion }}</td>
-            {# Calificacion del 1° cuatrimestre. #}
             <td class="n"><b>{{ f.d1.calificacion }}</b></td>
-            {# Inasistencias del 1° cuatrimestre: solo lectura, salen del modulo Asistencia. #}
             <td class="n">{{ f.inas1 }}</td>
-            {# Notas parciales del 2° cuatrimestre. #}
             {% for v in f.d2.valores %}<td class="n">{{ v }}</td>{% empty %}<td class="n"></td>{% endfor %}
-            {# Valoracion del 2°. #}
             <td class="n">{{ f.d2.valoracion }}</td>
-            {# Calificacion del 2°. #}
             <td class="n"><b>{{ f.d2.calificacion }}</b></td>
-            {# Intensificacion del 1° cuatrimestre (editable). #}
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="intens_{{ f.id }}" value="{{ f.intensificacion }}" aria-label="{{ f.nombre }} — intensificación 1° cuatrimestre"{% if not puede_editar %} readonly{% endif %}></td>
-            {# Inasistencias del 2° cuatrimestre: solo lectura. #}
             <td class="n">{{ f.inas2 }}</td>
-            {# Nota de diciembre. #}
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="dic_{{ f.id }}" value="{{ f.dic }}" aria-label="{{ f.nombre }} — diciembre"{% if not puede_editar %} readonly{% endif %}></td>
-            {# Nota de febrero. #}
             <td class="n"><input class="ll" type="text" inputmode="decimal" name="feb_{{ f.id }}" value="{{ f.feb }}" aria-label="{{ f.nombre }} — febrero"{% if not puede_editar %} readonly{% endif %}></td>
-            {# Calificacion final (en rojo si no acredita por asistencia). #}
             <td class="n"><input class="ll{% if f.no_acredita %} no-acredita{% endif %}" type="text" inputmode="decimal" name="final_{{ f.id }}" value="{{ f.final }}" aria-label="{{ f.nombre }} — calificación final"{% if f.no_acredita %} title="Asistencia menor al 80 %: no acredita la materia"{% endif %}{% if not puede_editar %} readonly{% endif %}></td>
         </tr>
         {% endfor %}
 
         {% comment %} Renglones en blanco de la hoja oficial (hasta el 37), para completar a mano. {% endcomment %}
-        {# Renglones vacios hasta el 37. #}
         {% for i in numeros_vacios %}
         <tr>
             <td class="n"><input class="ll" type="text" value="{{ i }}" aria-label="Renglón {{ i }} — número de orden"{% if not puede_editar %} readonly{% endif %}></td>
@@ -250,29 +202,23 @@ table.s{border-collapse:collapse;table-layout:fixed;width:58mm}
         {% endfor %}
     </table>
 
-    {# Pie de la hoja. #}
     <div class="bt">
         <div class="lf">
-            {# Tabla de totales. #}
             <table class="s">
                 <colgroup><col style="width:26mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"></colgroup>
                 <tr><th class="dg"></th><th>1°C</th><th>2°C</th><th>TOTAL</th><th>DIC</th><th>FEB/<br>MAR</th></tr>
-                {# Recorre la lista de 5 numeros que armo _totales_planilla. #}
                 <tr><th class="r">TOTAL DE ESTUDIANTES</th>{% for n in totales.estudiantes %}<td>{{ n }}</td>{% endfor %}</tr>
                 <tr><th class="r">APROBADAS/OS</th>{% for n in totales.aprobados %}<td>{{ n }}</td>{% endfor %}</tr>
                 <tr><th class="r">DESAPROBADAS/OS</th>{% for n in totales.desaprobados %}<td>{{ n }}</td>{% endfor %}</tr>
                 <tr><th class="r">SIN EVALUAR</th>{% for n in totales.sin_evaluar %}<td>{{ n }}</td>{% endfor %}</tr>
             </table>
-            {# Tabla de clases. #}
             <table class="s">
                 <colgroup><col style="width:38mm"><col style="width:10mm"><col style="width:10mm"></colgroup>
                 <tr><th class="dg"></th><th>1°C</th><th>2°C</th></tr>
                 <tr><th class="r">TOTAL DE CLASES DE LA MATERIA</th><td></td><td></td></tr>
-                {# Clases dadas en cada cuatrimestre. #}
                 <tr><th class="r">CLASES EFECTIVAMENTE DADAS</th><td>{{ clases.1 }}</td><td>{{ clases.2 }}</td></tr>
             </table>
         </div>
-        {# Texto oficial con las consideraciones. #}
         <div class="rt">
             <div class="fi">FIRMA</div>
             <p class="im">IMPORTANTE: LEER LAS SIGUIENTES CONSIDERACIONES ANTES DE COMPLETAR LA PLANILLA</p>

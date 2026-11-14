@@ -8,10 +8,8 @@
    - TED en rojo; ⚠ = asistencia menor al 80 % (la materia no acredita).
 {% endcomment %}
 
-{# Titulo de la pestaña con el nombre del alumno. #}
 {% block title %}Boletín — {{ nombre }} — SGE{% endblock %}
 
-{# Estilos propios del boletin. #}
 {% block extra_css %}
 <style>
 /* Contenedor del boletin: elementos en columna, con separacion. */
@@ -46,49 +44,39 @@
 </style>
 {% endblock %}
 
-{# Encabezado celeste. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
-        {# La miga de pan cambia segun quien lo mira. #}
         <p class="miga">Calificaciones › {% if es_alumno %}Mis notas{% else %}Consultar boletín{% endif %} › Boletín</p>
         <h1>Boletín — {{ nombre }}</h1>
     </div>
     <div class="hero-acciones">
-        {# Boton volver distinto para el alumno y para el personal. #}
         {% if es_alumno %}
         <a class="btn" href="{% url 'calificaciones_menu' %}">← Volver a mis notas</a>
         {% else %}
         <a class="btn" href="{% url 'alumno_seleccionar' %}">← Elegir otro alumno</a>
         {% endif %}
-        {# window.print() abre la impresion del navegador (sirve para guardar PDF). #}
         <button type="button" class="btn p" onclick="window.print()">Imprimir / guardar como PDF</button>
     </div>
 </section>
 {% endblock %}
 
-{# Contenido. #}
 {% block content %}
 <div class="card rite">
 
     <!-- ─────────── FRENTE ─────────── -->
-    {# FRENTE del boletin. #}
     <div class="frente" style="display:flex;flex-direction:column;gap:14px">
         <div class="encabezado">
             <div style="display:flex;flex-direction:column;gap:3px">
                 <h2>REGISTRO INSTITUCIONAL DE TRAYECTORIAS EDUCATIVAS</h2>
                 <p class="dato"><b>Escuela de Educación Secundaria Técnica N° 3 – "Víctor Mercante"</b> · Región VII</p>
-                {# Datos del curso (vienen de _datos_rite en views.py). #}
                 <p class="dato">Ciclo lectivo: {{ ciclo_lectivo }} · Curso: {{ anio }}° · División: {{ division }}</p>
             </div>
         </div>
 
-        {# Datos del estudiante. #}
         <p class="dato">Estudiante: <b>{{ nombre }}</b> · D.N.I.: {{ dni }} · Preceptor/a: {{ preceptor }}</p>
 
-        {# Tabla de calificaciones. #}
         <table>
-            {# Encabezado de 3 filas: colspan une columnas y rowspan une filas. #}
             <tr>
                 <th colspan="2">TIPO</th>
                 <th rowspan="3">MATERIAS</th>
@@ -112,49 +100,33 @@
                 <th>Diciembre</th>
                 <th>Febrero</th>
             </tr>
-            {# Una fila por materia. #}
             {% for f in filas %}
             <tr>
-                {# X en la columna C si cursa por primera vez. #}
                 <td>{% if f.cursada == 'C' %}X{% endif %}</td>
-                {# X en la columna R si recursa. #}
                 <td>{% if f.cursada == 'R' %}X{% endif %}</td>
-                {# Nombre de la materia y aviso si no acredita por asistencia. #}
                 <td class="l">{{ f.materia }}{% if f.no_acredita %} <span class="no-acredita" title="Asistencia menor al 80 %: no acredita la materia">⚠</span>{% endif %}</td>
                 <td>{{ f.anio }}</td>
-                {# Valoracion del 1° cuatrimestre (TED en rojo). #}
                 <td><span{% if f.val1 == 'TED' %} class="ted"{% endif %}>{{ f.val1 }}</span></td>
-                {# Nota del 1° cuatrimestre. #}
                 <td><b>{{ f.calif1 }}</b></td>
-                {# Valoracion del 2° cuatrimestre. #}
                 <td><span{% if f.val2 == 'TED' %} class="ted"{% endif %}>{{ f.val2 }}</span></td>
-                {# Nota del 2° cuatrimestre. #}
                 <td><b>{{ f.calif2 }}</b></td>
-                {# Promedio anual (raya si no corresponde). #}
                 <td><b>{{ f.promedio_anual|default:"—" }}</b></td>
-                {# Nota de intensificacion. #}
                 <td>{{ f.intensificacion|default:"—" }}</td>
-                {# Nota de diciembre. #}
                 <td>{{ f.dic|default:"—" }}</td>
-                {# Nota de febrero. #}
                 <td>{{ f.feb|default:"—" }}</td>
             </tr>
-            {# Si no hay materias. #}
             {% empty %}
             <tr><td colspan="12">El curso todavía no tiene materias.</td></tr>
             {% endfor %}
         </table>
 
-        {# Leyenda que explica las siglas. #}
         <p class="leyenda">C = cursa por primera vez · R = recursa. Valoración preliminar: TEA, TEP o TED. Calificación del cuatrimestre: de 1 a 10, resulta de ponderar las valoraciones parciales. Intensificación 1° cuatrimestre: solo si la nota original fue menor a 7. Promedio anual: cuando los dos cuatrimestres están aprobados con 7 o más. ⚠ = asistencia menor al 80 %: la materia no se acredita aunque la nota sea 7 o más.</p>
     </div>
 
     <!-- ─────────── DORSO ─────────── -->
-    {# DORSO del boletin. #}
     <div class="dorso">
         <h2>Dorso · Ciclo lectivo {{ ciclo_lectivo }} · Estudiante: {{ nombre }}</h2>
 
-        {# Tabla de materias que intensifican. #}
         <table>
             <tr>
                 <th rowspan="2">N°</th>
@@ -166,64 +138,48 @@
                 <th rowspan="2">Saberes pendientes de aprobación al cierre del ciclo lectivo</th>
             </tr>
             <tr><th>Marzo</th><th>Julio</th><th>Agosto</th><th>Dic. 1</th><th>Dic. 2</th><th>Feb.</th></tr>
-            {# Siempre son 9 renglones (la vista completa con vacios). #}
             {% for i in intensifican %}
             <tr>
-                {# forloop.counter = numero de vuelta (1, 2, 3...). #}
                 <td>{{ forloop.counter }}</td>
                 <td class="l">{{ i.materia }}</td>
                 <td>{{ i.anio }}</td>
                 <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                {# Calificacion final de la intensificacion. #}
                 <td><b>{{ i.calif_final }}</b></td>
                 <td></td>
             </tr>
             {% endfor %}
         </table>
 
-        {# Pie: asistencia y firmas. #}
         <div class="pie">
             <div>
                 <table>
                     <tr><th></th><th>1° cuatrim.</th><th>2° cuatrim.</th><th>Total</th></tr>
-                    {# Dias con asistencia tomada: dias.1 lee la clave 1 del diccionario. #}
                     <tr><td class="l">Días hábiles</td><td class="gris">{{ dias.1 }}</td><td class="gris">{{ dias.2 }}</td><td class="gris">{{ dias_total }}</td></tr>
-                    {# Inasistencias por cuatrimestre y total. #}
                     <tr><td class="l">Inasistencias</td><td class="gris">{{ inasistencias.1 }}</td><td class="gris">{{ inasistencias.2 }}</td><td class="gris">{{ total_inasistencias }}</td></tr>
                 </table>
                 <p class="leyenda" style="margin-top:6px">Se completan solos con los datos del módulo Asistencia.</p>
             </div>
 
             <div>
-                {# Tabla de firmas. #}
                 <table>
                     <tr><th>Firma de</th><th>1° cuatrimestre</th><th>2° cuatrimestre</th><th>Calif. final</th></tr>
-                    {# Una fila por firmante (director, adulto, estudiante). #}
                     {% for f in firmas %}
                     <tr>
                         <td class="l">{{ f.nombre }}</td>
-                        {# Una celda por cuatrimestre: cuat es el numero y firmada es True/False. #}
                         {% for cuat, firmada in f.estados %}
                         <td>
-                            {# Si ya esta firmada muestra el tilde. #}
                             {% if firmada %}✓
-                            {# Si no esta firmada y este usuario puede firmar, muestra el boton. #}
                             {% elif f.puede_firmar %}
-                            {# Formulario que llama a la vista confirmar_rite. no-print: no sale impreso. #}
                             <form method="post" action="{% url 'confirmar_rite' %}" class="no-print">
-                                {# Token de seguridad. #}
                                 {% csrf_token %}
-                                {# Campos ocultos: que firma, de que cuatrimestre y de que alumno. #}
                                 <input type="hidden" name="tipo" value="{{ f.tipo }}">
                                 <input type="hidden" name="cuat" value="{{ cuat }}">
                                 <input type="hidden" name="alumno_id" value="{{ alumno.id }}">
-                                {# Boton Firmar. #}
                                 <button type="submit" class="btn chico">Firmar</button>
                             </form>
                             {% endif %}
                         </td>
                         {% endfor %}
-                        {# La columna "Calif. final" se tilda cuando esta firmado el 2° cuatrimestre. #}
                         <td>{% if f.c2 %}✓{% endif %}</td>
                     </tr>
                     {% endfor %}
@@ -235,7 +191,6 @@
 </div>
 {% endblock %}
 
-{# JavaScript del boletin. #}
 {% block extra_js %}
 <script>
 // "Imprimir / guardar como PDF" desde Mis notas abre el boletín con ?imprimir=1.

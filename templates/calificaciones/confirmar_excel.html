@@ -5,10 +5,8 @@
    pisa nada. Los alumnos que no se encuentran en el curso salen en rojo.
 {% endcomment %}
 
-{# Titulo de la pestaña. #}
 {% block title %}Vista previa del Excel — {{ materia.nombre }} — SGE{% endblock %}
 
-{# Encabezado. #}
 {% block hero %}
 <section class="hero">
     <div class="hero-textos">
@@ -16,49 +14,36 @@
         <h1>Vista previa del Excel — {{ materia.nombre }}</h1>
     </div>
     <div class="hero-acciones">
-        {# Volver a elegir otro archivo. #}
         <a class="btn" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=materia.id %}">← Elegir otro archivo</a>
     </div>
 </section>
 {% endblock %}
 
-{# Contenido. #}
 {% block content %}
 <div class="card tarjeta">
-    {# Si alguna columna del Excel coincide con una categoria muestra la tabla. #}
     {% if columnas %}
     <div class="tabla-wrap">
     <table class="tabla">
-        {# Titulos: Alumno y una columna por categoria reconocida. #}
         <tr><th>Alumno</th>{% for nombre in columnas %}<th class="c">{{ nombre }}</th>{% endfor %}</tr>
-        {# Una fila por alumno del Excel. #}
         {% for fila in vista_previa %}
         <tr>
-            {# El nombre sale en rojo si el alumno no esta en el curso. #}
             <td class="{% if fila.encontrado %}fuerte{% else %}no-acredita{% endif %}">{{ fila.nombre }}{% if not fila.encontrado %} (no está en el curso){% endif %}</td>
-            {# Sus notas. #}
             {% for valor in fila.valores %}<td class="c">{{ valor }}</td>{% endfor %}
         </tr>
-        {# Si el Excel no tenia alumnos. #}
         {% empty %}
         <tr><td class="vacia" colspan="99">El archivo no tiene filas de alumnos.</td></tr>
         {% endfor %}
     </table>
     </div>
-    {# Si ninguna columna coincide. #}
     {% else %}
     <p class="ayuda">Ninguna columna del Excel coincide con las categorías de la materia. Descargá la plantilla y volvé a intentar.</p>
     {% endif %}
 
     <p class="ayuda">Solo se guardan las notas de los alumnos encontrados. Las celdas vacías no borran notas que ya estén cargadas.</p>
 
-    {# Formulario de confirmacion (envia a profesor_confirmar_excel). #}
     <form method="post" action="{% url 'profesor_confirmar_excel' cuat=cuat materia_id=materia.id %}" class="grupo-botones">
-        {# Token de seguridad. #}
         {% csrf_token %}
-        {# El boton de guardar aparece solo si hay algo para guardar. #}
         {% if columnas and hay_para_guardar %}<button type="submit" class="btn p">Confirmar y guardar</button>{% endif %}
-        {# Cancelar vuelve a la grilla sin guardar. #}
         <a class="btn" href="{% url 'profesor_cargar_notas' cuat=cuat materia_id=materia.id %}">Cancelar</a>
     </form>
 </div>
