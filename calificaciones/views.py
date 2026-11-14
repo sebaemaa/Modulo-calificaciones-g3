@@ -239,6 +239,36 @@ def _nota_desde_texto(texto):
     return _decimal_desde_texto(texto, minimo=Decimal("0"), maximo=Decimal("10"))
 
 
+def _id_desde_texto(texto):
+    """Id que llega por formulario como número entero, o 0 si no es un número.
+
+    Ningún registro tiene id 0, así que un id inválido termina en "no encontrado".
+    """
+    texto = str(texto or "").strip()
+    return int(texto) if texto.isdigit() and len(texto) <= 18 else 0
+
+
+# ─────────────────────────────────────────────
+#  HELPERS: NOTAS CARGADAS
+# ─────────────────────────────────────────────
+
+def _notas_del_alumno(alumno, materia, cuat):
+    """Notas del alumno en una materia y cuatrimestre: {categoria_id: valor}."""
+    return {
+        n.categoria_id: n.valor
+        for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
+    }
+
+
+def _reemplazar_nota(valor, **celda):
+    """Guarda la nota de una celda (alumno, materia, categoría y cuatrimestre).
+
+    Primero borra la que hubiera, así nunca quedan dos notas en la misma celda.
+    """
+    NotaEvaluacion.objects.filter(**celda).delete()
+    NotaEvaluacion.objects.create(valor=valor, **celda)
+
+
 # ─────────────────────────────────────────────
 #  HELPERS: CÁLCULO DE CALIFICACIONES
 # ─────────────────────────────────────────────
@@ -476,9 +506,14 @@ def menu(request):
         contexto.update(_datos_menu_alumno(perfil.alumno, cuat))
         return render(request, "calificaciones/menu_alumno.html", contexto)
 
+    if rol not in ROLES_GESTION:
+        # Docente o alumno sin ficha asociada: no tiene nada propio para ver.
+        messages.error(request, "Tu usuario no tiene una ficha de docente o de alumno asociada. Avisá en secretaría.")
+        return redirect("/")
+
     # Secretaría, directivo y superusuarios.
     contexto.update(_datos_menu_gestion())
-    contexto["puede_publicar_boletin"] = rol in ROLES_GESTION
+    contexto["puede_publicar_boletin"] = True
     return render(request, "calificaciones/menu.html", contexto)
 
 
@@ -556,7 +591,6 @@ def _datos_menu_docente(docente, cuat):
         "total_materias": len(filas),
         "sin_cargar": sum(1 for f in filas if not f["completo"]),
         "cerradas": sum(1 for f in filas if f["fecha_cierre"]),
-        "excel_disponible": EXCEL_DISPONIBLE,
     }
 
 
@@ -570,10 +604,7 @@ def _datos_menu_alumno(alumno, cuat):
     filas = []
     calificaciones = []
     for materia in _materias_del_alumno(alumno):
-        notas = {
-            n.categoria_id: n.valor
-            for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
-        }
+        notas = _notas_del_alumno(alumno, materia, cuat)
         datos = _datos_cuatrimestre(notas, _categorias(materia), cierres.get(materia.id))
         calif = Decimal(datos["calificacion"]) if datos["calificacion"] else None
         if calif is not None:
@@ -628,6 +659,8 @@ def _alumnos_que_puede_ver(request):
     if _rol(request) != "docente":
         return alumnos
     docente = _docente_logueado(request)
+    if docente is None:
+        return alumnos.none()  # docente sin ficha: no tiene cursos
     cursos = Materia.objects.filter(docente=docente).values_list("curso__anio", "curso__division").distinct()
     filtro = Q(pk__in=[])  # arranca sin ningún alumno
     for anio, division in cursos:
@@ -664,6 +697,25 @@ def _puede_firmar(request, tipo):
     return rol in ("docente", "administrativo", "directivo")
 
 
+def _cursada_del_anio(cierre1, cierre2):
+    """'R' si el alumno figura como recursante en algún cuatrimestre; si no, 'C'."""
+    recursa = any(c is not None and c.cursada == "R" for c in (cierre1, cierre2))
+    return "R" if recursa else "C"
+
+
+def _nota_de_mesa(campo, cierre1, cierre2):
+    """Nota de diciembre o febrero como texto, o '' si no está cargada.
+
+    La planilla la guarda en el cuatrimestre que se estaba mirando, así que
+    se busca en los dos (primero en el 2°, que es donde corresponde).
+    """
+    for cierre in (cierre2, cierre1):
+        valor = getattr(cierre, campo, None)
+        if valor is not None:
+            return _num_limpio(valor)
+    return ""
+
+
 def _datos_rite(alumno, request):
     """Datos del boletín: frente (calificaciones) y dorso (intensificación,
     asistencia y firmas)."""
@@ -698,15 +750,15 @@ def _datos_rite(alumno, request):
         filas.append({
             "materia": m.nombre,
             "anio": f"{m.curso.anio}°",
-            "cursada": cierre1.cursada if cierre1 else "C",
+            "cursada": _cursada_del_anio(cierre1, cierre2),
             "val1": d1["valoracion"],
             "calif1": d1["calificacion"],
             "val2": d2["valoracion"],
             "calif2": d2["calificacion"],
             "promedio_anual": promedio_anual,
             "intensificacion": _intensificacion(cierre1),
-            "dic": _num_limpio(cierre2.nota_diciembre) if cierre2 and cierre2.nota_diciembre is not None else "",
-            "feb": _num_limpio(cierre2.nota_febrero) if cierre2 and cierre2.nota_febrero is not None else "",
+            "dic": _nota_de_mesa("nota_diciembre", cierre1, cierre2),
+            "feb": _nota_de_mesa("nota_febrero", cierre1, cierre2),
             "no_acredita": not asistencia_ok,
         })
 
@@ -737,8 +789,7 @@ def _datos_rite(alumno, request):
         firmas.append({
             "tipo": tipo,
             "nombre": nombre,
-            "c1": (1, tipo) in firmadas,
-            "c2": (2, tipo) in firmadas,
+            "c2": (2, tipo) in firmadas,  # columna "Calif. final"
             # [(1, firmada?), (2, firmada?)] para dibujar una celda por cuatrimestre.
             "estados": [(c, (c, tipo) in firmadas) for c in (1, 2)],
             "puede_firmar": _puede_firmar(request, tipo),
@@ -889,9 +940,7 @@ def profesor_cargar_notas(request, cuat, materia_id):
         "fecha_cierre": _fecha_cierre(materia, cuat),  # si está cerrado, la grilla es de solo lectura
         "excel_disponible": EXCEL_DISPONIBLE,
         "filas": filas,
-        "categorias": categorias,
         "grupos": grupos,
-        "tiene_grupos": any(g["nombre"] for g in grupos),
         "con_pesos": any(c["peso"] is not None for c in categorias),
     })
 
@@ -911,7 +960,7 @@ def _validar_ajax(request, cuat, materia_id):
         return None, None, JsonResponse({"ok": False, "error": "Esa materia no es tuya"}, status=403)
     if _fecha_cierre(materia, cuat):
         return None, None, JsonResponse({"ok": False, "error": _aviso_cerrado(cuat)}, status=409)
-    alumno = _alumno_de_la_materia(materia, request.POST.get("alumno_id") or 0)
+    alumno = _alumno_de_la_materia(materia, _id_desde_texto(request.POST.get("alumno_id")))
     if alumno is None:
         return None, None, JsonResponse({"ok": False, "error": "Alumno no encontrado"}, status=404)
     return materia, alumno, None
@@ -925,7 +974,7 @@ def profesor_guardar_nota(request, cuat, materia_id):
         return error
 
     categoria = CategoriaEvaluacion.objects.filter(
-        id=request.POST.get("cat_id") or 0, materia=materia,
+        id=_id_desde_texto(request.POST.get("cat_id")), materia=materia,
     ).first()
     if categoria is None:
         return JsonResponse({"ok": False, "error": "Categoría no encontrada"}, status=404)
@@ -938,15 +987,10 @@ def profesor_guardar_nota(request, cuat, materia_id):
         valor = _nota_desde_texto(texto)
         if valor is None:
             return JsonResponse({"ok": False, "error": f"'{texto}' no es una nota válida (0 a 10)"}, status=400)
-        # Si por algún motivo hubiera notas repetidas en la celda, quedan en una sola.
-        NotaEvaluacion.objects.filter(**filtro).delete()
-        NotaEvaluacion.objects.create(valor=valor, **filtro)
+        _reemplazar_nota(valor, **filtro)
 
     # Devuelve la calificación recalculada para refrescar la fila.
-    notas = {
-        n.categoria_id: n.valor
-        for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
-    }
+    notas = _notas_del_alumno(alumno, materia, cuat)
     calif = _calificacion_entera(notas, _categorias(materia))
     asistencia = _asistencia_materia(alumno.id, materia)
     asistencia_ok = asistencia is None or asistencia["suficiente"]
@@ -1219,10 +1263,10 @@ def profesor_confirmar_excel(request, cuat, materia_id):
             if valor is None:
                 omitidas += 1
                 continue
-            filtro = {"alumno": alumno, "materia": materia,
-                      "categoria_id": categorias[cat_id], "cuatrimestre": cuat}
-            NotaEvaluacion.objects.filter(**filtro).delete()
-            NotaEvaluacion.objects.create(valor=valor, **filtro)
+            _reemplazar_nota(
+                valor, alumno=alumno, materia=materia,
+                categoria_id=categorias[cat_id], cuatrimestre=cuat,
+            )
             guardadas += 1
 
     messages.success(request, f"Se cargaron {guardadas} notas desde Excel.")
@@ -1378,7 +1422,6 @@ def _filas_planilla(materia, categorias, cuat):
             "dic": _num_limpio(cierre_actual.nota_diciembre) if cierre_actual and cierre_actual.nota_diciembre is not None else "",
             "feb": _num_limpio(cierre_actual.nota_febrero) if cierre_actual and cierre_actual.nota_febrero is not None else "",
             "final": final,
-            "final_auto": _final_automatico(d1, d2, cierre1),  # para no guardar lo que ya es automático
             "final_aprobada": bool(final) and Decimal(final) >= NOTA_APROBACION and asistencia_ok,
             "no_acredita": not asistencia_ok,
         })
@@ -1495,10 +1538,7 @@ def _guardar_planilla(request, materia, cuat):
 
         if cerrar:
             # Al cerrar, la calificación calculada queda fija con la fecha de cierre.
-            notas = {
-                n.categoria_id: n.valor
-                for n in NotaEvaluacion.objects.filter(alumno=alumno, materia=materia, cuatrimestre=cuat)
-            }
+            notas = _notas_del_alumno(alumno, materia, cuat)
             calif = _calificacion_entera(notas, categorias)
             if calif is not None:
                 cierre.calificacion = calif

@@ -17,7 +17,7 @@ from alumnos.models import Alumno, Curso
 from cuentas.models import Perfil
 from docentes.models import Docente, Materia
 
-from .models import BoletinConfig, CategoriaEvaluacion, NotaEvaluacion, PublicacionBoletin
+from .models import CategoriaEvaluacion, NotaEvaluacion, PublicacionBoletin
 from . import urls as calificaciones_urls
 
 
@@ -67,7 +67,6 @@ class RolesCalificacionesTests(TestCase):
         cls.user_docente = cls._crear_usuario("docente_user", "docente", docente=cls.docente)
         cls.user_admin = cls._crear_usuario("admin_user", "administrativo")
 
-        BoletinConfig.objects.create(cuatrimestre=1, publicado=True)
         PublicacionBoletin.objects.create(anio=timezone.now().year, publicado=True)
 
     @classmethod
@@ -264,3 +263,21 @@ class RolesCalificacionesTests(TestCase):
         ).first()
         self.assertIsNotNone(nota)
         self.assertEqual(nota.valor, Decimal("8"))
+
+    # ------------------------------------------------------------------
+    # h) docente sin ficha de Docente asociada
+    # ------------------------------------------------------------------
+    def test_h_docente_sin_ficha_no_ve_datos_de_otros(self):
+        """Un usuario con rol docente pero sin ficha no ve el menú de secretaría
+        ni alumnos de materias que todavía no tienen docente asignado."""
+        Materia.objects.create(nombre="Sin docente", curso=self.curso, docente=None)
+        sin_ficha = self._crear_usuario("docente_sin_ficha", "docente")
+        self._login(sin_ficha)
+
+        response = self.client.get(reverse("calificaciones_menu"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/")
+
+        response = self.client.get(reverse("alumno_seleccionar"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context["alumnos"]), [])

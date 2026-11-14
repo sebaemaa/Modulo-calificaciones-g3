@@ -13,7 +13,6 @@ Secciones:
 
     python manage.py test calificaciones
 """
-import json
 from datetime import date
 from decimal import Decimal
 
@@ -25,7 +24,6 @@ from django.utils import timezone
 from alumnos.models import Alumno, Curso
 from asistencia.models import RegistroAsistencia
 from calificaciones.models import (
-    BoletinConfig,
     CategoriaEvaluacion,
     CierreCuatrimestre,
     ConfirmacionRite,
@@ -90,8 +88,6 @@ class MenuPorRolTests(TestCase):
                 alumno=self.alumno, materia=self.materia,
                 fecha=date(2026, 4, dia), estado="P",
             )
-
-        BoletinConfig.objects.create(cuatrimestre=1, publicado=True)
 
         self.u_docente = User.objects.create_user("docente1", password="clave123")
         Perfil.objects.create(usuario=self.u_docente, rol=Perfil.DOCENTE, docente=self.docente)
@@ -407,6 +403,18 @@ class CargarNotasTests(TestCase):
         url = reverse("profesor_guardar_valoracion", kwargs={"cuat": 1, "materia_id": self.materia.id})
         r = self.client.post(url, {"alumno_id": self.alumno.id, "valoracion": "XXX"})
         self.assertEqual(r.status_code, 400)
+
+    def test_guardar_con_ids_que_no_son_numeros_no_rompe(self):
+        """Un alumno_id o cat_id inválido responde 404 en vez de un error del servidor."""
+        self._login()
+        url = reverse("profesor_guardar_nota", kwargs={"cuat": 1, "materia_id": self.materia.id})
+        r = self.client.post(url, {"alumno_id": "abc", "cat_id": self.eval.id, "valor": "8"})
+        self.assertEqual(r.status_code, 404)
+        r = self.client.post(url, {"alumno_id": self.alumno.id, "cat_id": "abc", "valor": "8"})
+        self.assertEqual(r.status_code, 404)
+        # la nota que ya estaba no se tocó
+        nota = NotaEvaluacion.objects.get(alumno=self.alumno, categoria=self.eval, cuatrimestre=1)
+        self.assertEqual(nota.valor, Decimal("8"))
 
 
 # ─────────────────────────────────────────────
@@ -957,6 +965,17 @@ class RiteTests(TestCase):
         self.assertContains(r, 'title="Asistencia menor al 80 %')
         # el promedio 8,5 no se muestra porque la materia no se acredita
         self.assertNotContains(r, "<b>8.5</b>")
+
+    def test_el_boletin_muestra_cursada_y_mesas_de_cualquier_cuatrimestre(self):
+        """La planilla guarda C/R, diciembre y febrero en el cuatrimestre que se
+        mira: el boletín los muestra igual, estén en el 1° o en el 2°."""
+        CierreCuatrimestre.objects.filter(cuatrimestre=1).update(nota_diciembre=Decimal("7"))
+        CierreCuatrimestre.objects.filter(cuatrimestre=2).update(cursada="R", nota_febrero=Decimal("8"))
+        self.client.force_login(self.u_alumno)
+        fila = self.client.get(reverse("alumno_ver_boletin")).context["filas"][0]
+        self.assertEqual(fila["cursada"], "R")
+        self.assertEqual(fila["dic"], "7")
+        self.assertEqual(fila["feb"], "8")
 
 
 # ─────────────────────────────────────────────

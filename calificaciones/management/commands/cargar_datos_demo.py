@@ -34,7 +34,6 @@ from cuentas.models import Perfil
 from docentes.models import Docente, Materia
 
 from calificaciones.models import (
-    BoletinConfig,
     CategoriaEvaluacion,
     CierreCuatrimestre,
     ConfirmacionRite,
@@ -306,9 +305,7 @@ class Command(BaseCommand):
         # se borran sus notas, categorías y asistencias).
         Materia.objects.filter(docente__dni__in=DNI_DOCENTES_DEMO).delete()
         Alumno.objects.filter(dni__in=DNI_ALUMNOS_DEMO).delete()
-        # Tablas propias del módulo: se reinician completas (BoletinConfig ya
-        # no se usa, se limpia por si quedó de versiones anteriores).
-        BoletinConfig.objects.all().delete()
+        # La publicación del boletín se reinicia: el demo arranca con el año oculto.
         PublicacionBoletin.objects.all().delete()
 
     def _alumno(self, curso, nombre, apellido, dni):

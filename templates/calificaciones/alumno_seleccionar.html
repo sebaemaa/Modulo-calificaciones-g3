@@ -57,23 +57,8 @@
 
 {% block extra_js %}
 <script>
-// Buscador: oculta los alumnos que no contienen el texto escrito.
-(function () {
-    var buscador = document.getElementById('buscar-alumno');
-    if (!buscador) return;
-    var filas = document.querySelectorAll('#tabla-alumnos tr:not(:first-child):not(.sin-resultados)');
-    var vacio = document.querySelector('#tabla-alumnos .sin-resultados');
-    buscador.addEventListener('input', function () {
-        var texto = buscador.value.trim().toLowerCase();
-        var visibles = 0;
-        filas.forEach(function (fila) {
-            var coincide = fila.textContent.toLowerCase().indexOf(texto) !== -1;
-            fila.hidden = !coincide;
-            if (coincide) visibles++;
-        });
-        vacio.hidden = visibles > 0;
-    });
-    buscador.focus();
-})();
+// El buscador (definido en base_cal.html) queda listo para escribir apenas se abre la pantalla.
+var buscador = activarBuscador('buscar-alumno', 'tabla-alumnos');
+if (buscador) buscador.focus();
 </script>
 {% endblock %}

@@ -35,10 +35,11 @@
     <div class="grupo-botones">
         {% if fecha_cierre %}
         <span class="chip ne">🔒 Cerrado el {{ fecha_cierre }}</span>
-        <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
         {% else %}
         <span class="chip ok" id="estado-guardado">✓ Guardado automático</span>
+        {% endif %}
         <a class="btn" href="{% url 'profesor_categorias' cuat=cuat materia_id=materia.id %}">Categorías</a>
+        {% if not fecha_cierre %}
         <a class="btn" href="{% url 'profesor_cargar_excel' cuat=cuat materia_id=materia.id %}">Importar Excel</a>
         {% if excel_disponible %}<a class="btn" href="{% url 'profesor_descargar_plantilla' cuat=cuat materia_id=materia.id %}">Descargar plantilla</a>{% endif %}
         {% endif %}
@@ -194,6 +195,14 @@
             campo.classList.toggle('error', !d.ok);
             if (avisoGuardado) avisoGuardado.textContent = d.ok ? '✓ Guardado automático' : '⚠ Hay un dato sin guardar';
             if (!d.ok) alert(d.error || 'No se pudo guardar.');
+            // Al guardar una nota, el servidor devuelve la calificación oficial: es la que queda en pantalla.
+            if (d.ok && 'calificacion' in d) {
+                var fila = campo.closest('tr');
+                var chip = d.estado_materia === 'Aprobada' ? 'ok' : 'wa';
+                fila.querySelector('.calif-fila').textContent = d.calificacion || '—';
+                fila.querySelector('.estado-fila').innerHTML = d.estado_materia
+                    ? '<span class="chip ' + chip + '">' + d.estado_materia + '</span>' : '—';
+            }
         }).catch(function () {
             campo.classList.add('error');
             if (avisoGuardado) avisoGuardado.textContent = '⚠ Sin conexión';

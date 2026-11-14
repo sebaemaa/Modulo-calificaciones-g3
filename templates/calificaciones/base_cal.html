@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/calificaciones.css' %}?v=20261111-2">
+<link rel="stylesheet" href="{% static 'css/calificaciones.css' %}?v=20261114">
 {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -81,8 +81,8 @@
 
 <footer>
     <p class="footer-titulo">E.E.S.T N°3 Víctor Mercante</p>
-    <p class="footer-sub">Sistema de Gestión Escolar — 2026</p>
-    <p class="footer-copy">&copy; 2026 E.E.S.T N°3 Víctor Mercante &mdash; Hurlingham</p>
+    <p class="footer-sub">Sistema de Gestión Escolar — {% now "Y" %}</p>
+    <p class="footer-copy">&copy; {% now "Y" %} E.E.S.T N°3 Víctor Mercante &mdash; Hurlingham</p>
 </footer>
 
 <script>
@@ -94,6 +94,26 @@ document.addEventListener('DOMContentLoaded', function () {
         hamburger.addEventListener('click', function () { nav.classList.toggle('nav-open'); });
     }
 });
+
+// Buscador de una tabla: oculta las filas que no contienen el texto escrito.
+// Lo usan el inicio de secretaría y la pantalla de elegir alumno.
+function activarBuscador(idBuscador, idTabla) {
+    var buscador = document.getElementById(idBuscador);
+    if (!buscador) return null;
+    var filas = document.querySelectorAll('#' + idTabla + ' tr:not(:first-child):not(.sin-resultados)');
+    var vacio = document.querySelector('#' + idTabla + ' .sin-resultados');
+    buscador.addEventListener('input', function () {
+        var texto = buscador.value.trim().toLowerCase();
+        var visibles = 0;
+        filas.forEach(function (fila) {
+            var coincide = fila.textContent.toLowerCase().indexOf(texto) !== -1;
+            fila.hidden = !coincide;
+            if (coincide) visibles++;
+        });
+        vacio.hidden = visibles > 0;
+    });
+    return buscador;
+}
 </script>
 {% block extra_js %}{% endblock %}
 </body>

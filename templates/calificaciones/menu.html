@@ -87,22 +87,6 @@
 
 {% block extra_js %}
 <script>
-// Buscador: oculta las filas que no contienen el texto escrito.
-(function () {
-    var buscador = document.getElementById('buscar-planilla');
-    if (!buscador) return;
-    var filas = document.querySelectorAll('#tabla-planillas tr:not(:first-child):not(.sin-resultados)');
-    var vacio = document.querySelector('#tabla-planillas .sin-resultados');
-    buscador.addEventListener('input', function () {
-        var texto = buscador.value.trim().toLowerCase();
-        var visibles = 0;
-        filas.forEach(function (fila) {
-            var coincide = fila.textContent.toLowerCase().indexOf(texto) !== -1;
-            fila.hidden = !coincide;
-            if (coincide) visibles++;
-        });
-        vacio.hidden = visibles > 0;
-    });
-})();
+activarBuscador('buscar-planilla', 'tabla-planillas');  // definido en base_cal.html
 </script>
 {% endblock %}

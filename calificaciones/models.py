@@ -10,11 +10,9 @@ los datos propios de la planilla viven acá.
 """
 from django.db import models
 
-# ================================================================
-# MÓDULO 3 — GESTIÓN DE CALIFICACIONES
-# Grupo responsable: Grupo 3
-# Consulta tablas de: alumnos, docentes
-# ================================================================
+# Opciones que comparten varias tablas: el cuatrimestre se guarda como 1 o 2.
+CUATRIMESTRE_CHOICES = [(1, '1° Cuatrimestre'), (2, '2° Cuatrimestre')]
+
 
 # ─────────────────────────────────────────────
 #  CALIFICACIONES POR PERÍODO (registro simple)
@@ -31,8 +29,8 @@ PERIODO_CHOICES = [
 class Calificacion(models.Model):
     """Calificación por bimestre del esqueleto original.
 
-    No la usa ninguna pantalla del módulo: queda para no romper el esqueleto
-    que armó el profesor (su tabla ya existe en la base).
+    Las pantallas de este módulo no la usan, pero el módulo Alumnos sí la
+    consulta (junto con ``PERIODO_CHOICES``), así que no se toca.
     """
     alumno = models.ForeignKey('alumnos.Alumno', on_delete=models.CASCADE, related_name='calificaciones')
     materia = models.ForeignKey('docentes.Materia', on_delete=models.CASCADE, related_name='calificaciones')
@@ -78,8 +76,6 @@ class CategoriaEvaluacion(models.Model):
 
 class NotaEvaluacion(models.Model):
     """Nota de un alumno en una categoría y cuatrimestre."""
-    CUATRIMESTRE_CHOICES = [(1, '1° Cuatrimestre'), (2, '2° Cuatrimestre')]
-
     alumno = models.ForeignKey('alumnos.Alumno', on_delete=models.CASCADE, related_name='notas_evaluacion')
     materia = models.ForeignKey('docentes.Materia', on_delete=models.CASCADE, related_name='notas_evaluacion')
     categoria = models.ForeignKey(CategoriaEvaluacion, on_delete=models.CASCADE, related_name='notas')
@@ -94,28 +90,6 @@ class NotaEvaluacion(models.Model):
     class Meta:
         verbose_name = "Nota de evaluación"
         verbose_name_plural = "Notas de evaluación"
-
-
-class BoletinConfig(models.Model):
-    """Configuración vieja por cuatrimestre (una sola para toda la escuela).
-
-    Ya no la usa ninguna pantalla: la fecha de cierre ahora se guarda por
-    materia en ``CierreCuatrimestre.fecha_cierre`` y la publicación del
-    boletín es anual (``PublicacionBoletin``). Queda para no perder datos.
-    """
-    CUATRIMESTRE_CHOICES = [(1, '1° Cuatrimestre'), (2, '2° Cuatrimestre')]
-
-    cuatrimestre = models.IntegerField(choices=CUATRIMESTRE_CHOICES, unique=True)
-    publicado = models.BooleanField(default=False)
-    fecha_publicacion = models.DateTimeField(null=True, blank=True)
-
-    def __str__(self):
-        estado = "Publicado" if self.publicado else "Oculto"
-        return f"Boletín {self.get_cuatrimestre_display()} — {estado}"
-
-    class Meta:
-        verbose_name = "Configuración de boletín"
-        verbose_name_plural = "Configuraciones de boletines"
 
 
 # ─────────────────────────────────────────────
@@ -143,7 +117,6 @@ class CierreCuatrimestre(models.Model):
         (TEP, 'Trayectoria Educativa en Proceso'),
         (TED, 'Trayectoria Educativa Discontinua'),
     ]
-    CUATRIMESTRE_CHOICES = [(1, '1° Cuatrimestre'), (2, '2° Cuatrimestre')]
     CURSADA_CHOICES = [
         ('C', 'Cursa por primera vez'),
         ('R', 'Recursa'),
@@ -190,7 +163,6 @@ class ConfirmacionRite(models.Model):
         ('adulto', 'Adulta/o responsable'),
         ('estudiante', 'Estudiante'),
     ]
-    CUATRIMESTRE_CHOICES = [(1, '1° Cuatrimestre'), (2, '2° Cuatrimestre')]
 
     alumno = models.ForeignKey('alumnos.Alumno', on_delete=models.CASCADE, related_name='confirmaciones_rite')
     cuatrimestre = models.IntegerField(choices=CUATRIMESTRE_CHOICES)
